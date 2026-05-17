@@ -128,9 +128,23 @@ async function initDB() {
     )
   `);
   await dbExec(`
-    CREATE TABLE IF NOT EXISTS counters (
-      key TEXT PRIMARY KEY,
-      value INTEGER DEFAULT 0
+    CREATE TABLE IF NOT EXISTS historija_premjestanja (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guma_id INTEGER NOT NULL,
+      guma_sifra TEXT NOT NULL,
+      polica_sa TEXT,
+      polica_na TEXT NOT NULL,
+      korisnik TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS aktivnosti (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      korisnik TEXT NOT NULL,
+      akcija TEXT NOT NULL,
+      detalji TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
   await dbExec(`INSERT OR IGNORE INTO counters (key, value) VALUES ('gu', 9)`);
@@ -151,6 +165,13 @@ async function initDB() {
     console.log('Admin kreiran, lozinka:', adminPass);
   }
   console.log('✅ Baza inicijalizirana');
+}
+
+async function logActivity(korisnik, akcija, detalji) {
+  try {
+    await dbRun('INSERT INTO aktivnosti (korisnik,akcija,detalji) VALUES (?,?,?)',
+      [korisnik, akcija, detalji||null]);
+  } catch(e) { console.error('Log error:', e.message); }
 }
 
 async function nextCounter(key) {
@@ -185,6 +206,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!k) return res.status(401).json({error:'Pogresno korisnicko ime ili lozinka'});
     const token = genToken();
     await dbRun('INSERT INTO sesije (token,korisnik_id) VALUES (?,?)',[token,k.id]);
+    await logActivity(k.username, 'PRIJAVA', null);
     res.json({token, role:k.role, username:k.username});
   } catch(e) { res.status(500).json({error:e.message}); }
 });
@@ -384,7 +406,9 @@ app.post('/api/gume', requireAuth, async (req,res) => {
     const sifra = 'GU'+num;
     await dbRun('INSERT INTO gume (sifra,sezona,sirina,visina,promjer,napomena,polica_id,polica_kod,slike,dodao_korisnik,dubina,dot,tip,cijena) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
       [sifra,sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),req.user.username,dubina||null,dot||null,tip||null,cijena]);
-    res.json(formatGuma(await dbGet(GUME_SELECT+' WHERE g.sifra=?',[sifra])));
+    const g = formatGuma(await dbGet(GUME_SELECT+' WHERE g.sifra=?',[sifra]));
+    await logActivity(req.user.username, 'DODANA_GUMA', `${sifra} — ${sirina}/${visina} ${promjer} ${sezona} → ${policaKod}`);
+    res.json(g);
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
@@ -401,7 +425,9 @@ app.put('/api/gume/:id', requireAuth, async (req,res) => {
       await dbRun('UPDATE gume SET sezona=?,sirina=?,visina=?,promjer=?,napomena=?,polica_id=?,polica_kod=?,slike=?,dubina=?,dot=?,tip=? WHERE id=?',
         [sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),dubina||null,dot||null,tip||null,req.params.id]);
     }
-    res.json(formatGuma(await dbGet(GUME_SELECT+' WHERE g.id=?',[req.params.id])));
+    const g = formatGuma(await dbGet(GUME_SELECT+' WHERE g.id=?',[req.params.id]));
+    await logActivity(req.user.username, 'EDITOVANA_GUMA', `${g.sifra} — ${sezona} ${sirina}/${visina} ${promjer}`);
+    res.json(g);
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
@@ -411,7 +437,11 @@ app.post('/api/gume/:id/premjesti', requireAuth, async (req,res) => {
     const {policaKod} = req.body;
     const polica = await dbGet('SELECT * FROM police WHERE naziv=?',[policaKod]);
     if (!polica) return res.status(400).json({error:'Polica "'+policaKod+'" ne postoji'});
+    const stara = await dbGet('SELECT sifra,polica_kod FROM gume WHERE id=?',[req.params.id]);
     await dbRun('UPDATE gume SET polica_id=?,polica_kod=? WHERE id=?',[polica.id,policaKod,req.params.id]);
+    await dbRun('INSERT INTO historija_premjestanja (guma_id,guma_sifra,polica_sa,polica_na,korisnik) VALUES (?,?,?,?,?)',
+      [req.params.id, stara.sifra, stara.polica_kod||null, policaKod, req.user.username]);
+    await logActivity(req.user.username, 'PREMJESTENA_GUMA', `${stara.sifra}: ${stara.polica_kod||'—'} → ${policaKod}`);
     res.json(formatGuma(await dbGet(GUME_SELECT+' WHERE g.id=?',[req.params.id])));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
@@ -422,11 +452,33 @@ app.post('/api/gume/:id/prodaj', requireAuth, async (req,res) => {
   const cijenaTxt = cijena ? parseFloat(cijena).toLocaleString('hr-HR')+' KM' : null;
   await dbRun('UPDATE gume SET prodato=1,cijena_prodaje=?,datum_prodaje=?,prodao_korisnik=? WHERE id=?',
     [cijenaTxt,datum,req.user.username,req.params.id]);
-  res.json(formatGuma(await dbGet(GUME_SELECT+' WHERE g.id=?',[req.params.id])));
+  const g = formatGuma(await dbGet(GUME_SELECT+' WHERE g.id=?',[req.params.id]));
+  await logActivity(req.user.username, 'PRODANA_GUMA', `${g.sifra} — ${g.sirina}/${g.visina} ${g.promjer}${cijenaTxt?' za '+cijenaTxt:''}`);
+  res.json(g);
 });
 
 app.delete('/api/gume/:id', requireAdmin, async (req,res) => {
-  await dbRun('DELETE FROM gume WHERE id=?',[req.params.id]); res.json({ok:true});
+  const g = await dbGet('SELECT sifra,sirina,visina,promjer FROM gume WHERE id=?',[req.params.id]);
+  await dbRun('DELETE FROM gume WHERE id=?',[req.params.id]);
+  if (g) await logActivity(req.user.username, 'OBRISANA_GUMA', `${g.sifra} — ${g.sirina}/${g.visina} ${g.promjer}`);
+  res.json({ok:true});
+});
+
+// HISTORIJA PREMJEŠTANJA
+app.get('/api/gume/:id/historija', requireAuth, async (req,res) => {
+  const historija = await dbAll(
+    'SELECT * FROM historija_premjestanja WHERE guma_id=? ORDER BY created_at DESC',
+    [req.params.id]);
+  res.json(historija);
+});
+
+// LOG AKTIVNOSTI (admin only)
+app.get('/api/aktivnosti', requireAdmin, async (req,res) => {
+  const limit = parseInt(req.query.limit)||100;
+  const aktivnosti = await dbAll(
+    'SELECT * FROM aktivnosti ORDER BY created_at DESC LIMIT ?',
+    [limit]);
+  res.json(aktivnosti);
 });
 
 // ANALITIKA (admin only)
