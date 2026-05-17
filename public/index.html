@@ -113,6 +113,10 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .bs.l{background:rgba(240,180,41,.16);color:#f0b429;border:1px solid #f0b429}
 .bsif{position:absolute;top:7px;right:7px;background:rgba(0,0,0,.7);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;padding:2px 5px;border-radius:3px}
 .bsold{position:absolute;bottom:0;left:0;right:0;background:rgba(155,89,182,.85);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;text-align:center;padding:3px}
+.tip-badge{display:inline-flex;align-items:center;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:3px}
+.tip-samac{background:rgba(75,142,240,.15);color:var(--blue);border:1px solid rgba(75,142,240,.3)}
+.tip-par{background:rgba(39,174,96,.12);color:var(--green);border:1px solid rgba(39,174,96,.3)}
+.tip-set{background:rgba(240,180,41,.12);color:var(--accent);border:1px solid rgba(240,180,41,.3)}
 .tire-info{padding:8px 10px}
 .tire-size{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;letter-spacing:1px;margin-bottom:1px}
 .tire-cod{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:1px}
@@ -237,7 +241,7 @@ function resizeImage(file, maxW=1200, maxH=1200, quality=0.82) {
   });
 }
 
-const EMPTY_FORM = {sezona:'',sirina:'',visina:'',promjer:'',napomena:'',policaKod:'',slike:[],dubina:'',dot:''};
+const EMPTY_FORM = {sezona:'',sirina:'',visina:'',promjer:'',napomena:'',policaKod:'',slike:[],dubina:'',dot:'',tip:'',cijena:''};
 
 const PROMJER_OPTIONS = ['13','14','15','16','16C','17','17C','18','19','20','21'];
 const SIRINA_OPTIONS = ['155','165','175','185','195','205','215','225','235','245','255'];
@@ -341,17 +345,51 @@ function LoginScreen({onLogin}) {
 // ===== LIGHTBOX =====
 function Lightbox({images, startIndex, onClose}) {
   const [idx, setIdx] = useState(startIndex||0);
+  const touchStartX = useRef(null);
+
   useEffect(() => {
-    const h = e => { if(e.key==='Escape') onClose(); if(e.key==='ArrowRight') setIdx(i=>Math.min(i+1,images.length-1)); if(e.key==='ArrowLeft') setIdx(i=>Math.max(i-1,0)); };
+    const h = e => {
+      if(e.key==='Escape') onClose();
+      if(e.key==='ArrowRight') setIdx(i=>Math.min(i+1,images.length-1));
+      if(e.key==='ArrowLeft') setIdx(i=>Math.max(i-1,0));
+    };
     window.addEventListener('keydown',h);
     return ()=>window.removeEventListener('keydown',h);
   },[images,onClose]);
+
+  const prev = e => { e.stopPropagation(); setIdx(i=>Math.max(i-1,0)); };
+  const next = e => { e.stopPropagation(); setIdx(i=>Math.min(i+1,images.length-1)); };
+
+  const onTouchStart = e => { touchStartX.current = e.touches[0].clientX; };
+  const onTouchEnd = e => {
+    if(touchStartX.current===null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if(dx > 50) setIdx(i=>Math.max(i-1,0));
+    else if(dx < -50) setIdx(i=>Math.min(i+1,images.length-1));
+    touchStartX.current = null;
+  };
+
   return (
-    <div className="lightbox" onClick={onClose}>
+    <div className="lightbox" onClick={onClose} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <button className="lightbox-close" onClick={onClose}>×</button>
-      {idx>0&&<button className="lightbox-nav prev" onClick={e=>{e.stopPropagation();setIdx(i=>i-1)}}>‹</button>}
-      <img src={images[idx]} alt="" onClick={e=>e.stopPropagation()}/>
-      {idx<images.length-1&&<button className="lightbox-nav next" onClick={e=>{e.stopPropagation();setIdx(i=>i+1)}}>›</button>}
+
+      {/* Counter */}
+      {images.length>1&&<div style={{position:'absolute',top:16,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.6)',color:'#fff',fontFamily:'Barlow Condensed,sans-serif',fontSize:13,fontWeight:700,padding:'3px 12px',borderRadius:20,letterSpacing:'1px',zIndex:1}}>
+        {idx+1} / {images.length}
+      </div>}
+
+      {/* Prev/Next — larger touch targets */}
+      {idx>0&&<button className="lightbox-nav prev" onClick={prev} style={{width:52,height:52,fontSize:26}}>‹</button>}
+      <img src={images[idx]} alt="" onClick={e=>e.stopPropagation()} style={{maxWidth:'100%',maxHeight:'80vh',borderRadius:8,objectFit:'contain',userSelect:'none'}}/>
+      {idx<images.length-1&&<button className="lightbox-nav next" onClick={next} style={{width:52,height:52,fontSize:26}}>›</button>}
+
+      {/* Dot indicators */}
+      {images.length>1&&<div style={{position:'absolute',bottom:20,left:'50%',transform:'translateX(-50%)',display:'flex',gap:6}}>
+        {images.map((_,i)=>(
+          <span key={i} onClick={e=>{e.stopPropagation();setIdx(i);}}
+            style={{width:i===idx?20:8,height:8,borderRadius:4,background:i===idx?'#fff':'rgba(255,255,255,.4)',cursor:'pointer',transition:'all .2s'}}/>
+        ))}
+      </div>}
     </div>
   );
 }
@@ -372,7 +410,7 @@ function App() {
   const [openRegal, setOpenRegal] = useState({});
   const [customPolica, setCustomPolica] = useState({});
   const [statusTab, setStatusTab] = useState('stanje');
-  const [filters, setFilters] = useState({sezona:'',sirina:'',visina:'',promjer:'',sifra:''});
+  const [filters, setFilters] = useState({sezona:'',sirina:'',visina:'',promjer:'',sifra:'',tip:''});
   const [modal, setModal] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [detailG, setDetailG] = useState(null);
@@ -463,6 +501,7 @@ function App() {
       if(filters.visina&&!g.visina.includes(filters.visina)) return false;
       if(filters.promjer&&!g.promjer.includes(filters.promjer)) return false;
       if(filters.sifra&&!g.sifra.toLowerCase().includes(filters.sifra.toLowerCase())) return false;
+      if(filters.tip&&g.tip!==filters.tip) return false;
       return true;
     });
   },[gume,statusTab,filters]);
@@ -570,7 +609,7 @@ function App() {
     if(!canSave||savingGuma) return;
     setSavingGuma(true);
     try {
-      const body={sezona:form.sezona,sirina:form.sirina,visina:form.visina,promjer:form.promjer,napomena:form.napomena,policaKod:policaMatch.naziv,slike:form.slike||[],dubina:form.dubina||null,dot:form.dot||null};
+      const body={sezona:form.sezona,sirina:form.sirina,visina:form.visina,promjer:form.promjer,napomena:form.napomena,policaKod:policaMatch.naziv,slike:form.slike||[],dubina:form.dubina||null,dot:form.dot||null,tip:form.tip||null,cijena:form.cijena||null};
       let g;
       if(modal==='editGuma'&&editingId){ g=await api('/gume/'+editingId,{method:'PUT',body}); setGume(p=>p.map(x=>x.id===g.id?g:x)); showToast('Guma azurirana'); }
       else { g=await api('/gume',{method:'POST',body}); setGume(p=>[g,...p]); setNextGuNum(n=>n+1); showToast('Guma '+g.sifra+' dodana'); }
@@ -613,7 +652,7 @@ function App() {
     showToast('Guma obrisana');
   };
 
-  const openEdit=(g)=>{ setForm({sezona:g.sezona,sirina:g.sirina,visina:g.visina,promjer:g.promjer,napomena:g.napomena||'',policaKod:g.polica_kod||'',slike:g.slike?[...g.slike]:[],dubina:g.dubina||'',dot:g.dot||''}); setEditingId(g.id); setDetailG(null); setSubmitAttempted(false); setModal('editGuma'); };
+  const openEdit=(g)=>{ setForm({sezona:g.sezona,sirina:g.sirina,visina:g.visina,promjer:g.promjer,napomena:g.napomena||'',policaKod:g.polica_kod||'',slike:g.slike?[...g.slike]:[],dubina:g.dubina||'',dot:g.dot||'',tip:g.tip||'',cijena:g.cijena||''}); setEditingId(g.id); setDetailG(null); setSubmitAttempted(false); setModal('editGuma'); };
 
   const policaClass = !form.policaKod.trim()?'':policaMatch?'ok':'err';
 
@@ -789,6 +828,15 @@ function App() {
           <div className="sf-grid">
             <div className="fg sf-full"><label>Interna sifra</label><input placeholder="npr. GU10" value={filters.sifra} onChange={e=>setFilters(f=>({...f,sifra:e.target.value}))}/></div>
             <div className="fg"><label>Sezona</label><select value={filters.sezona} onChange={e=>setFilters(f=>({...f,sezona:e.target.value}))}><option value="">Sve</option><option>Zimska</option><option>Ljetna</option></select></div>
+            <div className="fg"><label>Tip</label>
+              <select style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 9px',outline:'none'}}
+                value={filters.tip||''} onChange={e=>setFilters(f=>({...f,tip:e.target.value}))}>
+                <option value="">Sve</option>
+                <option value="samac">Samac (1 kom)</option>
+                <option value="par">Par (2 kom)</option>
+                <option value="set">Set (4 kom)</option>
+              </select>
+            </div>
             <div className="fg"><label>Sirina (mm)</label>
               <select style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 9px',outline:'none'}}
                 value={filters.sirina} onChange={e=>setFilters(f=>({...f,sirina:e.target.value}))}>
@@ -809,7 +857,7 @@ function App() {
             </div>
             <div className="fg" style={{display:'flex',gap:5}}>
               <button className="btn-srch" style={{flex:2}}><I.Search/> Trazi</button>
-              <button className="btn-srch" style={{flex:1,background:'var(--border)',color:'var(--muted)'}} onClick={()=>setFilters({sezona:'',sirina:'',visina:'',promjer:'',sifra:''})}>Reset</button>
+              <button className="btn-srch" style={{flex:1,background:'var(--border)',color:'var(--muted)'}} onClick={()=>setFilters({sezona:'',sirina:'',visina:'',promjer:'',sifra:'',tip:''})}>Reset</button>
             </div>
           </div>
         </div>
@@ -828,6 +876,7 @@ function App() {
               <div className="tire-thumb">{g.slike&&g.slike.length>0?<img src={g.slike[0]} alt="" loading="lazy"/>:<I.Tire/>}</div>
               <span className={"bs "+(g.sezona==='Zimska'?'z':'l')}>{g.sezona==='Zimska'?<I.Snow/>:<I.Sun/>} {g.sezona}</span>
               <span className="bsif">{g.sifra}</span>
+              {g.tip&&<span className={"tip-badge tip-"+g.tip} style={{position:'absolute',bottom:g.prodato?22:7,right:7}}>{g.tip==='samac'?'1 kom':g.tip==='par'?'2 kom':'4 kom'}</span>}
               {g.prodato&&<div className="bsold">Prodato{g.datum_prodaje?' · '+g.datum_prodaje:''}</div>}
               <div className="tire-info">
                 <div className="tire-size">{g.sirina}/{g.visina} {/^\d/.test(g.promjer||'')?'R':''}{g.promjer}</div>
@@ -876,6 +925,22 @@ function App() {
             <option value="">— Odaberi —</option><option>Zimska</option><option>Ljetna</option>
           </select>
         </div>
+        <div className="fg2">
+          <label>Tip (količina)</label>
+          <div style={{display:'flex',gap:5}}>
+            {[{v:'',l:'—'},  {v:'samac',l:'Samac (1)'},{v:'par',l:'Par (2)'},{v:'set',l:'Set (4)'}].map(({v,l})=>(
+              <button key={v} type="button"
+                onClick={()=>setForm(f=>({...f,tip:v}))}
+                style={{flex:1,padding:'7px 4px',border:'1.5px solid',borderRadius:5,fontSize:11,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'0.5px',textTransform:'uppercase',cursor:'pointer',
+                  borderColor: form.tip===v?'var(--accent)':'var(--border)',
+                  background: form.tip===v?'rgba(240,180,41,.12)':'var(--card)',
+                  color: form.tip===v?'var(--accent)':'var(--muted)',
+                }}>
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="two-col">
           <div className="fg2"><label>Sirina (mm) *</label>
             <ComboBox value={form.sirina} onChange={v=>setForm(f=>({...f,sirina:v}))} options={sirina_opts} placeholder="Sirina..." />
@@ -895,6 +960,15 @@ function App() {
             <input type="number" min="2000" max="2099" placeholder="npr. 2022" value={form.dot} onChange={e=>setForm(f=>({...f,dot:e.target.value}))}/>
           </div>
         </div>
+        {isAdmin&&<div className="fg2">
+          <label>Cijena (KM) — vidljivo samo adminu</label>
+          <div style={{display:'flex',alignItems:'center',border:'1.5px solid var(--border)',borderRadius:5,overflow:'hidden',background:'var(--card)'}}>
+            <input type="number" min="0" step="0.5" placeholder="0.00"
+              style={{flex:1,background:'transparent',border:'none',color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:18,fontWeight:800,padding:'8px 12px',outline:'none'}}
+              value={form.cijena} onChange={e=>setForm(f=>({...f,cijena:e.target.value}))}/>
+            <span style={{padding:'8px 12px',fontFamily:'Barlow Condensed,sans-serif',fontSize:13,fontWeight:700,color:'var(--muted)',borderLeft:'1px solid var(--border)'}}>KM</span>
+          </div>
+        </div>}
         <div className="fg2">
           <label>Sifra police * (obavezno)</label>
           <input className={policaClass} placeholder="npr. P10" value={form.policaKod} onChange={e=>setForm(f=>({...f,policaKod:e.target.value}))} autoComplete="off"/>
@@ -945,10 +1019,11 @@ function App() {
       </div></div>)}
 
       {/* MODAL: DETALJI */}
-      {detailG&&!sellModal&&(<div className="overlay" onClick={()=>setDetailG(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      {detailG&&!sellModal&&!lightbox&&(<div className="overlay" onClick={()=>setDetailG(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
         <div className="modal-title">{detailG.sirina}/{detailG.visina} R{detailG.promjer} <button className="btn-close" onClick={()=>setDetailG(null)}>×</button></div>
-        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:12}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,flexWrap:'wrap'}}>
           <span className={"bs "+(detailG.sezona==='Zimska'?'z':'l')} style={{position:'static',display:'inline-flex'}}>{detailG.sezona==='Zimska'?<I.Snow/>:<I.Sun/>} {detailG.sezona}</span>
+          {detailG.tip&&<span className={"tip-badge tip-"+detailG.tip}>{detailG.tip==='samac'?'Samac (1 kom)':detailG.tip==='par'?'Par (2 kom)':'Set (4 kom)'}</span>}
           <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:17,color:'var(--accent)',letterSpacing:2}}>{detailG.sifra}</span>
         </div>
         {detailG.slike&&detailG.slike.length>0&&(
@@ -964,6 +1039,10 @@ function App() {
           <div className="spec-box"><div className="spec-lbl">Promjer</div><div className="spec-val">{/^\d/.test(detailG.promjer||'')?'R':''}{detailG.promjer}"</div></div>
           <div className="spec-box"><div className="spec-lbl">Sifra</div><div className="spec-val" style={{color:'var(--accent)'}}>{detailG.sifra}</div></div>
         </div>
+        {detailG.cijena&&<div style={{background:'rgba(240,180,41,.08)',border:'1px solid rgba(240,180,41,.25)',borderRadius:6,padding:'8px 12px',marginBottom:9,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>Cijena</span>
+          <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:20,fontWeight:900,color:'var(--accent)',letterSpacing:'1px'}}>{detailG.cijena} KM</span>
+        </div>}
         {detailG.polica_kod&&<div className="loc-box">📍 {detailG.loc_magacin&&`${detailG.loc_magacin} › ${detailG.loc_prolaz} › ${detailG.loc_regal} › `}{detailG.polica_kod}</div>}
         {detailG.prodato&&<div className="sold-box">Prodato{detailG.datum_prodaje?' · '+detailG.datum_prodaje:''}{detailG.cijena_prodaje&&<span style={{marginLeft:'auto',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:14}}>{detailG.cijena_prodaje}</span>}</div>}
         {(detailG.dubina||detailG.dot)&&<div style={{display:'flex',gap:7,marginBottom:8,flexWrap:'wrap'}}>
