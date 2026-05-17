@@ -12,6 +12,7 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0e1018;--surf:#171b27;--card:#1c2133;--border:#252d42;--accent:#f0b429;--red:#e8532a;--blue:#4b8ef0;--green:#27ae60;--purple:#9b59b6;--text:#e6e9f4;--muted:#6e7a99;--radius:10px}
+.light{--bg:#f0f2f7;--surf:#ffffff;--card:#f7f9fc;--border:#dde1ed;--text:#1a1f2e;--muted:#7a8299;}
 body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-tap-highlight-color:transparent;padding-bottom:env(safe-area-inset-bottom,0)}
 .app{min-height:100vh;display:flex;flex-direction:column}
 
@@ -191,6 +192,18 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .price-inp{flex:1;background:transparent;border:none;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;padding:9px 12px;outline:none}
 .price-curr{padding:9px 12px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:var(--muted);border-left:1px solid var(--border)}
 @media(max-width:600px){.two-col{grid-template-columns:1fr}}
+.log-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.log-item:last-child{border-bottom:none}
+.log-badge{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:3px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+.log-badge.PRIJAVA{background:rgba(75,142,240,.15);color:var(--blue)}
+.log-badge.DODANA_GUMA{background:rgba(39,174,96,.15);color:var(--green)}
+.log-badge.EDITOVANA_GUMA{background:rgba(240,180,41,.15);color:var(--accent)}
+.log-badge.PREMJESTENA_GUMA{background:rgba(155,89,182,.15);color:var(--purple)}
+.log-badge.PRODANA_GUMA{background:rgba(39,174,96,.2);color:var(--green)}
+.log-badge.OBRISANA_GUMA{background:rgba(232,83,42,.15);color:var(--red)}
+.log-time{font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.log-user{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;color:var(--text)}
+.log-detail{font-size:11px;color:var(--muted);margin-top:1px}
 </style>
 </head>
 <body>
@@ -431,6 +444,29 @@ function App() {
   const [analitika, setAnalitika] = useState(null);
   const [showAnalitika, setShowAnalitika] = useState(false);
   const [savingGuma, setSavingGuma] = useState(false);
+  const [theme, setTheme] = useState(()=>localStorage.getItem('adg_theme')||'dark');
+  const [showLog, setShowLog] = useState(false);
+  const [aktivnosti, setAktivnosti] = useState([]);
+  const [showHistorija, setShowHistorija] = useState(false);
+  const [historijaGuma, setHistorijaGuma] = useState([]);
+
+  // Apply theme to body
+  React.useEffect(()=>{
+    document.body.className = theme==='light' ? 'light' : '';
+    localStorage.setItem('adg_theme', theme);
+  },[theme]);
+
+  const toggleTheme = () => setTheme(t => t==='dark'?'light':'dark');
+
+  const loadLog = async()=>{
+    try { const a=await api('/aktivnosti?limit=200'); setAktivnosti(a); setShowLog(true); }
+    catch(e){ showToast(e.message,'err'); }
+  };
+
+  const loadHistorija = async(gumaId)=>{
+    try { const h=await api('/gume/'+gumaId+'/historija'); setHistorijaGuma(h); setShowHistorija(true); }
+    catch(e){ showToast(e.message,'err'); }
+  };
   // Custom dimension options (persisted in localStorage)
   const [customSirina, setCustomSirina] = useState(()=>{ try{return JSON.parse(localStorage.getItem('adg_sirina')||'[]');}catch{return [];} });
   const [customVisina, setCustomVisina] = useState(()=>{ try{return JSON.parse(localStorage.getItem('adg_visina')||'[]');}catch{return [];} });
@@ -667,6 +703,10 @@ function App() {
           <div className={"user-badge"+(isAdmin?" admin":"")}><I.User/> {user.username}</div>
           {isAdmin&&<button className={"btn-gear"+(settingsOpen?" on":"")} onClick={()=>setSettingsOpen(s=>!s)} title="Podesavanja"><I.Gear/></button>}
           {isAdmin&&<button className="btn-gear" title="Analitika" onClick={loadAnalitika}>📊</button>}
+          <button className="btn-gear" title={theme==='dark'?'Svijetla tema':'Tamna tema'} onClick={toggleTheme} style={{fontSize:15}}>
+            {theme==='dark'?'☀️':'🌙'}
+          </button>
+          {isAdmin&&<button className="btn-gear" title="Log aktivnosti" onClick={loadLog} style={{fontSize:14}}>📋</button>}
           <button className="btn-gear" title="Odjava" onClick={doLogout} style={{color:'var(--red)',borderColor:'rgba(232,83,42,.3)'}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
@@ -1057,6 +1097,7 @@ function App() {
         <div className="modal-foot">
           {isAdmin&&<div className="foot-left"><button className="btn-del-sm" onClick={()=>doDelete(detailG.id)}><I.Trash/> Obrisi</button></div>}
           {!detailG.prodato&&<button className="btn-edit" style={{color:'var(--blue)',borderColor:'rgba(75,142,240,.3)'}} onClick={()=>{setMoveModal(detailG);setMoveKod('');setDetailG(null);}}>📦 Premjesti</button>}
+          <button className="btn-edit" style={{color:'var(--muted)'}} onClick={()=>loadHistorija(detailG.id)}>📜 Historija</button>
           {!detailG.prodato&&<button className="btn-edit" onClick={()=>openEdit(detailG)}><I.Edit/> Uredi</button>}
           {!detailG.prodato&&<button className="btn-sell" onClick={()=>setSellModal(true)}><I.Sell/> Prodaj</button>}
           {detailG.prodato&&<button className="btn-cancel" onClick={()=>setDetailG(null)}>Zatvori</button>}
@@ -1199,6 +1240,56 @@ function App() {
           </div>
         </div>}
 
+      </div></div>)}
+
+      {/* MODAL: LOG AKTIVNOSTI */}
+      {showLog&&(<div className="overlay" onClick={()=>setShowLog(false)}><div className="modal" style={{maxWidth:600}} onClick={e=>e.stopPropagation()}>
+        <div className="modal-title">Log aktivnosti <button className="btn-close" onClick={()=>setShowLog(false)}>×</button></div>
+        <div style={{maxHeight:'70vh',overflowY:'auto'}}>
+          {aktivnosti.length===0
+            ? <div style={{textAlign:'center',padding:'30px 0',color:'var(--muted)',fontSize:13}}>Nema zabilježenih aktivnosti</div>
+            : aktivnosti.map((a,i)=>{
+                const dt = new Date(a.created_at);
+                const timeStr = dt.toLocaleDateString('hr-HR')+' '+dt.toLocaleTimeString('hr-HR',{hour:'2-digit',minute:'2-digit'});
+                const akcijaNaziv = {
+                  PRIJAVA:'Prijava',DODANA_GUMA:'Dodana guma',EDITOVANA_GUMA:'Editovana guma',
+                  PREMJESTENA_GUMA:'Premještena',PRODANA_GUMA:'Prodana guma',OBRISANA_GUMA:'Obrisana guma'
+                }[a.akcija]||a.akcija;
+                return (<div key={i} className="log-item">
+                  <span className={"log-badge "+a.akcija}>{akcijaNaziv}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div className="log-user">{a.korisnik}</div>
+                    {a.detalji&&<div className="log-detail">{a.detalji}</div>}
+                  </div>
+                  <span className="log-time">{timeStr}</span>
+                </div>);
+              })
+          }
+        </div>
+      </div></div>)}
+
+      {/* MODAL: HISTORIJA PREMJEŠTANJA */}
+      {showHistorija&&(<div className="overlay" onClick={()=>setShowHistorija(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
+        <div className="modal-title">Historija premještanja <button className="btn-close" onClick={()=>setShowHistorija(false)}>×</button></div>
+        <div style={{maxHeight:'65vh',overflowY:'auto'}}>
+          {historijaGuma.length===0
+            ? <div style={{textAlign:'center',padding:'30px 0',color:'var(--muted)',fontSize:13}}>Guma nije premještana</div>
+            : historijaGuma.map((h,i)=>{
+                const dt = new Date(h.created_at);
+                const timeStr = dt.toLocaleDateString('hr-HR')+' '+dt.toLocaleTimeString('hr-HR',{hour:'2-digit',minute:'2-digit'});
+                return (<div key={i} className="log-item">
+                  <span className="log-badge PREMJESTENA_GUMA">📦</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:13,fontWeight:800}}>
+                      {h.polica_sa||'—'} → {h.polica_na}
+                    </div>
+                    <div className="log-detail">Premjestio: <b style={{color:'var(--text)'}}>{h.korisnik}</b></div>
+                  </div>
+                  <span className="log-time">{timeStr}</span>
+                </div>);
+              })
+          }
+        </div>
       </div></div>)}
 
       {/* LIGHTBOX */}
