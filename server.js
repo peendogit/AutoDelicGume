@@ -11,9 +11,22 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-// Determine public folder path
-const publicPath = path.join(__dirname, 'public');
-console.log('📁 Public folder at:', publicPath);
+// Determine correct public folder path
+let publicPath = path.join(__dirname, 'public');
+if (!fs.existsSync(publicPath)) {
+  // Fallback: ako public nije u __dirname, probaj parent
+  publicPath = path.join(__dirname, '..', 'public');
+}
+if (!fs.existsSync(publicPath)) {
+  // Još jedan fallback
+  publicPath = path.join(process.cwd(), 'public');
+}
+
+console.log('📁 Current directory:', process.cwd());
+console.log('📁 __dirname:', __dirname);
+console.log('📁 Looking for public at:', publicPath);
+console.log('📁 Public exists:', fs.existsSync(publicPath));
+
 app.use(express.static(publicPath));
 
 // Database setup
@@ -331,14 +344,29 @@ app.delete('/api/gume/:id', async (req, res, next) => {
 
 // Serve frontend
 app.get('*', (req, res) => {
-  const indexPath = path.join(__dirname, 'public', 'index.html');
-  console.log('🔍 Serving index from:', indexPath);
-  res.sendFile(indexPath, (err) => {
-    if (err) {
-      console.error('❌ Error serving index.html:', err);
-      res.status(500).json({ error: 'index.html not found', path: indexPath });
-    }
-  });
+  let indexPath = path.join(__dirname, 'public', 'index.html');
+  if (!fs.existsSync(indexPath)) {
+    indexPath = path.join(__dirname, '..', 'public', 'index.html');
+  }
+  if (!fs.existsSync(indexPath)) {
+    indexPath = path.join(process.cwd(), 'public', 'index.html');
+  }
+  
+  console.log('🔍 Attempting to serve index from:', indexPath);
+  console.log('📄 File exists:', fs.existsSync(indexPath));
+  
+  if (!fs.existsSync(indexPath)) {
+    return res.status(500).json({ 
+      error: 'index.html not found',
+      attempted_paths: [
+        path.join(__dirname, 'public', 'index.html'),
+        path.join(__dirname, '..', 'public', 'index.html'),
+        path.join(process.cwd(), 'public', 'index.html')
+      ]
+    });
+  }
+  
+  res.sendFile(indexPath);
 });
 
 // Error handler
