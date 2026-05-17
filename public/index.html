@@ -382,6 +382,7 @@ function App() {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [newMagName, setNewMagName] = useState('');
   const [newUser, setNewUser] = useState({username:'',password:'',role:'radnik'});
+  const [editUser, setEditUser] = useState(null); // {id, username, role, password:''}
   const [toast, setToast] = useState(null);
   const [nextGuNum, setNextGuNum] = useState(10);
   const [uploadState, setUploadState] = useState({uploading:false,done:0,total:0});
@@ -508,6 +509,20 @@ function App() {
     } catch(e){ showToast(e.message,'err'); }
   };
   const doDelUser = async(id)=>{ if(!window.confirm('Da li ste sigurni da zelite obrisati ovog korisnika?')) return; await api('/korisnici/'+id,{method:'DELETE'}); setKorisnici(p=>p.filter(k=>k.id!=id)); showToast('Korisnik obrisan'); };
+
+  const doEditUser = async()=>{
+    if(!editUser||!editUser.username.trim()){ showToast('Korisnicko ime je obavezno','err'); return; }
+    try {
+      const body = {username:editUser.username.trim(), role:editUser.role};
+      if(editUser.password.trim()) body.password = editUser.password.trim();
+      const updated = await api('/korisnici/'+editUser.id, {method:'PUT', body});
+      setKorisnici(p=>p.map(k=>k.id===updated.id?updated:k));
+      setEditUser(null);
+      showToast('Korisnik "'+updated.username+'" azuriran');
+    } catch(e){ showToast(e.message,'err'); }
+  };
+
+  const doBackup = ()=>{ window.open('/api/backup','_blank'); };
 
   // ===== IMAGE UPLOAD WITH PROGRESS =====
   const uploadingRef = useRef(false);
@@ -691,16 +706,23 @@ function App() {
                 <div className="user-list">
                   {korisnici.map(k=>(
                     <div key={k.id} className="user-item">
-                      <div>
-                        <div className="user-name">{k.username}</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div className="user-name" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{k.username}</div>
                         <div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>{new Date(k.created_at).toLocaleDateString('hr-HR')}</div>
                       </div>
-                      <div style={{display:'flex',alignItems:'center',gap:7}}>
+                      <div style={{display:'flex',alignItems:'center',gap:5,flexShrink:0}}>
                         <span className={"user-role "+k.role}>{k.role}</span>
+                        <button className="del-btn" style={{color:'var(--blue)',opacity:.8}} title="Uredi" onClick={()=>setEditUser({...k,password:''})}><I.Edit/></button>
                         {k.role!=='admin'&&<button className="del-btn" onClick={()=>doDelUser(k.id)}><I.Trash/></button>}
                       </div>
                     </div>
                   ))}
+                  <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)'}}>
+                    <button className="btn-new" style={{background:'var(--blue)',width:'100%',justifyContent:'center',gap:6}} onClick={doBackup}>
+                      💾 Preuzmi backup baze podataka
+                    </button>
+                    <div style={{fontSize:10,color:'var(--muted)',marginTop:5,textAlign:'center'}}>SQLite .db fajl — sačuvaj na sigurno mjesto</div>
+                  </div>
                 </div>
               </>
             )}
@@ -768,6 +790,27 @@ function App() {
           ))}
         </div>}
       </main>
+
+      {/* MODAL: EDIT KORISNIKA */}
+      {editUser&&(<div className="overlay" onClick={()=>setEditUser(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
+        <div className="modal-title">Uredi korisnika <button className="btn-close" onClick={()=>setEditUser(null)}>×</button></div>
+        <div className="fg2"><label>Korisnicko ime</label>
+          <input autoFocus value={editUser.username} onChange={e=>setEditUser(u=>({...u,username:e.target.value}))} placeholder="korisnicko_ime"/>
+        </div>
+        <div className="fg2"><label>Nova lozinka (ostavi prazno da ne mijenjash)</label>
+          <input type="password" value={editUser.password} onChange={e=>setEditUser(u=>({...u,password:e.target.value}))} placeholder="••••••"/>
+        </div>
+        <div className="fg2"><label>Uloga</label>
+          <select value={editUser.role} onChange={e=>setEditUser(u=>({...u,role:e.target.value}))}>
+            <option value="radnik">Radnik</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div className="modal-foot">
+          <button className="btn-cancel" onClick={()=>setEditUser(null)}>Odustani</button>
+          <button className="btn-save" onClick={doEditUser}>Sačuvaj izmjene</button>
+        </div>
+      </div></div>)}
 
       {/* MODAL: NOVI MAGACIN */}
       {modal==='addMag'&&(<div className="overlay" onClick={()=>setModal(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
