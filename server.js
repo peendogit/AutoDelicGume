@@ -1,5 +1,5 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const { createClient } = require('@libsql/client');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
@@ -17,59 +17,84 @@ if (!fs.existsSync(publicPath)) publicPath = path.join(process.cwd(), 'public');
 if (!fs.existsSync(publicPath)) publicPath = path.join(process.cwd(), 'Public');
 app.use(express.static(publicPath));
 
-const dbPath = process.env.DB_PATH || path.join(__dirname, 'data', 'gume.db');
-if (!fs.existsSync(path.dirname(dbPath))) fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-
-const db = new sqlite3.Database(dbPath, err => {
-  if (err) console.error('DB Error:', err);
-  else console.log('DB connected:', dbPath);
+// Turso client
+const db = createClient({
+  url: process.env.TURSO_URL,
+  authToken: process.env.TURSO_TOKEN,
 });
 
-const dbRun = (sql, p=[]) => new Promise((res,rej) => db.run(sql,p,function(e){e?rej(e):res({lastID:this.lastID,changes:this.changes})}));
-const dbGet = (sql, p=[]) => new Promise((res,rej) => db.get(sql,p,(e,r)=>e?rej(e):res(r)));
-const dbAll = (sql, p=[]) => new Promise((res,rej) => db.all(sql,p,(e,r)=>e?rej(e):res(r||[])));
+// Turso returns rows as objects — wrap to match old sqlite3 interface
+async function dbRun(sql, p=[]) {
+  const r = await db.execute({sql, args:p});
+  return { lastID: Number(r.lastInsertRowid), changes: r.rowsAffected };
+}
+async function dbGet(sql, p=[]) {
+  const r = await db.execute({sql, args:p});
+  return r.rows[0] || null;
+}
+async function dbAll(sql, p=[]) {
+  const r = await db.execute({sql, args:p});
+  return r.rows;
+}
+async function dbExec(sql) {
+  // Execute multiple statements split by semicolon
+  const stmts = sql.split(';').map(s=>s.trim()).filter(s=>s.length>0);
+  for (const s of stmts) await db.execute(s);
+}
 
 function hash(pw) { return crypto.createHash('sha256').update(pw+'autodelic_salt_2024').digest('hex'); }
 function genToken() { return crypto.randomBytes(32).toString('hex'); }
 
-db.serialize(() => {
-  db.exec(`
+async function initDB() {
+  await dbExec(`
     CREATE TABLE IF NOT EXISTS korisnici (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'radnik',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+    )
+  `);
+  await dbExec(`
     CREATE TABLE IF NOT EXISTS sesije (
       token TEXT PRIMARY KEY,
       korisnik_id INTEGER NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (korisnik_id) REFERENCES korisnici(id) ON DELETE CASCADE
-    );
+    )
+  `);
+  await dbExec(`
     CREATE TABLE IF NOT EXISTS magacini (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       naziv TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+    )
+  `);
+  await dbExec(`
     CREATE TABLE IF NOT EXISTS prolazi (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       magacin_id INTEGER NOT NULL,
       naziv TEXT NOT NULL,
       FOREIGN KEY (magacin_id) REFERENCES magacini(id) ON DELETE CASCADE
-    );
+    )
+  `);
+  await dbExec(`
     CREATE TABLE IF NOT EXISTS regali (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       prolaz_id INTEGER NOT NULL,
       naziv TEXT NOT NULL,
       FOREIGN KEY (prolaz_id) REFERENCES prolazi(id) ON DELETE CASCADE
-    );
+    )
+  `);
+  await dbExec(`
     CREATE TABLE IF NOT EXISTS police (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       regal_id INTEGER NOT NULL,
       naziv TEXT NOT NULL UNIQUE,
       FOREIGN KEY (regal_id) REFERENCES regali(id) ON DELETE CASCADE
-    );
+    )
+  `);
+  await dbExec(`
     CREATE TABLE IF NOT EXISTS gume (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       sifra TEXT NOT NULL UNIQUE,
@@ -92,31 +117,33 @@ db.serialize(() => {
       tip TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (polica_id) REFERENCES police(id) ON DELETE SET NULL
-    );
+    )
+  `);
+  await dbExec(`
     CREATE TABLE IF NOT EXISTS counters (
       key TEXT PRIMARY KEY,
       value INTEGER DEFAULT 0
-    );
-    INSERT OR IGNORE INTO counters (key, value) VALUES ('gu', 9);
-    INSERT OR IGNORE INTO counters (key, value) VALUES ('po', 9);
+    )
   `);
-  // Add columns if they don't exist (for existing DBs)
-  db.run("ALTER TABLE gume ADD COLUMN dodao_korisnik TEXT", ()=>{});
-  db.run("ALTER TABLE gume ADD COLUMN prodao_korisnik TEXT", ()=>{});
-  db.run("ALTER TABLE gume ADD COLUMN dubina TEXT", ()=>{});
-  db.run("ALTER TABLE gume ADD COLUMN dot TEXT", ()=>{});
-  db.run("ALTER TABLE gume ADD COLUMN cijena TEXT", ()=>{});
-  db.run("ALTER TABLE gume ADD COLUMN tip TEXT", ()=>{});
+  await dbExec(`INSERT OR IGNORE INTO counters (key, value) VALUES ('gu', 9)`);
+  await dbExec(`INSERT OR IGNORE INTO counters (key, value) VALUES ('po', 9)`);
 
+  // Add columns if missing (for existing DBs)
+  const alterCols = ['dodao_korisnik TEXT','prodao_korisnik TEXT','dubina TEXT','dot TEXT','cijena TEXT','tip TEXT'];
+  for (const col of alterCols) {
+    try { await dbExec(`ALTER TABLE gume ADD COLUMN ${col}`); } catch(e) {}
+  }
+
+  // Create default admin
   const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
-  db.get('SELECT id FROM korisnici WHERE username=?', ['admin'], (err, row) => {
-    if (!row) {
-      db.run('INSERT INTO korisnici (username,password_hash,role) VALUES (?,?,?)',
-        ['admin', hash(adminPass), 'admin']);
-      console.log('Admin kreiran, lozinka:', adminPass);
-    }
-  });
-});
+  const existing = await dbGet('SELECT id FROM korisnici WHERE username=?',['admin']);
+  if (!existing) {
+    await dbRun('INSERT INTO korisnici (username,password_hash,role) VALUES (?,?,?)',
+      ['admin', hash(adminPass), 'admin']);
+    console.log('Admin kreiran, lozinka:', adminPass);
+  }
+  console.log('✅ Baza inicijalizirana');
+}
 
 async function nextCounter(key) {
   const row = await dbGet('SELECT value FROM counters WHERE key=?',[key]);
@@ -200,14 +227,24 @@ app.put('/api/korisnici/:id', requireAdmin, async (req,res) => {
   } catch(e) { res.status(400).json({error:'Korisnicko ime vec postoji'}); }
 });
 
-// BACKUP — download SQLite DB file
-app.get('/api/backup', requireAdmin, (req,res) => {
-  const dbFile = dbPath;
-  if (!fs.existsSync(dbFile)) return res.status(404).json({error:'Baza ne postoji'});
-  const date = new Date().toISOString().slice(0,10);
-  res.setHeader('Content-Disposition', `attachment; filename="autodelic-backup-${date}.db"`);
-  res.setHeader('Content-Type', 'application/octet-stream');
-  res.sendFile(path.resolve(dbFile));
+// BACKUP — JSON export (DB je u Turso cloudu, ne može se skinuti kao .db fajl)
+app.get('/api/backup', requireAdmin, async (req,res) => {
+  try {
+    const [korisnici,magacini,police,gume] = await Promise.all([
+      dbAll('SELECT id,username,role,created_at FROM korisnici'),
+      dbAll('SELECT * FROM magacini'),
+      dbAll('SELECT * FROM police'),
+      dbAll('SELECT * FROM gume'),
+    ]);
+    const prolazi = await dbAll('SELECT * FROM prolazi');
+    const regali = await dbAll('SELECT * FROM regali');
+    const counters = await dbAll('SELECT * FROM counters');
+    const date = new Date().toISOString().slice(0,10);
+    const backup = { exported_at: new Date().toISOString(), korisnici, magacini, prolazi, regali, police, gume, counters };
+    res.setHeader('Content-Disposition', `attachment; filename="autodelic-backup-${date}.json"`);
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify(backup, null, 2));
+  } catch(e) { res.status(500).json({error:e.message}); }
 });
 
 // MAGACINI
@@ -439,4 +476,12 @@ app.get('*', (req,res) => {
 });
 
 app.use((err,req,res,next) => { console.error(err); res.status(500).json({error:err.message}); });
-app.listen(PORT, () => console.log('Auto Delic Gume na portu', PORT));
+
+// Start: init DB then listen
+initDB().then(() => {
+  app.listen(PORT, () => console.log('Auto Delic Gume na portu', PORT));
+}).catch(err => {
+  console.error('Greska pri inicijalizaciji baze:', err);
+  console.error('Provjeri TURSO_URL i TURSO_TOKEN environment varijable!');
+  process.exit(1);
+});
