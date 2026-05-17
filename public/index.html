@@ -12,18 +12,18 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0e1018;--surf:#171b27;--card:#1c2133;--border:#252d42;--accent:#f0b429;--red:#e8532a;--blue:#4b8ef0;--green:#27ae60;--purple:#9b59b6;--text:#e6e9f4;--muted:#6e7a99;--radius:10px}
-body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-tap-highlight-color:transparent}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-tap-highlight-color:transparent;padding-bottom:env(safe-area-inset-bottom,0)}
 .app{min-height:100vh;display:flex;flex-direction:column}
 
 /* NAV */
-.nav{background:var(--surf);border-bottom:2px solid var(--accent);padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;gap:8px}
+.nav{background:var(--surf);border-bottom:2px solid var(--accent);padding:0 12px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;gap:6px}
 .logo{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:17px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:7px;flex-shrink:0}
 .logo-w{color:var(--text)}
 .nav-right{display:flex;align-items:center;gap:6px}
-.btn-gear{background:none;border:1.5px solid var(--border);color:var(--muted);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.btn-gear{background:none;border:1.5px solid var(--border);color:var(--muted);border-radius:7px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
 .btn-gear.on{border-color:var(--accent);color:var(--accent);background:rgba(240,180,41,.1)}
 .btn-add{background:var(--accent);color:#000;border:none;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:7px 13px;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap}
-.user-badge{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:5px;padding:4px 8px;display:flex;align-items:center;gap:5px}
+.user-badge{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:5px;padding:3px 7px;display:flex;align-items:center;gap:4px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .user-badge.admin{color:var(--accent);border-color:rgba(240,180,41,.3)}
 .btn-logout{background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;padding:4px 8px;cursor:pointer}
 
@@ -238,6 +238,39 @@ function resizeImage(file, maxW=1200, maxH=1200, quality=0.82) {
 }
 
 const EMPTY_FORM = {sezona:'',sirina:'',visina:'',promjer:'',napomena:'',policaKod:'',slike:[]};
+
+const PROMJER_OPTIONS = ['R13','R14','R15','R16','R16C','R17','R17C','R18','R19','R20','R21'];
+const SIRINA_OPTIONS = ['155','165','175','185','195','205','215','225','235','245','255'];
+const VISINA_OPTIONS = ['40','45','50','55','60','65','70','75','80'];
+
+// Smart combo: select + optional custom input
+function ComboBox({value, onChange, options, placeholder, className, normalize}) {
+  const isCustom = value && !options.includes(value);
+  return (
+    <div style={{display:'flex',gap:4}}>
+      <select
+        style={{flex:1,background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:value&&!isCustom?'var(--text)':'var(--muted)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 8px',outline:'none'}}
+        value={isCustom?'__custom__':value||''}
+        onChange={e=>{
+          if(e.target.value==='__custom__') onChange('');
+          else onChange(normalize?normalize(e.target.value):e.target.value);
+        }}
+      >
+        <option value="">{placeholder||'Odaberi'}</option>
+        {options.map(o=><option key={o} value={o}>{o}</option>)}
+        <option value="__custom__">Ostalo (unesi ručno)</option>
+      </select>
+      {(isCustom||(!value&&value!==undefined)) && isCustom && (
+        <input
+          style={{width:70,background:'var(--card)',border:'1.5px solid var(--accent)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 8px',outline:'none'}}
+          value={value}
+          placeholder="npr. R22"
+          onChange={e=>onChange(normalize?normalize(e.target.value):e.target.value)}
+        />
+      )}
+    </div>
+  );
+}
 
 // ===== ICONS =====
 const I = {
@@ -534,10 +567,9 @@ function App() {
         <div className="logo"><I.TireSm/> AUTO <span className="logo-w">DELIC</span></div>
         <div className="nav-right">
           <div className={"user-badge"+(isAdmin?" admin":"")}><I.User/> {user.username}</div>
-          {isAdmin&&<button className={"btn-gear"+(settingsOpen?" on":"")} onClick={()=>setSettingsOpen(s=>!s)}><I.Gear/></button>}
-          {isAdmin&&<button className="btn-gear" title="Analitika" onClick={loadAnalitika} style={{fontSize:14}}>📊</button>}
-          <button className="btn-add" onClick={()=>{setForm({...EMPTY_FORM});setEditingId(null);setSubmitAttempted(false);setUploadState({uploading:false,done:0,total:0});setModal('addGuma');}}><I.Plus/> Dodaj</button>
-          <button className="btn-logout" onClick={doLogout}>Odjava</button>
+          {isAdmin&&<button className={"btn-gear"+(settingsOpen?" on":"")} onClick={()=>setSettingsOpen(s=>!s)} title="Podesavanja"><I.Gear/></button>}
+          {isAdmin&&<button className="btn-gear" title="Analitika" onClick={loadAnalitika}>📊</button>}
+          <button className="btn-gear" title="Odjava" onClick={doLogout} style={{color:'var(--red)',borderColor:'rgba(232,83,42,.3)'}}>⏻</button>
         </div>
       </nav>
 
@@ -644,14 +676,35 @@ function App() {
         )}
 
         {/* HERO & SEARCH */}
-        <div className="hero"><h1>Pretraga <em>Guma</em></h1><p>Pronadi gumu za nekoliko sekundi</p></div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4,flexWrap:'wrap',gap:8}}>
+          <div className="hero" style={{padding:'10px 0 6px',textAlign:'left',flex:1}}>
+            <h1 style={{fontSize:26}}>Pretraga <em>Guma</em></h1>
+            <p>Pronadi gumu za nekoliko sekundi</p>
+          </div>
+          <button className="btn-add" style={{flexShrink:0}} onClick={()=>{setForm({...EMPTY_FORM});setEditingId(null);setSubmitAttempted(false);setUploadState({uploading:false,done:0,total:0});setModal('addGuma');}}><I.Plus/> Dodaj gumu</button>
+        </div>
         <div className="sf-wrap">
           <div className="sf-grid">
             <div className="fg sf-full"><label>Interna sifra</label><input placeholder="npr. GU10" value={filters.sifra} onChange={e=>setFilters(f=>({...f,sifra:e.target.value}))}/></div>
             <div className="fg"><label>Sezona</label><select value={filters.sezona} onChange={e=>setFilters(f=>({...f,sezona:e.target.value}))}><option value="">Sve</option><option>Zimska</option><option>Ljetna</option></select></div>
-            <div className="fg"><label>Sirina</label><input placeholder="205" value={filters.sirina} onChange={e=>setFilters(f=>({...f,sirina:e.target.value}))}/></div>
-            <div className="fg"><label>Visina</label><input placeholder="55" value={filters.visina} onChange={e=>setFilters(f=>({...f,visina:e.target.value}))}/></div>
-            <div className="fg"><label>Promjer</label><input placeholder="16" value={filters.promjer} onChange={e=>setFilters(f=>({...f,promjer:e.target.value}))}/></div>
+            <div className="fg"><label>Sirina (mm)</label>
+              <select style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 9px',outline:'none'}}
+                value={filters.sirina} onChange={e=>setFilters(f=>({...f,sirina:e.target.value}))}>
+                <option value="">Sve</option>{SIRINA_OPTIONS.map(o=><option key={o}>{o}</option>)}
+              </select>
+            </div>
+            <div className="fg"><label>Profil (%)</label>
+              <select style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 9px',outline:'none'}}
+                value={filters.visina} onChange={e=>setFilters(f=>({...f,visina:e.target.value}))}>
+                <option value="">Sve</option>{VISINA_OPTIONS.map(o=><option key={o}>{o}</option>)}
+              </select>
+            </div>
+            <div className="fg"><label>Promjer</label>
+              <select style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 9px',outline:'none'}}
+                value={filters.promjer} onChange={e=>setFilters(f=>({...f,promjer:e.target.value}))}>
+                <option value="">Sve</option>{PROMJER_OPTIONS.map(o=><option key={o}>{o}</option>)}
+              </select>
+            </div>
             <div className="fg" style={{display:'flex',gap:5}}>
               <button className="btn-srch" style={{flex:2}}><I.Search/> Trazi</button>
               <button className="btn-srch" style={{flex:1,background:'var(--border)',color:'var(--muted)'}} onClick={()=>setFilters({sezona:'',sirina:'',visina:'',promjer:'',sifra:''})}>Reset</button>
@@ -677,7 +730,7 @@ function App() {
               <div className="tire-info">
                 <div className="tire-size">{g.sirina}/{g.visina} R{g.promjer}</div>
                 <div className="tire-cod">{g.sifra}</div>
-                <div className="tire-loc">{g.polica_kod||'—'}</div>
+                <div className="tire-loc">{g.loc_magacin?`${g.loc_magacin} › ${g.loc_prolaz} › ${g.loc_regal} › ${g.polica_kod}`:g.polica_kod||'—'}</div>
               </div>
             </div>
           ))}
@@ -701,10 +754,16 @@ function App() {
           </select>
         </div>
         <div className="two-col">
-          <div className="fg2"><label>Sirina (mm) *</label><input type="number" placeholder="205" value={form.sirina} onChange={e=>setForm(f=>({...f,sirina:e.target.value}))}/></div>
-          <div className="fg2"><label>Visina (%) *</label><input type="number" placeholder="55" value={form.visina} onChange={e=>setForm(f=>({...f,visina:e.target.value}))}/></div>
+          <div className="fg2"><label>Sirina (mm) *</label>
+            <ComboBox value={form.sirina} onChange={v=>setForm(f=>({...f,sirina:v}))} options={SIRINA_OPTIONS} placeholder="Sirina..." />
+          </div>
+          <div className="fg2"><label>Profil (%) *</label>
+            <ComboBox value={form.visina} onChange={v=>setForm(f=>({...f,visina:v}))} options={VISINA_OPTIONS} placeholder="Profil..." />
+          </div>
         </div>
-        <div className="fg2"><label>Promjer (inch) *</label><input type="number" placeholder="16" value={form.promjer} onChange={e=>setForm(f=>({...f,promjer:e.target.value}))}/></div>
+        <div className="fg2"><label>Promjer *</label>
+          <ComboBox value={form.promjer} onChange={v=>setForm(f=>({...f,promjer:v.toUpperCase()}))} options={PROMJER_OPTIONS} placeholder="Promjer..." normalize={v=>v.toUpperCase()}/>
+        </div>
         <div className="fg2">
           <label>Sifra police * (obavezno)</label>
           <input className={policaClass} placeholder="npr. P10" value={form.policaKod} onChange={e=>setForm(f=>({...f,policaKod:e.target.value}))} autoComplete="off"/>
@@ -774,7 +833,7 @@ function App() {
           <div className="spec-box"><div className="spec-lbl">Promjer</div><div className="spec-val">R{detailG.promjer}"</div></div>
           <div className="spec-box"><div className="spec-lbl">Sifra</div><div className="spec-val" style={{color:'var(--accent)'}}>{detailG.sifra}</div></div>
         </div>
-        {detailG.polica_kod&&<div className="loc-box">Polica: {detailG.polica_kod}</div>}
+        {detailG.polica_kod&&<div className="loc-box">📍 {detailG.loc_magacin&&`${detailG.loc_magacin} › ${detailG.loc_prolaz} › ${detailG.loc_regal} › `}{detailG.polica_kod}</div>}
         {detailG.prodato&&<div className="sold-box">Prodato{detailG.datum_prodaje?' · '+detailG.datum_prodaje:''}{detailG.cijena_prodaje&&<span style={{marginLeft:'auto',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:14}}>{detailG.cijena_prodaje}</span>}</div>}
         {detailG.napomena&&<><div className="sec-lbl">Napomena</div><p style={{fontSize:12,color:'var(--muted)',lineHeight:1.6}}>{detailG.napomena}</p></>}
         <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:8,fontSize:10,color:'var(--muted)'}}>
@@ -905,6 +964,22 @@ function App() {
             {analitika.gumePoPolici.map(p=>(
               <div key={p.polica_kod} style={{background:'rgba(75,142,240,.1)',border:'1px solid rgba(75,142,240,.25)',color:'var(--blue)',borderRadius:4,fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,padding:'2px 8px'}}>
                 {p.polica_kod} <span style={{color:'var(--muted)'}}>{p.guma_count}x</span>
+              </div>
+            ))}
+          </div>
+        </div>}
+
+        {/* Top dimenzije */}
+        {analitika.topDimenzije&&analitika.topDimenzije.length>0&&<div style={{marginTop:12}}>
+          <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)',marginBottom:6}}>Top dimenzije (po broju guma)</div>
+          <div style={{display:'flex',flexDirection:'column',gap:3}}>
+            {analitika.topDimenzije.map((d,i)=>(
+              <div key={d.dimenzija} style={{display:'flex',alignItems:'center',gap:8,background:'var(--card)',borderRadius:5,padding:'5px 10px'}}>
+                <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,color:'var(--muted)',width:14}}>{i+1}.</span>
+                <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:14,flex:1,letterSpacing:'1px'}}>{d.dimenzija}</span>
+                <span style={{fontSize:10,color:'var(--muted)'}}>Ukupno: <b style={{color:'var(--text)'}}>{d.ukupno}</b></span>
+                <span style={{fontSize:10,color:'var(--muted)'}}>Stanje: <b style={{color:'var(--green)'}}>{d.na_stanju}</b></span>
+                <span style={{fontSize:10,color:'var(--muted)'}}>Prod.: <b style={{color:'var(--purple)'}}>{d.prodato}</b></span>
               </div>
             ))}
           </div>
