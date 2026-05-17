@@ -86,8 +86,10 @@ db.serialize(() => {
       datum_prodaje TEXT,
       dodao_korisnik TEXT,
       prodao_korisnik TEXT,
+      cijena TEXT,
       dubina TEXT,
       dot TEXT,
+      tip TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (polica_id) REFERENCES police(id) ON DELETE SET NULL
     );
@@ -103,6 +105,8 @@ db.serialize(() => {
   db.run("ALTER TABLE gume ADD COLUMN prodao_korisnik TEXT", ()=>{});
   db.run("ALTER TABLE gume ADD COLUMN dubina TEXT", ()=>{});
   db.run("ALTER TABLE gume ADD COLUMN dot TEXT", ()=>{});
+  db.run("ALTER TABLE gume ADD COLUMN cijena TEXT", ()=>{});
+  db.run("ALTER TABLE gume ADD COLUMN tip TEXT", ()=>{});
 
   const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
   db.get('SELECT id FROM korisnici WHERE username=?', ['admin'], (err, row) => {
@@ -309,7 +313,7 @@ const GUME_SELECT = `
 `;
 
 app.get('/api/gume', requireAuth, async (req,res) => {
-  const {status,sezona,sirina,visina,promjer,sifra} = req.query;
+  const {status,sezona,sirina,visina,promjer,sifra,tip} = req.query;
   let sql = GUME_SELECT + ' WHERE 1=1';
   const p = [];
   if (status==='stanje') { sql+=' AND g.prodato=0'; }
@@ -319,31 +323,39 @@ app.get('/api/gume', requireAuth, async (req,res) => {
   if (visina) { sql+=' AND g.visina LIKE ?'; p.push('%'+visina+'%'); }
   if (promjer) { sql+=' AND g.promjer LIKE ?'; p.push('%'+promjer+'%'); }
   if (sifra) { sql+=' AND g.sifra LIKE ?'; p.push('%'+sifra+'%'); }
+  if (tip) { sql+=' AND g.tip=?'; p.push(tip); }
   sql += ' ORDER BY g.id DESC';
   res.json((await dbAll(sql,p)).map(formatGuma));
 });
 
 app.post('/api/gume', requireAuth, async (req,res) => {
   try {
-    const {sezona,sirina,visina,promjer,napomena,policaKod,slike,dubina,dot} = req.body;
+    const {sezona,sirina,visina,promjer,napomena,policaKod,slike,dubina,dot,tip} = req.body;
+    const cijena = req.user.role==='admin' ? (req.body.cijena||null) : null;
     if (!sezona||!sirina||!visina||!promjer||!policaKod) return res.status(400).json({error:'Sva polja obavezna'});
     const polica = await dbGet('SELECT * FROM police WHERE naziv=?',[policaKod]);
     if (!polica) return res.status(400).json({error:'Polica "'+policaKod+'" ne postoji'});
     const num = await nextCounter('gu');
     const sifra = 'GU'+num;
-    await dbRun('INSERT INTO gume (sifra,sezona,sirina,visina,promjer,napomena,polica_id,polica_kod,slike,dodao_korisnik,dubina,dot) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-      [sifra,sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),req.user.username,dubina||null,dot||null]);
+    await dbRun('INSERT INTO gume (sifra,sezona,sirina,visina,promjer,napomena,polica_id,polica_kod,slike,dodao_korisnik,dubina,dot,tip,cijena) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [sifra,sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),req.user.username,dubina||null,dot||null,tip||null,cijena]);
     res.json(formatGuma(await dbGet(GUME_SELECT+' WHERE g.sifra=?',[sifra])));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
 app.put('/api/gume/:id', requireAuth, async (req,res) => {
   try {
-    const {sezona,sirina,visina,promjer,napomena,policaKod,slike,dubina,dot} = req.body;
+    const {sezona,sirina,visina,promjer,napomena,policaKod,slike,dubina,dot,tip} = req.body;
+    const cijena = req.user.role==='admin' ? (req.body.cijena||null) : undefined;
     const polica = await dbGet('SELECT * FROM police WHERE naziv=?',[policaKod]);
     if (!polica) return res.status(400).json({error:'Polica "'+policaKod+'" ne postoji'});
-    await dbRun('UPDATE gume SET sezona=?,sirina=?,visina=?,promjer=?,napomena=?,polica_id=?,polica_kod=?,slike=?,dubina=?,dot=? WHERE id=?',
-      [sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),dubina||null,dot||null,req.params.id]);
+    if (cijena !== undefined) {
+      await dbRun('UPDATE gume SET sezona=?,sirina=?,visina=?,promjer=?,napomena=?,polica_id=?,polica_kod=?,slike=?,dubina=?,dot=?,tip=?,cijena=? WHERE id=?',
+        [sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),dubina||null,dot||null,tip||null,cijena,req.params.id]);
+    } else {
+      await dbRun('UPDATE gume SET sezona=?,sirina=?,visina=?,promjer=?,napomena=?,polica_id=?,polica_kod=?,slike=?,dubina=?,dot=?,tip=? WHERE id=?',
+        [sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),dubina||null,dot||null,tip||null,req.params.id]);
+    }
     res.json(formatGuma(await dbGet(GUME_SELECT+' WHERE g.id=?',[req.params.id])));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
