@@ -86,6 +86,8 @@ db.serialize(() => {
       datum_prodaje TEXT,
       dodao_korisnik TEXT,
       prodao_korisnik TEXT,
+      dubina TEXT,
+      dot TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (polica_id) REFERENCES police(id) ON DELETE SET NULL
     );
@@ -99,6 +101,8 @@ db.serialize(() => {
   // Add columns if they don't exist (for existing DBs)
   db.run("ALTER TABLE gume ADD COLUMN dodao_korisnik TEXT", ()=>{});
   db.run("ALTER TABLE gume ADD COLUMN prodao_korisnik TEXT", ()=>{});
+  db.run("ALTER TABLE gume ADD COLUMN dubina TEXT", ()=>{});
+  db.run("ALTER TABLE gume ADD COLUMN dot TEXT", ()=>{});
 
   const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
   db.get('SELECT id FROM korisnici WHERE username=?', ['admin'], (err, row) => {
@@ -293,25 +297,25 @@ app.get('/api/gume', requireAuth, async (req,res) => {
 
 app.post('/api/gume', requireAuth, async (req,res) => {
   try {
-    const {sezona,sirina,visina,promjer,napomena,policaKod,slike} = req.body;
+    const {sezona,sirina,visina,promjer,napomena,policaKod,slike,dubina,dot} = req.body;
     if (!sezona||!sirina||!visina||!promjer||!policaKod) return res.status(400).json({error:'Sva polja obavezna'});
     const polica = await dbGet('SELECT * FROM police WHERE naziv=?',[policaKod]);
     if (!polica) return res.status(400).json({error:'Polica "'+policaKod+'" ne postoji'});
     const num = await nextCounter('gu');
     const sifra = 'GU'+num;
-    await dbRun('INSERT INTO gume (sifra,sezona,sirina,visina,promjer,napomena,polica_id,polica_kod,slike,dodao_korisnik) VALUES (?,?,?,?,?,?,?,?,?,?)',
-      [sifra,sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),req.user.username]);
+    await dbRun('INSERT INTO gume (sifra,sezona,sirina,visina,promjer,napomena,polica_id,polica_kod,slike,dodao_korisnik,dubina,dot) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+      [sifra,sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),req.user.username,dubina||null,dot||null]);
     res.json(formatGuma(await dbGet(GUME_SELECT+' WHERE g.sifra=?',[sifra])));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
 app.put('/api/gume/:id', requireAuth, async (req,res) => {
   try {
-    const {sezona,sirina,visina,promjer,napomena,policaKod,slike} = req.body;
+    const {sezona,sirina,visina,promjer,napomena,policaKod,slike,dubina,dot} = req.body;
     const polica = await dbGet('SELECT * FROM police WHERE naziv=?',[policaKod]);
     if (!polica) return res.status(400).json({error:'Polica "'+policaKod+'" ne postoji'});
-    await dbRun('UPDATE gume SET sezona=?,sirina=?,visina=?,promjer=?,napomena=?,polica_id=?,polica_kod=?,slike=? WHERE id=?',
-      [sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),req.params.id]);
+    await dbRun('UPDATE gume SET sezona=?,sirina=?,visina=?,promjer=?,napomena=?,polica_id=?,polica_kod=?,slike=?,dubina=?,dot=? WHERE id=?',
+      [sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),dubina||null,dot||null,req.params.id]);
     res.json(formatGuma(await dbGet(GUME_SELECT+' WHERE g.id=?',[req.params.id])));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
