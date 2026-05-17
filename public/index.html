@@ -237,34 +237,40 @@ function resizeImage(file, maxW=1200, maxH=1200, quality=0.82) {
   });
 }
 
-const EMPTY_FORM = {sezona:'',sirina:'',visina:'',promjer:'',napomena:'',policaKod:'',slike:[]};
+const EMPTY_FORM = {sezona:'',sirina:'',visina:'',promjer:'',napomena:'',policaKod:'',slike:[],dubina:'',dot:''};
 
-const PROMJER_OPTIONS = ['R13','R14','R15','R16','R16C','R17','R17C','R18','R19','R20','R21'];
+const PROMJER_OPTIONS = ['13','14','15','16','16C','17','17C','18','19','20','21'];
 const SIRINA_OPTIONS = ['155','165','175','185','195','205','215','225','235','245','255'];
 const VISINA_OPTIONS = ['40','45','50','55','60','65','70','75','80'];
 
 // Smart combo: select + optional custom input
-function ComboBox({value, onChange, options, placeholder, className, normalize}) {
+function ComboBox({value, onChange, options, placeholder, normalize, suffix}) {
+  const [showCustom, setShowCustom] = React.useState(false);
   const isCustom = value && !options.includes(value);
+  const sel = isCustom ? '__custom__' : (value||'');
+
+  const handleSelect = e => {
+    if(e.target.value === '__custom__') { setShowCustom(true); onChange(''); }
+    else { setShowCustom(false); onChange(normalize ? normalize(e.target.value) : e.target.value); }
+  };
+
   return (
-    <div style={{display:'flex',gap:4}}>
+    <div>
       <select
-        style={{flex:1,background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:value&&!isCustom?'var(--text)':'var(--muted)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 8px',outline:'none'}}
-        value={isCustom?'__custom__':value||''}
-        onChange={e=>{
-          if(e.target.value==='__custom__') onChange('');
-          else onChange(normalize?normalize(e.target.value):e.target.value);
-        }}
+        style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:sel&&sel!=='__custom__'?'var(--text)':'var(--muted)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 8px',outline:'none'}}
+        value={showCustom||isCustom?'__custom__':sel}
+        onChange={handleSelect}
       >
         <option value="">{placeholder||'Odaberi'}</option>
-        {options.map(o=><option key={o} value={o}>{o}</option>)}
-        <option value="__custom__">Ostalo (unesi ručno)</option>
+        {options.map(o=><option key={o} value={o}>{o}{suffix?' '+suffix:''}</option>)}
+        <option value="__custom__">Unesi ručno...</option>
       </select>
-      {(isCustom||(!value&&value!==undefined)) && isCustom && (
+      {(showCustom || isCustom) && (
         <input
-          style={{width:70,background:'var(--card)',border:'1.5px solid var(--accent)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 8px',outline:'none'}}
+          autoFocus
+          style={{width:'100%',marginTop:5,background:'var(--card)',border:'1.5px solid var(--accent)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 8px',outline:'none'}}
           value={value}
-          placeholder="npr. R22"
+          placeholder="Unesi vrijednost..."
           onChange={e=>onChange(normalize?normalize(e.target.value):e.target.value)}
         />
       )}
@@ -386,8 +392,31 @@ function App() {
   const [analitika, setAnalitika] = useState(null);
   const [showAnalitika, setShowAnalitika] = useState(false);
   const [savingGuma, setSavingGuma] = useState(false);
+  // Custom dimension options (persisted in localStorage)
+  const [customSirina, setCustomSirina] = useState(()=>{ try{return JSON.parse(localStorage.getItem('adg_sirina')||'[]');}catch{return [];} });
+  const [customVisina, setCustomVisina] = useState(()=>{ try{return JSON.parse(localStorage.getItem('adg_visina')||'[]');}catch{return [];} });
+  const [customPromjer, setCustomPromjer] = useState(()=>{ try{return JSON.parse(localStorage.getItem('adg_promjer')||'[]');}catch{return [];} });
+  const [newDimVal, setNewDimVal] = useState({sirina:'',visina:'',promjer:''});
 
   const isAdmin = user?.role === 'admin';
+  const sirina_opts = useMemo(()=>[...SIRINA_OPTIONS,...customSirina].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>parseInt(a)-parseInt(b)),[customSirina]);
+  const visina_opts = useMemo(()=>[...VISINA_OPTIONS,...customVisina].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>parseInt(a)-parseInt(b)),[customVisina]);
+  const promjer_opts = useMemo(()=>[...PROMJER_OPTIONS,...customPromjer].filter((v,i,a)=>a.indexOf(v)===i),[customPromjer]);
+
+  const addCustomDim = (type, val) => {
+    val = val.trim();
+    if(!val) return;
+    if(type==='sirina'){ const n=[...customSirina,val]; setCustomSirina(n); localStorage.setItem('adg_sirina',JSON.stringify(n)); }
+    if(type==='visina'){ const n=[...customVisina,val]; setCustomVisina(n); localStorage.setItem('adg_visina',JSON.stringify(n)); }
+    if(type==='promjer'){ const n=[...customPromjer,val.toUpperCase()]; setCustomPromjer(n); localStorage.setItem('adg_promjer',JSON.stringify(n)); }
+    setNewDimVal(p=>({...p,[type]:''}));
+    showToast('Dimenzija dodana');
+  };
+  const removeCustomDim = (type, val) => {
+    if(type==='sirina'){ const n=customSirina.filter(x=>x!==val); setCustomSirina(n); localStorage.setItem('adg_sirina',JSON.stringify(n)); }
+    if(type==='visina'){ const n=customVisina.filter(x=>x!==val); setCustomVisina(n); localStorage.setItem('adg_visina',JSON.stringify(n)); }
+    if(type==='promjer'){ const n=customPromjer.filter(x=>x!==val); setCustomPromjer(n); localStorage.setItem('adg_promjer',JSON.stringify(n)); }
+  };
 
   const showToast = useCallback((msg, type='ok') => {
     setToast({msg,type});
@@ -511,7 +540,7 @@ function App() {
     if(!canSave||savingGuma) return;
     setSavingGuma(true);
     try {
-      const body={sezona:form.sezona,sirina:form.sirina,visina:form.visina,promjer:form.promjer,napomena:form.napomena,policaKod:policaMatch.naziv,slike:form.slike||[]};
+      const body={sezona:form.sezona,sirina:form.sirina,visina:form.visina,promjer:form.promjer,napomena:form.napomena,policaKod:policaMatch.naziv,slike:form.slike||[],dubina:form.dubina||null,dot:form.dot||null};
       let g;
       if(modal==='editGuma'&&editingId){ g=await api('/gume/'+editingId,{method:'PUT',body}); setGume(p=>p.map(x=>x.id===g.id?g:x)); showToast('Guma azurirana'); }
       else { g=await api('/gume',{method:'POST',body}); setGume(p=>[g,...p]); setNextGuNum(n=>n+1); showToast('Guma '+g.sifra+' dodana'); }
@@ -554,7 +583,7 @@ function App() {
     showToast('Guma obrisana');
   };
 
-  const openEdit=(g)=>{ setForm({sezona:g.sezona,sirina:g.sirina,visina:g.visina,promjer:g.promjer,napomena:g.napomena||'',policaKod:g.polica_kod||'',slike:g.slike?[...g.slike]:[]}); setEditingId(g.id); setDetailG(null); setSubmitAttempted(false); setModal('editGuma'); };
+  const openEdit=(g)=>{ setForm({sezona:g.sezona,sirina:g.sirina,visina:g.visina,promjer:g.promjer,napomena:g.napomena||'',policaKod:g.polica_kod||'',slike:g.slike?[...g.slike]:[],dubina:g.dubina||'',dot:g.dot||''}); setEditingId(g.id); setDetailG(null); setSubmitAttempted(false); setModal('editGuma'); };
 
   const policaClass = !form.policaKod.trim()?'':policaMatch?'ok':'err';
 
@@ -569,7 +598,9 @@ function App() {
           <div className={"user-badge"+(isAdmin?" admin":"")}><I.User/> {user.username}</div>
           {isAdmin&&<button className={"btn-gear"+(settingsOpen?" on":"")} onClick={()=>setSettingsOpen(s=>!s)} title="Podesavanja"><I.Gear/></button>}
           {isAdmin&&<button className="btn-gear" title="Analitika" onClick={loadAnalitika}>📊</button>}
-          <button className="btn-gear" title="Odjava" onClick={doLogout} style={{color:'var(--red)',borderColor:'rgba(232,83,42,.3)'}}>⏻</button>
+          <button className="btn-gear" title="Odjava" onClick={doLogout} style={{color:'var(--red)',borderColor:'rgba(232,83,42,.3)'}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
         </div>
       </nav>
 
@@ -583,6 +614,7 @@ function App() {
             <div className="set-tabs">
               <button className={"set-tab"+(setTab==='magacin'?" on":"")} onClick={()=>setSetTab('magacin')}><I.House/> Magacin</button>
               <button className={"set-tab"+(setTab==='korisnici'?" on":"")} onClick={()=>{setSetTab('korisnici');loadKorisnici();}}><I.User/> Korisnici</button>
+              <button className={"set-tab"+(setTab==='dimenzije'?" on":"")} onClick={()=>setSetTab('dimenzije')}>📐 Dimenzije</button>
             </div>
 
             {setTab==='magacin'&&(
@@ -690,19 +722,19 @@ function App() {
             <div className="fg"><label>Sirina (mm)</label>
               <select style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 9px',outline:'none'}}
                 value={filters.sirina} onChange={e=>setFilters(f=>({...f,sirina:e.target.value}))}>
-                <option value="">Sve</option>{SIRINA_OPTIONS.map(o=><option key={o}>{o}</option>)}
+                <option value="">Sve</option>{sirina_opts.map(o=><option key={o}>{o}</option>)}
               </select>
             </div>
             <div className="fg"><label>Profil (%)</label>
               <select style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 9px',outline:'none'}}
                 value={filters.visina} onChange={e=>setFilters(f=>({...f,visina:e.target.value}))}>
-                <option value="">Sve</option>{VISINA_OPTIONS.map(o=><option key={o}>{o}</option>)}
+                <option value="">Sve</option>{visina_opts.map(o=><option key={o}>{o}</option>)}
               </select>
             </div>
             <div className="fg"><label>Promjer</label>
               <select style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 9px',outline:'none'}}
                 value={filters.promjer} onChange={e=>setFilters(f=>({...f,promjer:e.target.value}))}>
-                <option value="">Sve</option>{PROMJER_OPTIONS.map(o=><option key={o}>{o}</option>)}
+                <option value="">Sve</option>{promjer_opts.map(o=><option key={o}>{o}</option>)}
               </select>
             </div>
             <div className="fg" style={{display:'flex',gap:5}}>
@@ -728,7 +760,7 @@ function App() {
               <span className="bsif">{g.sifra}</span>
               {g.prodato&&<div className="bsold">Prodato{g.datum_prodaje?' · '+g.datum_prodaje:''}</div>}
               <div className="tire-info">
-                <div className="tire-size">{g.sirina}/{g.visina} R{g.promjer}</div>
+                <div className="tire-size">{g.sirina}/{g.visina} {/^\d/.test(g.promjer||'')?'R':''}{g.promjer}</div>
                 <div className="tire-cod">{g.sifra}</div>
                 <div className="tire-loc">{g.loc_magacin?`${g.loc_magacin} › ${g.loc_prolaz} › ${g.loc_regal} › ${g.polica_kod}`:g.polica_kod||'—'}</div>
               </div>
@@ -755,14 +787,22 @@ function App() {
         </div>
         <div className="two-col">
           <div className="fg2"><label>Sirina (mm) *</label>
-            <ComboBox value={form.sirina} onChange={v=>setForm(f=>({...f,sirina:v}))} options={SIRINA_OPTIONS} placeholder="Sirina..." />
+            <ComboBox value={form.sirina} onChange={v=>setForm(f=>({...f,sirina:v}))} options={sirina_opts} placeholder="Sirina..." />
           </div>
           <div className="fg2"><label>Profil (%) *</label>
-            <ComboBox value={form.visina} onChange={v=>setForm(f=>({...f,visina:v}))} options={VISINA_OPTIONS} placeholder="Profil..." />
+            <ComboBox value={form.visina} onChange={v=>setForm(f=>({...f,visina:v}))} options={visina_opts} placeholder="Profil..." />
           </div>
         </div>
         <div className="fg2"><label>Promjer *</label>
-          <ComboBox value={form.promjer} onChange={v=>setForm(f=>({...f,promjer:v.toUpperCase()}))} options={PROMJER_OPTIONS} placeholder="Promjer..." normalize={v=>v.toUpperCase()}/>
+          <ComboBox value={form.promjer} onChange={v=>setForm(f=>({...f,promjer:v.toUpperCase()}))} options={promjer_opts} placeholder="Promjer..." normalize={v=>v.toUpperCase()}/>
+        </div>
+        <div className="two-col">
+          <div className="fg2"><label>Dubina šare (mm)</label>
+            <input type="number" step="0.5" min="0" max="12" placeholder="npr. 7.5" value={form.dubina} onChange={e=>setForm(f=>({...f,dubina:e.target.value}))}/>
+          </div>
+          <div className="fg2"><label>Godina (DOT)</label>
+            <input type="number" min="2000" max="2099" placeholder="npr. 2022" value={form.dot} onChange={e=>setForm(f=>({...f,dot:e.target.value}))}/>
+          </div>
         </div>
         <div className="fg2">
           <label>Sifra police * (obavezno)</label>
@@ -830,11 +870,15 @@ function App() {
         <div className="specs-grid">
           <div className="spec-box"><div className="spec-lbl">Sirina</div><div className="spec-val">{detailG.sirina} mm</div></div>
           <div className="spec-box"><div className="spec-lbl">Visina</div><div className="spec-val">{detailG.visina}%</div></div>
-          <div className="spec-box"><div className="spec-lbl">Promjer</div><div className="spec-val">R{detailG.promjer}"</div></div>
+          <div className="spec-box"><div className="spec-lbl">Promjer</div><div className="spec-val">{/^\d/.test(detailG.promjer||'')?'R':''}{detailG.promjer}"</div></div>
           <div className="spec-box"><div className="spec-lbl">Sifra</div><div className="spec-val" style={{color:'var(--accent)'}}>{detailG.sifra}</div></div>
         </div>
         {detailG.polica_kod&&<div className="loc-box">📍 {detailG.loc_magacin&&`${detailG.loc_magacin} › ${detailG.loc_prolaz} › ${detailG.loc_regal} › `}{detailG.polica_kod}</div>}
         {detailG.prodato&&<div className="sold-box">Prodato{detailG.datum_prodaje?' · '+detailG.datum_prodaje:''}{detailG.cijena_prodaje&&<span style={{marginLeft:'auto',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:14}}>{detailG.cijena_prodaje}</span>}</div>}
+        {(detailG.dubina||detailG.dot)&&<div style={{display:'flex',gap:7,marginBottom:8,flexWrap:'wrap'}}>
+          {detailG.dubina&&<div className="spec-box" style={{flex:1}}><div className="spec-lbl">Dubina šare</div><div className="spec-val" style={{fontSize:16}}>{detailG.dubina} mm</div></div>}
+          {detailG.dot&&<div className="spec-box" style={{flex:1}}><div className="spec-lbl">Godina (DOT)</div><div className="spec-val" style={{fontSize:16}}>{detailG.dot}</div></div>}
+        </div>}
         {detailG.napomena&&<><div className="sec-lbl">Napomena</div><p style={{fontSize:12,color:'var(--muted)',lineHeight:1.6}}>{detailG.napomena}</p></>}
         <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:8,fontSize:10,color:'var(--muted)'}}>
           {detailG.dodao_korisnik&&<span>Dodao: <b style={{color:'var(--text)'}}>{detailG.dodao_korisnik}</b></span>}
@@ -853,7 +897,7 @@ function App() {
       {detailG&&sellModal&&(<div className="overlay" onClick={()=>setSellModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
         <div className="modal-title">Prodaj gumu <button className="btn-close" onClick={()=>setSellModal(false)}>×</button></div>
         <div className="sell-box">
-          <p>Prodajes: <strong>{detailG.sifra} — {detailG.sirina}/{detailG.visina} R{detailG.promjer} ({detailG.sezona})</strong></p>
+          <p>Prodajes: <strong>{detailG.sifra} — {detailG.sirina}/{detailG.visina} {/^\d/.test(detailG.promjer||'')?'R':''}{detailG.promjer} ({detailG.sezona})</strong></p>
           <div className="fg2" style={{marginTop:10}}>
             <label>Prodajna cijena (opcionalno)</label>
             <div className="price-row">
