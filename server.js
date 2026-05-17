@@ -263,18 +263,31 @@ function formatGuma(g) {
   return {...g, slike:JSON.parse(g.slike||'[]'), prodato:g.prodato===1};
 }
 
+const GUME_SELECT = `
+  SELECT g.*,
+    p.naziv as loc_polica,
+    r.naziv as loc_regal,
+    pr.naziv as loc_prolaz,
+    m.naziv as loc_magacin
+  FROM gume g
+  LEFT JOIN police p ON g.polica_id = p.id
+  LEFT JOIN regali r ON p.regal_id = r.id
+  LEFT JOIN prolazi pr ON r.prolaz_id = pr.id
+  LEFT JOIN magacini m ON pr.magacin_id = m.id
+`;
+
 app.get('/api/gume', requireAuth, async (req,res) => {
   const {status,sezona,sirina,visina,promjer,sifra} = req.query;
-  let sql = 'SELECT * FROM gume WHERE 1=1';
+  let sql = GUME_SELECT + ' WHERE 1=1';
   const p = [];
-  if (status==='stanje') { sql+=' AND prodato=0'; }
-  if (status==='prodato') { sql+=' AND prodato=1'; }
-  if (sezona) { sql+=' AND sezona=?'; p.push(sezona); }
-  if (sirina) { sql+=' AND sirina LIKE ?'; p.push('%'+sirina+'%'); }
-  if (visina) { sql+=' AND visina LIKE ?'; p.push('%'+visina+'%'); }
-  if (promjer) { sql+=' AND promjer LIKE ?'; p.push('%'+promjer+'%'); }
-  if (sifra) { sql+=' AND sifra LIKE ?'; p.push('%'+sifra+'%'); }
-  sql += ' ORDER BY id DESC';
+  if (status==='stanje') { sql+=' AND g.prodato=0'; }
+  if (status==='prodato') { sql+=' AND g.prodato=1'; }
+  if (sezona) { sql+=' AND g.sezona=?'; p.push(sezona); }
+  if (sirina) { sql+=' AND g.sirina LIKE ?'; p.push('%'+sirina+'%'); }
+  if (visina) { sql+=' AND g.visina LIKE ?'; p.push('%'+visina+'%'); }
+  if (promjer) { sql+=' AND g.promjer LIKE ?'; p.push('%'+promjer+'%'); }
+  if (sifra) { sql+=' AND g.sifra LIKE ?'; p.push('%'+sifra+'%'); }
+  sql += ' ORDER BY g.id DESC';
   res.json((await dbAll(sql,p)).map(formatGuma));
 });
 
@@ -288,7 +301,7 @@ app.post('/api/gume', requireAuth, async (req,res) => {
     const sifra = 'GU'+num;
     await dbRun('INSERT INTO gume (sifra,sezona,sirina,visina,promjer,napomena,polica_id,polica_kod,slike,dodao_korisnik) VALUES (?,?,?,?,?,?,?,?,?,?)',
       [sifra,sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),req.user.username]);
-    res.json(formatGuma(await dbGet('SELECT * FROM gume WHERE sifra=?',[sifra])));
+    res.json(formatGuma(await dbGet(GUME_SELECT+' WHERE g.sifra=?',[sifra])));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
@@ -299,7 +312,7 @@ app.put('/api/gume/:id', requireAuth, async (req,res) => {
     if (!polica) return res.status(400).json({error:'Polica "'+policaKod+'" ne postoji'});
     await dbRun('UPDATE gume SET sezona=?,sirina=?,visina=?,promjer=?,napomena=?,polica_id=?,polica_kod=?,slike=? WHERE id=?',
       [sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),req.params.id]);
-    res.json(formatGuma(await dbGet('SELECT * FROM gume WHERE id=?',[req.params.id])));
+    res.json(formatGuma(await dbGet(GUME_SELECT+' WHERE g.id=?',[req.params.id])));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
@@ -310,7 +323,7 @@ app.post('/api/gume/:id/premjesti', requireAuth, async (req,res) => {
     const polica = await dbGet('SELECT * FROM police WHERE naziv=?',[policaKod]);
     if (!polica) return res.status(400).json({error:'Polica "'+policaKod+'" ne postoji'});
     await dbRun('UPDATE gume SET polica_id=?,polica_kod=? WHERE id=?',[polica.id,policaKod,req.params.id]);
-    res.json(formatGuma(await dbGet('SELECT * FROM gume WHERE id=?',[req.params.id])));
+    res.json(formatGuma(await dbGet(GUME_SELECT+' WHERE g.id=?',[req.params.id])));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
@@ -320,7 +333,7 @@ app.post('/api/gume/:id/prodaj', requireAuth, async (req,res) => {
   const cijenaTxt = cijena ? parseFloat(cijena).toLocaleString('hr-HR')+' KM' : null;
   await dbRun('UPDATE gume SET prodato=1,cijena_prodaje=?,datum_prodaje=?,prodao_korisnik=? WHERE id=?',
     [cijenaTxt,datum,req.user.username,req.params.id]);
-  res.json(formatGuma(await dbGet('SELECT * FROM gume WHERE id=?',[req.params.id])));
+  res.json(formatGuma(await dbGet(GUME_SELECT+' WHERE g.id=?',[req.params.id])));
 });
 
 app.delete('/api/gume/:id', requireAdmin, async (req,res) => {
@@ -332,7 +345,7 @@ app.get('/api/analitika', requireAdmin, async (req,res) => {
   const [
     ukupnoGuma, naStan, prodatoCount,
     prihodUkupno, prodajaPoSezonama, prodajaPoMjesecima,
-    topRadnici, gumePoPolici, skoroDodane
+    topRadnici, gumePoPolici, skoroDodane, topDimenzije
   ] = await Promise.all([
     dbGet('SELECT COUNT(*) as c FROM gume'),
     dbGet('SELECT COUNT(*) as c FROM gume WHERE prodato=0'),
@@ -347,6 +360,13 @@ app.get('/api/analitika', requireAdmin, async (req,res) => {
       FROM gume g1 WHERE dodao_korisnik IS NOT NULL GROUP BY dodao_korisnik ORDER BY dodao DESC`),
     dbAll(`SELECT polica_kod, COUNT(*) as guma_count FROM gume WHERE prodato=0 AND polica_kod IS NOT NULL GROUP BY polica_kod ORDER BY guma_count DESC LIMIT 10`),
     dbAll('SELECT sifra,sezona,sirina,visina,promjer,polica_kod,created_at FROM gume WHERE prodato=0 ORDER BY created_at DESC LIMIT 5'),
+    dbAll(`SELECT sirina||'/'||visina||' R'||promjer as dimenzija,
+      COUNT(*) as ukupno,
+      SUM(prodato) as prodato,
+      SUM(CASE WHEN prodato=0 THEN 1 ELSE 0 END) as na_stanju
+      FROM gume
+      GROUP BY dimenzija
+      ORDER BY ukupno DESC LIMIT 10`),
   ]);
 
   res.json({
@@ -358,6 +378,7 @@ app.get('/api/analitika', requireAdmin, async (req,res) => {
     topRadnici,
     gumePoPolici,
     skoroDodane,
+    topDimenzije,
   });
 });
 
