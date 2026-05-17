@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="theme-color" content="#0e1018"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Auto Delić Gume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0e1018;--surf:#171b27;--card:#1c2133;--border:#252d42;--accent:#f0b429;--red:#e8532a;--blue:#4b8ef0;--green:#27ae60;--purple:#9b59b6;--text:#e6e9f4;--muted:#6e7a99;--radius:10px}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-tap-highlight-color:transparent}
+.app{min-height:100vh;display:flex;flex-direction:column}
+.nav{background:var(--surf);border-bottom:2px solid var(--accent);padding:0 18px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;gap:10px}
+.logo{font-family:"Barlow Condensed",sans-serif;font-weight:900;font-size:18px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:8px;user-select:none;flex-shrink:0}
+.logo-w{color:var(--text)}
+.logo-sub{font-size:10px;font-weight:500;color:var(--muted);letter-spacing:1px;margin-left:-4px;align-self:flex-end;padding-bottom:1px}
+.nav-right{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.btn-gear{background:none;border:1.5px solid var(--border);color:var(--muted);border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .22s}
+.btn-gear.on{border-color:var(--accent);color:var(--accent);background:rgba(240,180,41,.1)}
+.btn-add{background:var(--accent);color:#000;border:none;font-family:"Barlow Condensed",sans-serif;font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;padding:7px 14px;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.btn-add:active{background:#f7c23a}
+.main{flex:1;padding:16px;max-width:1280px;margin:0 auto;width:100%}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:999;animation:toastIn .2s ease;white-space:nowrap;border-left:3px solid var(--green)}
+.toast.err{border-left-color:var(--red)}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.set-panel{background:var(--surf);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:20px}
+.set-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.set-title{font-family:"Barlow Condensed",sans-serif;font-size:14px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:6px}
+.btn-new{background:var(--accent);color:#000;border:none;border-radius:6px;font-family:"Barlow Condensed",sans-serif;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;cursor:pointer;display:flex;align-items:center;gap:4px}
+.mag-list{display:flex;flex-direction:column;gap:7px}
+.mag-card{background:var(--card);border:1.5px solid var(--border);border-radius:8px;overflow:hidden}
+.tree-row{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;cursor:pointer;transition:background .14s;user-select:none}
+.tree-row:hover{background:rgba(255,255,255,.03)}
+.tree-row.prolaz{padding:6px 11px;background:var(--surf)}
+.tree-row.regal{padding:4px 9px;background:var(--card)}
+.tree-label-mag{font-family:"Barlow Condensed",sans-serif;font-size:15px;font-weight:800;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:7px;color:var(--text)}
+.tree-label-prolaz{font-family:"Barlow Condensed",sans-serif;font-weight:800;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--blue)}
+.tree-label-regal{font-family:"Barlow Condensed",sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.tree-meta{font-size:11px;color:var(--muted);font-weight:400;letter-spacing:0;text-transform:none}
+.tree-right{display:flex;align-items:center;gap:5px}
+.ico-acc{font-size:10px;color:var(--muted)}
+.mag-body{padding:0 13px 13px}
+.prolazi-wrap{display:flex;flex-direction:column;gap:5px}
+.prolaz-row{background:var(--surf);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.prolaz-body{padding:5px 11px 10px}
+.regali-wrap{display:flex;flex-direction:column;gap:4px}
+.regal-row{background:var(--card);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+.regal-body{padding:5px 9px 8px}
+.police-wrap{display:flex;flex-wrap:wrap;gap:4px}
+.polica-chip{background:rgba(75,142,240,.1);border:1px solid rgba(75,142,240,.25);color:var(--blue);border-radius:4px;font-family:"Barlow Condensed",sans-serif;font-size:11px;font-weight:700;padding:2px 6px;display:flex;align-items:center;gap:3px}
+.add-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.add-btn{background:none;border:1px dashed var(--border);color:var(--muted);border-radius:4px;font-family:"Barlow Condensed",sans-serif;font-size:11px;font-weight:600;text-transform:uppercase;padding:3px 8px;cursor:pointer;display:flex;align-items:center;gap:2px}
+.add-btn:active{border-color:var(--accent);color:var(--accent)}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 3px;border-radius:3px;display:flex;align-items:center;flex-shrink:0}
+.del-btn:active{color:var(--red)}
+.custom-polica-row{display:flex;gap:5px;margin-top:5px;align-items:center}
+.custom-polica-inp{background:var(--card);border:1px dashed var(--border);border-radius:4px;color:var(--text);font-family:"Barlow Condensed",sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;padding:4px 8px;outline:none;width:100px;text-transform:uppercase}
+.add-btn-custom{background:none;border:1px solid var(--accent);color:var(--accent);border-radius:4px;font-family:"Barlow Condensed",sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;padding:4px 8px;cursor:pointer;display:flex;align-items:center;gap:2px;white-space:nowrap}
+.hero{text-align:center;padding:22px 0 16px}
+.hero h1{font-family:"Barlow Condensed",sans-serif;font-size:36px;font-weight:900;letter-spacing:3px;text-transform:uppercase;line-height:1;margin-bottom:4px}
+.hero h1 em{color:var(--accent);font-style:normal}
+.hero p{color:var(--muted);font-size:12px}
+.sf-wrap{background:var(--surf);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px}
+.sf-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sf-grid .wide{grid-column:1/-1}
+.fg label{display:block;font-family:"Barlow Condensed",sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.fg input,.fg select{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:6px;color:var(--text);font-family:"Barlow",sans-serif;font-size:13px;padding:8px 10px;outline:none}
+.fg select option{background:var(--card)}
+.btn-srch{background:var(--red);color:#fff;border:none;border-radius:6px;font-family:"Barlow Condensed",sans-serif;font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;height:36px;width:100%;display:flex;align-items:center;justify-content:center;gap:5px;cursor:pointer}
+.status-tabs{display:flex;gap:7px;margin-bottom:14px}
+.stab{background:none;border:1.5px solid var(--border);color:var(--muted);border-radius:7px;font-family:"Barlow Condensed",sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;cursor:pointer;flex:1;text-align:center}
+.stab.active-stanje{border-color:var(--green);color:var(--green);background:rgba(39,174,96,.08)}
+.stab.active-prodato{border-color:var(--purple);color:var(--purple);background:rgba(155,89,182,.08)}
+.res-count{font-family:"Barlow Condensed",sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.res-count b{color:var(--accent);font-size:14px}
+.tire-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.tire-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;position:relative;transition:border-color .2s}
+.tire-card:active{border-color:var(--accent)}
+.tire-card.sold{opacity:.7;border-color:#3d2d5a}
+.tire-thumb{width:100%;height:130px;background:var(--surf);display:flex;align-items:center;justify-content:center;color:var(--border)}
+.tire-thumb img{width:100%;height:100%;object-fit:cover}
+.badge-season{position:absolute;top:8px;left:8px;font-family:"Barlow Condensed",sans-serif;font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;border-radius:3px;display:flex;align-items:center;gap:3px}
+.badge-season.z{background:rgba(75,142,240,.22);color:#4b8ef0;border:1px solid #4b8ef0}
+.badge-season.l{background:rgba(240,180,41,.16);color:#f0b429;border:1px solid #f0b429}
+.badge-sifra{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.1);color:#fff;font-family:"Barlow Condensed",sans-serif;font-size:10px;font-weight:800;padding:2px 6px;border-radius:3px}
+.badge-sold{position:absolute;bottom:0;left:0;right:0;background:rgba(155,89,182,.85);color:#fff;font-family:"Barlow Condensed",sans-serif;font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;text-align:center;padding:3px}
+.tire-info{padding:9px 11px}
+.tire-size{font-family:"Barlow Condensed",sans-serif;font-weight:800;font-size:17px;letter-spacing:1px;margin-bottom:2px}
+.tire-cod{font-family:"Barlow Condensed",sans-serif;font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:2px}
+.tire-loc-txt{font-size:10px;color:var(--muted)}
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty p{font-size:13px;margin-top:12px}
+.loading{text-align:center;padding:40px;color:var(--muted);font-family:"Barlow Condensed",sans-serif;letter-spacing:2px;text-transform:uppercase;font-size:13px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--surf);border:1.5px solid var(--border);border-radius:14px;padding:22px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto}
+.modal-title{font-family:"Barlow Condensed",sans-serif;font-size:19px;font-weight:900;letter-spacing:2px;text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
+.btn-close{background:none;border:none;color:var(--muted);cursor:pointer;display:flex;padding:3px;border-radius:4px;font-size:18px}
+.fg2{margin-bottom:13px}
+.fg2 label{display:block;font-family:"Barlow Condensed",sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.fg2 input,.fg2 select,.fg2 textarea{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:6px;color:var(--text);font-family:"Barlow",sans-serif;font-size:13px;padding:8px 11px;outline:none}
+.fg2 select option{background:var(--card)}
+.fg2 textarea{resize:vertical;min-height:60px}
+.fg2 input.ok{border-color:var(--green)}
+.fg2 input.err{border-color:var(--red)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sifra-prev{background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.25);border-radius:7px;padding:7px 13px;font-family:"Barlow Condensed",sans-serif;font-size:16px;font-weight:900;color:var(--accent);letter-spacing:2px;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.sifra-prev span{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:1px;text-transform:uppercase}
+.polica-hint{margin-top:5px;padding:6px 10px;border-radius:5px;font-size:12px;display:flex;align-items:center;gap:5px}
+.polica-hint.ok{background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.3);color:var(--green)}
+.polica-hint.err{background:rgba(232,83,42,.08);border:1px solid rgba(232,83,42,.3);color:var(--red)}
+.polica-error{margin-top:5px;padding:7px 10px;border-radius:5px;font-size:12px;background:rgba(232,83,42,.1);border:1.5px solid rgba(232,83,42,.5);color:var(--red);font-weight:600}
+.img-zone{border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;color:var(--muted);font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:70px}
+.img-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.img-item{position:relative;border-radius:5px;overflow:hidden;aspect-ratio:1;background:var(--card)}
+.img-item img{width:100%;height:100%;object-fit:cover;display:block}
+.img-rm{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.75);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);align-items:center}
+.foot-left{margin-right:auto}
+.btn-cancel{background:none;border:1.5px solid var(--border);color:var(--muted);border-radius:6px;font-family:"Barlow Condensed",sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:7px 13px;cursor:pointer}
+.btn-save{background:var(--accent);color:#000;border:none;border-radius:6px;font-family:"Barlow Condensed",sans-serif;font-size:13px;font-weight:900;letter-spacing:1px;text-transform:uppercase;padding:8px 18px;cursor:pointer}
+.btn-sell{background:var(--green);color:#fff;border:none;border-radius:6px;font-family:"Barlow Condensed",sans-serif;font-size:14px;font-weight:900;letter-spacing:1px;text-transform:uppercase;padding:9px 20px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.btn-edit{background:none;border:1.5px solid var(--border);color:var(--muted);border-radius:6px;font-family:"Barlow Condensed",sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:7px 13px;cursor:pointer;display:flex;align-items:center;gap:4px}
+.btn-del-sm{color:var(--red);border:1px solid rgba(232,83,42,.3);border-radius:5px;padding:5px 8px;background:none;font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;gap:3px;opacity:.65}
+.det-imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px;margin-bottom:14px}
+.det-imgs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:5px;display:block}
+.specs-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.spec-box{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 12px}
+.spec-lbl{font-family:"Barlow Condensed",sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.spec-val{font-family:"Barlow Condensed",sans-serif;font-size:18px;font-weight:800}
+.loc-box{background:rgba(75,142,240,.07);border:1px solid rgba(75,142,240,.2);border-radius:6px;padding:8px 12px;font-size:12px;color:#4b8ef0;margin-bottom:10px}
+.sold-box{background:rgba(155,89,182,.1);border:1px solid rgba(155,89,182,.3);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--purple);margin-bottom:10px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.sec-lbl{font-family:"Barlow Condensed",sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid var(--border);margin-top:12px}
+.sell-box{background:rgba(39,174,96,.06);border:1.5px solid rgba(39,174,96,.2);border-radius:10px;padding:16px;margin-bottom:4px}
+.sell-box p{color:var(--muted);font-size:13px;margin-bottom:12px;line-height:1.5}
+.sell-box strong{color:var(--text)}
+.price-row{display:flex;align-items:center;border:1.5px solid var(--border);border-radius:6px;overflow:hidden;background:var(--card)}
+.price-inp{flex:1;background:transparent;border:none;color:var(--text);font-family:"Barlow Condensed",sans-serif;font-size:22px;font-weight:800;padding:10px 13px;outline:none;letter-spacing:1px}
+.price-curr{padding:10px 13px;font-family:"Barlow Condensed",sans-serif;font-size:13px;font-weight:700;color:var(--muted);border-left:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// ===== STATE =====
+let state = {
+  magacini: [],
+  gume: [],
+  police: [],
+  counters: { gu: 10, po: 10 },
+  loading: true,
+  settingsOpen: false,
+  statusTab: 'stanje',
+  filters: { sezona:'', sirina:'', visina:'', promjer:'', sifra:'' },
+  openMag: {},
+  openProlaz: {},
+  openRegal: {},
+  customPolica: {},
+  modal: null, // null | 'addMag' | 'addGuma' | 'editGuma' | 'detail' | 'sell'
+  detailGuma: null,
+  form: {},
+  sellPrice: '',
+  submitAttempted: false,
+  toastMsg: null,
+  toastType: 'ok',
+};
+
+// ===== API =====
+const API = '/api';
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Greška');
+  return data;
+}
+
+async function loadAll() {
+  const [magacini, gume, police] = await Promise.all([
+    apiFetch('/magacini'),
+    apiFetch('/gume'),
+    apiFetch('/police'),
+  ]);
+  state.magacini = magacini;
+  state.gume = gume;
+  state.police = police;
+  state.loading = false;
+  render();
+}
+
+// ===== TOAST =====
+function showToast(msg, type = 'ok') {
+  state.toastMsg = msg;
+  state.toastType = type;
+  render();
+  setTimeout(() => { state.toastMsg = null; render(); }, 2500);
+}
+
+// ===== HELPERS =====
+function getPolica(kod) {
+  return state.police.find(p => p.naziv.toLowerCase() === (kod||'').trim().toLowerCase());
+}
+
+function filteredGume() {
+  const f = state.filters;
+  return state.gume.filter(g => {
+    if (state.statusTab === 'stanje' && g.prodato) return false;
+    if (state.statusTab === 'prodato' && !g.prodato) return false;
+    if (f.sezona && g.sezona !== f.sezona) return false;
+    if (f.sirina && !g.sirina.includes(f.sirina)) return false;
+    if (f.visina && !g.visina.includes(f.visina)) return false;
+    if (f.promjer && !g.promjer.includes(f.promjer)) return false;
+    if (f.sifra && !g.sifra.toLowerCase().includes(f.sifra.toLowerCase())) return false;
+    return true;
+  });
+}
+
+const EMPTY_FORM = { sezona:'', sirina:'', visina:'', promjer:'', napomena:'', policaKod:'', slike:[] };
+
+// ===== ICONS (inline SVG strings) =====
+const ico = {
+  plus: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  gear: `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+  tire: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="22"/><line x1="2" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="22" y2="12"/></svg>`,
+  tireSm: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="22"/><line x1="2" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="22" y2="12"/></svg>`,
+  x: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  trash: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`,
+  house: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+  snow: `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>`,
+  sun: `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>`,
+  img: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
+  check: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+  edit: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+  sell: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+  search: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+};
+
+// ===== RENDER =====
+function render() {
+  document.getElementById('root').innerHTML = buildHTML();
+  attachEvents();
+}
+
+function buildHTML() {
+  const s = state;
+  const gume = filteredGume();
+  const stanjeCount = s.gume.filter(g => !g.prodato).length;
+  const prodatoCount = s.gume.filter(g => g.prodato).length;
+
+  return `
+    <div class="app">
+      <nav class="nav">
+        <div class="logo">${ico.tireSm} AUTO <span class="logo-w">DELIĆ</span><span class="logo-sub">GUME</span></div>
+        <div class="nav-right">
+          <button class="btn-gear ${s.settingsOpen?'on':''}" data-action="toggleSettings">${ico.gear}</button>
+          <button class="btn-add" data-action="openAddGuma">${ico.plus} Dodaj gumu</button>
+        </div>
+      </nav>
+
+      <main class="main">
+        ${s.settingsOpen ? buildSettings() : ''}
+
+        <div class="hero"><h1>Pretraga <em>Guma</em></h1><p>Pronađi gumu za nekoliko sekundi</p></div>
+
+        <div class="sf-wrap">
+          <div class="sf-grid">
+            <div class="fg wide"><label>Interna šifra</label><input data-filter="sifra" placeholder="npr. GU10" value="${s.filters.sifra}"/></div>
+            <div class="fg"><label>Sezona</label><select data-filter="sezona"><option value="">Sve</option><option ${s.filters.sezona==='Zimska'?'selected':''}>Zimska</option><option ${s.filters.sezona==='Ljetna'?'selected':''}>Ljetna</option></select></div>
+            <div class="fg"><label>Širina</label><input data-filter="sirina" placeholder="205" value="${s.filters.sirina}"/></div>
+            <div class="fg"><label>Visina</label><input data-filter="visina" placeholder="55" value="${s.filters.visina}"/></div>
+            <div class="fg"><label>Promjer</label><input data-filter="promjer" placeholder="16" value="${s.filters.promjer}"/></div>
+            <div class="fg wide"><button class="btn-srch" data-action="search">${ico.search} Traži</button></div>
+          </div>
+        </div>
+
+        <div class="status-tabs">
+          <button class="stab ${s.statusTab==='stanje'?'active-stanje':''}" data-action="tabStanje">● Na stanju (${stanjeCount})</button>
+          <button class="stab ${s.statusTab==='prodato'?'active-prodato':''}" data-action="tabProdato">✓ Prodato (${prodatoCount})</button>
+        </div>
+        <div class="res-count">Prikazano: <b>${gume.length}</b> guma</div>
+
+        ${s.loading ? '<div class="loading">Učitavanje...</div>' : buildTireGrid(gume)}
+      </main>
+
+      ${buildModal()}
+      ${s.toastMsg ? `<div class="toast ${s.toastType==='err'?'err':''}">${s.toastMsg}</div>` : ''}
+    </div>
+  `;
+}
+
+function buildSettings() {
+  const s = state;
+  return `
+    <div class="set-panel">
+      <div class="set-head">
+        <div class="set-title">${ico.house} Upravljanje magacinom</div>
+        <button class="btn-new" data-action="openAddMag">${ico.plus} Novi magacin</button>
+      </div>
+      ${s.magacini.length === 0
+        ? '<div style="text-align:center;padding:20px 0;color:var(--muted);font-size:13px">Nema magacina. Dodaj prvi!</div>'
+        : `<div class="mag-list">${s.magacini.map(m => buildMagCard(m)).join('')}</div>`
+      }
+    </div>
+  `;
+}
+
+function buildMagCard(m) {
+  const open = state.openMag[m.id];
+  const regalCount = m.prolazi.reduce((a,p) => a + p.regali.length, 0);
+  return `
+    <div class="mag-card">
+      <div class="tree-row" data-toggle="mag" data-id="${m.id}">
+        <div class="tree-label-mag"><span style="color:var(--accent)">${ico.house}</span>${m.naziv}<span class="tree-meta">${m.prolazi.length} prolaza · ${regalCount} regala</span></div>
+        <div class="tree-right">
+          <span class="del-btn" data-action="delMag" data-id="${m.id}">${ico.trash}</span>
+          <span class="ico-acc">${open?'▲':'▼'}</span>
+        </div>
+      </div>
+      ${open ? `<div class="mag-body">
+        <div class="prolazi-wrap">${m.prolazi.map(pr => buildProlazRow(m.id, pr)).join('')}</div>
+        <div class="add-row"><span class="add-btn" data-action="addProlaz" data-mid="${m.id}">${ico.plus} Dodaj prolaz</span></div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+function buildProlazRow(mid, pr) {
+  const open = state.openProlaz[pr.id];
+  return `
+    <div class="prolaz-row">
+      <div class="tree-row prolaz" data-toggle="prolaz" data-id="${pr.id}">
+        <span class="tree-label-prolaz">${pr.naziv}</span>
+        <div class="tree-right">
+          <span style="font-size:10px;color:var(--muted)">${pr.regali.length} reg.</span>
+          <span class="del-btn" data-action="delProlaz" data-mid="${mid}" data-pid="${pr.id}">${ico.trash}</span>
+          <span class="ico-acc">${open?'▲':'▼'}</span>
+        </div>
+      </div>
+      ${open ? `<div class="prolaz-body">
+        <div class="regali-wrap">${pr.regali.map(r => buildRegalRow(mid, pr.id, r)).join('')}</div>
+        <div class="add-row"><span class="add-btn" data-action="addRegal" data-mid="${mid}" data-pid="${pr.id}">${ico.plus} Dodaj regal</span></div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+function buildRegalRow(mid, pid, r) {
+  const open = state.openRegal[r.id];
+  const custVal = state.customPolica[r.id] || '';
+  return `
+    <div class="regal-row">
+      <div class="tree-row regal" data-toggle="regal" data-id="${r.id}">
+        <span class="tree-label-regal">${r.naziv} <span style="color:var(--muted);font-weight:400">(${r.police.length} pol.)</span></span>
+        <div class="tree-right">
+          <span class="del-btn" data-action="delRegal" data-mid="${mid}" data-pid="${pid}" data-rid="${r.id}">${ico.trash}</span>
+          <span class="ico-acc">${open?'▲':'▼'}</span>
+        </div>
+      </div>
+      ${open ? `<div class="regal-body">
+        <div class="police-wrap">${r.police.map(pl => `
+          <div class="polica-chip">${pl.naziv}
+            <span class="del-btn" data-action="delPolica" data-mid="${mid}" data-pid="${pid}" data-rid="${r.id}" data-plid="${pl.id}" style="padding:0">${ico.x}</span>
+          </div>`).join('')}
+        </div>
+        <div class="add-row">
+          <span class="add-btn" data-action="addPolica" data-mid="${mid}" data-pid="${pid}" data-rid="${r.id}">${ico.plus} Auto</span>
+        </div>
+        <div class="custom-polica-row">
+          <input class="custom-polica-inp" data-rid="${r.id}" placeholder="npr. P2334" value="${custVal}"/>
+          <span class="add-btn-custom" data-action="addCustomPolica" data-mid="${mid}" data-pid="${pid}" data-rid="${r.id}">${ico.plus} Custom</span>
+        </div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+function buildTireGrid(gume) {
+  if (gume.length === 0) return `<div class="empty">${ico.tire}<p>${state.gume.length===0?'Nema guma. Dodaj prvu gumu!':'Nema guma koje odgovaraju pretrazi.'}</p></div>`;
+  return `<div class="tire-grid">${gume.map(g => `
+    <div class="tire-card ${g.prodato?'sold':''}" data-action="openDetail" data-id="${g.id}">
+      <div class="tire-thumb">${g.slike&&g.slike.length>0?`<img src="${g.slike[0]}" alt="guma" loading="lazy"/>`:`<div style="opacity:.2">${ico.tire}</div>`}</div>
+      <span class="badge-season ${g.sezona==='Zimska'?'z':'l'}">${g.sezona==='Zimska'?ico.snow:ico.sun} ${g.sezona}</span>
+      <span class="badge-sifra">${g.sifra}</span>
+      ${g.prodato?`<div class="badge-sold">Prodato${g.datum_prodaje?` · ${g.datum_prodaje}`:''}</div>`:''}
+      <div class="tire-info">
+        <div class="tire-size">${g.sirina}/${g.visina} R${g.promjer}</div>
+        <div class="tire-cod">${g.sifra}</div>
+        <div class="tire-loc-txt">${g.polica_kod||'—'}</div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function buildModal() {
+  const s = state;
+  if (!s.modal) return '';
+
+  if (s.modal === 'addMag') return `
+    <div class="overlay" data-action="closeModal">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">Novi magacin <span class="btn-close" data-action="closeModal">${ico.x}</span></div>
+        <div class="fg2"><label>Naziv</label><input id="mag-naziv" placeholder="npr. Magacin Glavni" value="${s.form.naziv||''}"/></div>
+        <div class="modal-foot"><button class="btn-cancel" data-action="closeModal">Odustani</button><button class="btn-save" data-action="saveMag">Kreiraj</button></div>
+      </div>
+    </div>`;
+
+  if (s.modal === 'addGuma' || s.modal === 'editGuma') {
+    const f = s.form;
+    const polica = getPolica(f.policaKod);
+    const policaClass = !f.policaKod?.trim() ? '' : polica ? 'ok' : 'err';
+    const nextSifra = s.modal === 'addGuma' ? `GU${s.counters.gu + 1}` : '';
+    const errMsg = s.submitAttempted && !f.policaKod?.trim() ? 'Polica je obavezna'
+                  : s.submitAttempted && !polica && f.policaKod?.trim() ? 'Polica ne postoji — dodaj je u podešavanjima'
+                  : null;
+    const availPolice = s.police.map(p => p.naziv).join(', ');
+    return `
+      <div class="overlay" data-action="closeModal">
+        <div class="modal" onclick="event.stopPropagation()">
+          <div class="modal-title">${s.modal==='editGuma'?'Uredi gumu':'Dodaj gumu'} <span class="btn-close" data-action="closeModal">${ico.x}</span></div>
+          ${nextSifra?`<div class="sifra-prev"><span>Šifra:</span> ${nextSifra}</div>`:''}
+          <div class="fg2"><label>Sezona *</label><select id="f-sezona"><option value="">— Odaberi —</option><option ${f.sezona==='Zimska'?'selected':''}>Zimska</option><option ${f.sezona==='Ljetna'?'selected':''}>Ljetna</option></select></div>
+          <div class="two-col">
+            <div class="fg2"><label>Širina (mm) *</label><input id="f-sirina" type="number" placeholder="205" value="${f.sirina||''}"/></div>
+            <div class="fg2"><label>Visina (%) *</label><input id="f-visina" type="number" placeholder="55" value="${f.visina||''}"/></div>
+          </div>
+          <div class="fg2"><label>Promjer (inch) *</label><input id="f-promjer" type="number" placeholder="16" value="${f.promjer||''}"/></div>
+          <div class="fg2">
+            <label>Šifra police * (obavezno)</label>
+            <input id="f-polica" class="${policaClass}" placeholder="npr. P10" value="${f.policaKod||''}" autocomplete="off"/>
+            ${f.policaKod?.trim() && polica ? `<div class="polica-hint ok">${ico.check} ${polica.magacin_naziv} › ${polica.prolaz_naziv} › ${polica.regal_naziv} › ${polica.naziv}</div>` : ''}
+            ${f.policaKod?.trim() && !polica ? `<div class="polica-hint err">✕ Polica "${f.policaKod}" ne postoji</div>` : ''}
+            ${errMsg ? `<div class="polica-error">⚠ ${errMsg}</div>` : ''}
+            ${!f.policaKod?.trim() && s.police.length > 0 ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">Dostupne: ${availPolice}</div>` : ''}
+            ${s.police.length === 0 ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">⚙️ Nema polica — kreiraj ih u podešavanjima.</div>` : ''}
+          </div>
+          <div class="fg2"><label>Napomena</label><textarea id="f-napomena" placeholder="Stanje, opis...">${f.napomena||''}</textarea></div>
+          <div class="fg2">
+            <label>Slike</label>
+            <div class="img-zone" data-action="openFilePicker">${ico.img}<span>Klikni za dodavanje slika</span></div>
+            <input id="file-input" type="file" accept="image/*" multiple style="display:none"/>
+            ${(f.slike||[]).length > 0 ? `<div class="img-grid">${f.slike.map((src,i) => `<div class="img-item"><img src="${src}"/><button class="img-rm" data-action="removeImg" data-idx="${i}">✕</button></div>`).join('')}</div>` : ''}
+          </div>
+          <div class="modal-foot"><button class="btn-cancel" data-action="closeModal">Odustani</button><button class="btn-save" data-action="saveGuma">${s.modal==='editGuma'?'Sačuvaj izmjene':'Sačuvaj gumu'}</button></div>
+        </div>
+      </div>`;
+  }
+
+  if (s.modal === 'detail' && s.detailGuma) {
+    const g = s.detailGuma;
+    return `
+      <div class="overlay" data-action="closeModal">
+        <div class="modal" onclick="event.stopPropagation()">
+          <div class="modal-title">${g.sirina}/${g.visina} R${g.promjer} <span class="btn-close" data-action="closeModal">${ico.x}</span></div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <span class="badge-season ${g.sezona==='Zimska'?'z':'l'}" style="position:static;display:inline-flex">${g.sezona==='Zimska'?ico.snow:ico.sun} ${g.sezona}</span>
+            <span style="font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:18px;color:var(--accent);letter-spacing:2px">${g.sifra}</span>
+          </div>
+          ${g.slike&&g.slike.length>0?`<div class="det-imgs">${g.slike.map(s=>`<img src="${s}" alt=""/>`).join('')}</div>`:''}
+          <div class="specs-grid">
+            <div class="spec-box"><div class="spec-lbl">Širina</div><div class="spec-val">${g.sirina} mm</div></div>
+            <div class="spec-box"><div class="spec-lbl">Visina</div><div class="spec-val">${g.visina}%</div></div>
+            <div class="spec-box"><div class="spec-lbl">Promjer</div><div class="spec-val">R${g.promjer}"</div></div>
+            <div class="spec-box"><div class="spec-lbl">Šifra</div><div class="spec-val" style="color:var(--accent)">${g.sifra}</div></div>
+          </div>
+          ${g.polica_kod?`<div class="loc-box">📍 ${g.polica_kod}</div>`:''}
+          ${g.prodato?`<div class="sold-box">✓ Prodato${g.datum_prodaje?` · ${g.datum_prodaje}`:''}${g.cijena_prodaje?`<span style="margin-left:auto;font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:15px">${g.cijena_prodaje}</span>`:''}</div>`:''}
+          ${g.napomena?`<div class="sec-lbl">Napomena</div><p style="font-size:13px;color:var(--muted);line-height:1.6">${g.napomena}</p>`:''}
+          <div class="modal-foot">
+            <div class="foot-left"><button class="btn-del-sm" data-action="deleteGuma" data-id="${g.id}">${ico.trash} Obriši</button></div>
+            ${!g.prodato?`<button class="btn-edit" data-action="openEditGuma" data-id="${g.id}">${ico.edit} Uredi</button>`:''}
+            ${!g.prodato?`<button class="btn-sell" data-action="openSell">${ico.sell} Prodaj gumu</button>`:''}
+            ${g.prodato?`<button class="btn-cancel" data-action="closeModal">Zatvori</button>`:''}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  if (s.modal === 'sell' && s.detailGuma) {
+    const g = s.detailGuma;
+    return `
+      <div class="overlay" data-action="closeModal">
+        <div class="modal" onclick="event.stopPropagation()">
+          <div class="modal-title">Prodaj gumu <span class="btn-close" data-action="closeModal">${ico.x}</span></div>
+          <div class="sell-box">
+            <p>Prodaješ: <strong>${g.sifra} — ${g.sirina}/${g.visina} R${g.promjer} (${g.sezona})</strong><br/>Guma prelazi u status <strong>"Prodato"</strong>.</p>
+            <div class="fg2">
+              <label>Prodajna cijena (opcionalno)</label>
+              <div class="price-row"><input class="price-inp" id="sell-price" type="number" placeholder="0" value="${s.sellPrice}"/><span class="price-curr">KM</span></div>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button class="btn-cancel" data-action="closeModal">Odustani</button>
+            <button class="btn-sell" data-action="confirmSell">${ico.sell} ${s.sellPrice?`Prodaj za ${s.sellPrice} KM`:'Potvrdi prodaju'}</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  return '';
+}
+
+// ===== EVENTS =====
+function attachEvents() {
+  // data-action clicks
+  document.addEventListener('click', handleClick, { once: true });
+
+  // filter inputs — live
+  document.querySelectorAll('[data-filter]').forEach(el => {
+    el.addEventListener('input', e => {
+      state.filters[e.target.dataset.filter] = e.target.value;
+      render();
+    });
+  });
+
+  // form live updates
+  ['f-sezona','f-sirina','f-visina','f-promjer','f-polica','f-napomena'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const key = { 'f-sezona':'sezona','f-sirina':'sirina','f-visina':'visina','f-promjer':'promjer','f-polica':'policaKod','f-napomena':'napomena' }[id];
+    el.addEventListener('input', e => { state.form[key] = e.target.value; render(); });
+  });
+
+  // custom polica inputs
+  document.querySelectorAll('.custom-polica-inp').forEach(el => {
+    el.addEventListener('input', e => {
+      state.customPolica[e.target.dataset.rid] = e.target.value;
+      render();
+    });
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.stopPropagation(); doAddCustomPolica(e.target.closest('[data-action="addCustomPolica"]')?.dataset || e.target.parentElement.querySelector('[data-action="addCustomPolica"]')?.dataset); }
+    });
+  });
+
+  // file input
+  const fi = document.getElementById('file-input');
+  if (fi) fi.addEventListener('change', handleFileInput);
+
+  // sell price live
+  const sp = document.getElementById('sell-price');
+  if (sp) sp.addEventListener('input', e => { state.sellPrice = e.target.value; render(); });
+
+  // mag-naziv enter
+  const mn = document.getElementById('mag-naziv');
+  if (mn) mn.addEventListener('keydown', e => { if (e.key === 'Enter') doSaveMag(); });
+}
+
+function handleClick(e) {
+  const el = e.target.closest('[data-action]');
+  if (!el) { document.addEventListener('click', handleClick, { once: true }); return; }
+  const action = el.dataset.action;
+  const d = el.dataset;
+
+  const actions = {
+    toggleSettings: () => { state.settingsOpen = !state.settingsOpen; render(); },
+    openAddGuma: () => { state.modal = 'addGuma'; state.form = {...EMPTY_FORM}; state.submitAttempted = false; render(); },
+    openAddMag: () => { state.modal = 'addMag'; state.form = { naziv: '' }; render(); },
+    closeModal: () => { state.modal = null; render(); },
+    saveMag: () => doSaveMag(),
+    saveGuma: () => doSaveGuma(),
+    tabStanje: () => { state.statusTab = 'stanje'; render(); },
+    tabProdato: () => { state.statusTab = 'prodato'; render(); },
+    search: () => render(),
+    openDetail: () => {
+      const g = state.gume.find(x => x.id == d.id);
+      if (g) { state.detailGuma = g; state.modal = 'detail'; render(); }
+    },
+    openEditGuma: () => {
+      const g = state.gume.find(x => x.id == d.id);
+      if (!g) return;
+      state.form = { sezona: g.sezona, sirina: g.sirina, visina: g.visina, promjer: g.promjer, napomena: g.napomena||'', policaKod: g.polica_kod||'', slike: g.slike ? [...g.slike] : [] };
+      state.editingId = g.id;
+      state.modal = 'editGuma';
+      state.submitAttempted = false;
+      render();
+    },
+    openSell: () => { state.sellPrice = ''; state.modal = 'sell'; render(); },
+    confirmSell: () => doSell(),
+    deleteGuma: () => doDeleteGuma(d.id),
+    addProlaz: () => doAddProlaz(d.mid),
+    delProlaz: () => doDelProlaz(d.mid, d.pid),
+    addRegal: () => doAddRegal(d.mid, d.pid),
+    delRegal: () => doDelRegal(d.mid, d.pid, d.rid),
+    addPolica: () => doAddPolica(d.mid, d.pid, d.rid),
+    addCustomPolica: () => doAddCustomPolica(d),
+    delPolica: () => doDelPolica(d.mid, d.pid, d.rid, d.plid),
+    delMag: () => doDelMag(d.id),
+    openFilePicker: () => { document.getElementById('file-input')?.click(); },
+    removeImg: () => { state.form.slike = state.form.slike.filter((_,i) => i != d.idx); render(); },
+  };
+
+  const fn = actions[action];
+  if (fn) fn();
+
+  // toggle tree rows
+  const toggleEl = e.target.closest('[data-toggle]');
+  if (toggleEl && !el.closest('[data-action]')?.dataset.action?.startsWith('del') && action !== 'delMag' && action !== 'delProlaz' && action !== 'delRegal' && action !== 'addProlaz' && action !== 'addRegal' && action !== 'addPolica' && action !== 'addCustomPolica' && action !== 'delPolica') {
+    // toggle handled separately below
+  }
+
+  document.addEventListener('click', handleClick, { once: true });
+}
+
+// Attach toggle separately on tree rows
+document.addEventListener('click', function treeToggle(e) {
+  const row = e.target.closest('[data-toggle]');
+  if (!row) return;
+  // Don't toggle if clicking a del/add btn inside
+  if (e.target.closest('[data-action]')) return;
+  const { toggle, id } = row.dataset;
+  if (toggle === 'mag') { state.openMag[id] = !state.openMag[id]; render(); }
+  if (toggle === 'prolaz') { state.openProlaz[id] = !state.openProlaz[id]; render(); }
+  if (toggle === 'regal') { state.openRegal[id] = !state.openRegal[id]; render(); }
+});
+
+// ===== ACTIONS =====
+async function doSaveMag() {
+  const naziv = document.getElementById('mag-naziv')?.value?.trim();
+  if (!naziv) return;
+  try {
+    const m = await apiFetch('/magacini', { method:'POST', body:{ naziv } });
+    m.prolazi = [];
+    state.magacini.push(m);
+    state.openMag[m.id] = true;
+    state.modal = null;
+    showToast(`Magacin "${naziv}" kreiran`);
+  } catch(e) { showToast(e.message, 'err'); }
+}
+
+async function doDelMag(id) {
+  if (!confirm('Obrisati magacin i sve što je u njemu?')) return;
+  await apiFetch(`/magacini/${id}`, { method:'DELETE' });
+  state.magacini = state.magacini.filter(m => m.id != id);
+  await loadPolice();
+  showToast('Magacin obrisan');
+}
+
+async function doAddProlaz(mid) {
+  const pr = await apiFetch('/prolazi', { method:'POST', body:{ magacin_id: mid } });
+  pr.regali = [];
+  const mag = state.magacini.find(m => m.id == mid);
+  if (mag) { mag.prolazi.push(pr); state.openMag[mid] = true; state.openProlaz[pr.id] = true; }
+  render();
+}
+
+async function doDelProlaz(mid, pid) {
+  await apiFetch(`/prolazi/${pid}`, { method:'DELETE' });
+  const mag = state.magacini.find(m => m.id == mid);
+  if (mag) mag.prolazi = mag.prolazi.filter(p => p.id != pid);
+  await loadPolice();
+  render();
+}
+
+async function doAddRegal(mid, pid) {
+  const r = await apiFetch('/regali', { method:'POST', body:{ prolaz_id: pid } });
+  r.police = [];
+  const mag = state.magacini.find(m => m.id == mid);
+  if (mag) {
+    const pr = mag.prolazi.find(p => p.id == pid);
+    if (pr) { pr.regali.push(r); state.openProlaz[pid] = true; state.openRegal[r.id] = true; }
+  }
+  render();
+}
+
+async function doDelRegal(mid, pid, rid) {
+  await apiFetch(`/regali/${rid}`, { method:'DELETE' });
+  const mag = state.magacini.find(m => m.id == mid);
+  if (mag) {
+    const pr = mag.prolazi.find(p => p.id == pid);
+    if (pr) pr.regali = pr.regali.filter(r => r.id != rid);
+  }
+  await loadPolice();
+  render();
+}
+
+async function doAddPolica(mid, pid, rid) {
+  try {
+    const pl = await apiFetch('/police/auto', { method:'POST', body:{ regal_id: rid } });
+    const mag = state.magacini.find(m => m.id == mid);
+    if (mag) {
+      const pr = mag.prolazi.find(p => p.id == pid);
+      if (pr) { const r = pr.regali.find(r => r.id == rid); if (r) { r.police.push(pl); state.openRegal[rid] = true; } }
+    }
+    await loadPolice();
+    render();
+  } catch(e) { showToast(e.message, 'err'); }
+}
+
+async function doAddCustomPolica(d) {
+  if (!d) return;
+  const raw = (state.customPolica[d.rid] || '').trim();
+  if (!raw) return;
+  try {
+    const pl = await apiFetch('/police/custom', { method:'POST', body:{ regal_id: d.rid, naziv: raw } });
+    const mag = state.magacini.find(m => m.id == d.mid);
+    if (mag) {
+      const pr = mag.prolazi.find(p => p.id == d.pid);
+      if (pr) { const r = pr.regali.find(r => r.id == d.rid); if (r) { r.police.push(pl); state.openRegal[d.rid] = true; } }
+    }
+    state.customPolica[d.rid] = '';
+    await loadPolice();
+    render();
+  } catch(e) { showToast(e.message, 'err'); }
+}
+
+async function doDelPolica(mid, pid, rid, plid) {
+  await apiFetch(`/police/${plid}`, { method:'DELETE' });
+  const mag = state.magacini.find(m => m.id == mid);
+  if (mag) {
+    const pr = mag.prolazi.find(p => p.id == pid);
+    if (pr) { const r = pr.regali.find(r => r.id == rid); if (r) r.police = r.police.filter(pl => pl.id != plid); }
+  }
+  await loadPolice();
+  render();
+}
+
+async function loadPolice() {
+  state.police = await apiFetch('/police');
+}
+
+async function doSaveGuma() {
+  state.submitAttempted = true;
+  const f = state.form;
+  const polica = getPolica(f.policaKod);
+  if (!f.sezona || !f.sirina || !f.visina || !f.promjer || !polica) { render(); return; }
+  try {
+    const body = { sezona: f.sezona, sirina: f.sirina, visina: f.visina, promjer: f.promjer, napomena: f.napomena, policaKod: polica.naziv, slike: f.slike||[] };
+    let g;
+    if (state.modal === 'editGuma') {
+      g = await apiFetch(`/gume/${state.editingId}`, { method:'PUT', body });
+      state.gume = state.gume.map(x => x.id === g.id ? g : x);
+    } else {
+      g = await apiFetch('/gume', { method:'POST', body });
+      state.gume.unshift(g);
+      state.counters.gu++;
+    }
+    state.modal = null;
+    state.submitAttempted = false;
+    showToast(state.modal === 'editGuma' ? 'Guma ažurirana' : `Guma ${g.sifra} dodana`);
+  } catch(e) { showToast(e.message, 'err'); render(); }
+}
+
+async function doSell() {
+  const price = document.getElementById('sell-price')?.value || state.sellPrice;
+  try {
+    const g = await apiFetch(`/gume/${state.detailGuma.id}/prodaj`, { method:'POST', body:{ cijena: price } });
+    state.gume = state.gume.map(x => x.id === g.id ? g : x);
+    state.modal = null;
+    state.detailGuma = null;
+    showToast(`${g.sifra} prodana${g.cijena_prodaje?' za '+g.cijena_prodaje:''}`);
+  } catch(e) { showToast(e.message, 'err'); }
+}
+
+async function doDeleteGuma(id) {
+  if (!confirm('Obrisati gumu?')) return;
+  await apiFetch(`/gume/${id}`, { method:'DELETE' });
+  state.gume = state.gume.filter(g => g.id != id);
+  state.modal = null;
+  state.detailGuma = null;
+  showToast('Guma obrisana');
+}
+
+function handleFileInput(e) {
+  Array.from(e.target.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onloadend = ev => {
+      if (ev.target.result) { state.form.slike = [...(state.form.slike||[]), ev.target.result]; render(); }
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+// ===== INIT =====
+render();
+loadAll();
+</script>
+</body>
+</html>
