@@ -522,7 +522,22 @@ function App() {
     } catch(e){ showToast(e.message,'err'); }
   };
 
-  const doBackup = ()=>{ window.open('/api/backup','_blank'); };
+  const doBackup = async()=>{
+    try {
+      showToast('Preuzimanje backupa...');
+      const token = getToken();
+      const res = await fetch('/api/backup', {headers:{'Authorization':'Bearer '+token}});
+      if (!res.ok) { const d=await res.json(); showToast(d.error||'Greska','err'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const date = new Date().toISOString().slice(0,10);
+      a.href = url; a.download = 'autodelic-backup-'+date+'.db';
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+      showToast('Backup preuzet!');
+    } catch(e){ showToast('Greska: '+e.message,'err'); }
+  };
 
   // ===== IMAGE UPLOAD WITH PROGRESS =====
   const uploadingRef = useRef(false);
@@ -725,6 +740,39 @@ function App() {
                   </div>
                 </div>
               </>
+            )}
+
+            {setTab==='dimenzije'&&(
+              <div>
+                {[
+                  {label:'Sirina (mm)', type:'sirina', base:SIRINA_OPTIONS, custom:customSirina},
+                  {label:'Profil (%)', type:'visina', base:VISINA_OPTIONS, custom:customVisina},
+                  {label:'Promjer', type:'promjer', base:PROMJER_OPTIONS, custom:customPromjer},
+                ].map(({label,type,base,custom})=>(
+                  <div key={type} style={{marginBottom:14,background:'var(--card)',border:'1px solid var(--border)',borderRadius:7,padding:'11px 13px'}}>
+                    <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)',marginBottom:8}}>{label}</div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:8}}>
+                      {base.map(v=><span key={v} style={{background:'rgba(255,255,255,.05)',border:'1px solid var(--border)',borderRadius:3,fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,padding:'2px 7px',color:'var(--muted)'}}>{v}</span>)}
+                      {custom.map(v=>(
+                        <span key={v} style={{background:'rgba(240,180,41,.1)',border:'1px solid rgba(240,180,41,.3)',borderRadius:3,fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,padding:'2px 7px',color:'var(--accent)',display:'inline-flex',alignItems:'center',gap:4}}>
+                          {v}
+                          <span style={{cursor:'pointer',fontSize:12,lineHeight:1}} onClick={()=>removeCustomDim(type,v)}>×</span>
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{display:'flex',gap:5}}>
+                      <input
+                        style={{flex:1,background:'var(--surf)',border:'1px dashed var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow,sans-serif',fontSize:12,padding:'5px 8px',outline:'none'}}
+                        placeholder={'Dodaj npr. '+(type==='sirina'?'185':type==='visina'?'45':'21')}
+                        value={newDimVal[type]||''}
+                        onChange={e=>setNewDimVal(p=>({...p,[type]:e.target.value}))}
+                        onKeyDown={e=>e.key==='Enter'&&addCustomDim(type,newDimVal[type]||'')}
+                      />
+                      <button className="btn-new" onClick={()=>addCustomDim(type,newDimVal[type]||'')}><I.Plus/> Dodaj</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
