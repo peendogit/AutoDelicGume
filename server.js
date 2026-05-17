@@ -18,6 +18,14 @@ if (!fs.existsSync(publicPath)) publicPath = path.join(process.cwd(), 'Public');
 app.use(express.static(publicPath));
 
 // Turso client
+if (!process.env.TURSO_URL || !process.env.TURSO_TOKEN) {
+  console.error('❌ TURSO_URL i TURSO_TOKEN moraju biti postavljeni kao environment varijable!');
+  console.error('   Idi na Render → Environment i dodaj:');
+  console.error('   TURSO_URL = libsql://ime-baze.turso.io');
+  console.error('   TURSO_TOKEN = tvoj-token');
+  process.exit(1);
+}
+
 const db = createClient({
   url: process.env.TURSO_URL,
   authToken: process.env.TURSO_TOKEN,
