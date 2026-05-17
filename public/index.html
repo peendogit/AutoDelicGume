@@ -246,7 +246,7 @@ const ico = {
 // ===== RENDER =====
 function render() {
   document.getElementById('root').innerHTML = buildHTML();
-  attachEvents();
+  // Nema attachEvents — svi listeneri su globalni na document
 }
 
 function buildHTML() {
@@ -507,117 +507,105 @@ function buildModal() {
   return '';
 }
 
-// ===== EVENTS =====
+// ===== EVENTS — stable delegation, nikad se ne gubi =====
 function attachEvents() {
-  // data-action clicks
-  document.addEventListener('click', handleClick, { once: true });
-
-  // filter inputs — live
-  document.querySelectorAll('[data-filter]').forEach(el => {
-    el.addEventListener('input', e => {
-      state.filters[e.target.dataset.filter] = e.target.value;
-      render();
-    });
-  });
-
-  // form live updates
-  ['f-sezona','f-sirina','f-visina','f-promjer','f-polica','f-napomena'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const key = { 'f-sezona':'sezona','f-sirina':'sirina','f-visina':'visina','f-promjer':'promjer','f-polica':'policaKod','f-napomena':'napomena' }[id];
-    el.addEventListener('input', e => { state.form[key] = e.target.value; render(); });
-  });
-
-  // custom polica inputs
-  document.querySelectorAll('.custom-polica-inp').forEach(el => {
-    el.addEventListener('input', e => {
-      state.customPolica[e.target.dataset.rid] = e.target.value;
-      render();
-    });
-    el.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.stopPropagation(); doAddCustomPolica(e.target.closest('[data-action="addCustomPolica"]')?.dataset || e.target.parentElement.querySelector('[data-action="addCustomPolica"]')?.dataset); }
-    });
-  });
-
-  // file input
-  const fi = document.getElementById('file-input');
-  if (fi) fi.addEventListener('change', handleFileInput);
-
-  // sell price live
-  const sp = document.getElementById('sell-price');
-  if (sp) sp.addEventListener('input', e => { state.sellPrice = e.target.value; render(); });
-
-  // mag-naziv enter
-  const mn = document.getElementById('mag-naziv');
-  if (mn) mn.addEventListener('keydown', e => { if (e.key === 'Enter') doSaveMag(); });
+  // Ništa — sve je na document level listenerima ispod
 }
 
-function handleClick(e) {
+// Jedan globalni click listener — nikad se ne uklanja
+document.addEventListener('click', function(e) {
+  // 1. Tree toggle (mag/prolaz/regal) — samo ako nije kliknuta akcija unutar
+  const toggleRow = e.target.closest('[data-toggle]');
+  if (toggleRow && !e.target.closest('[data-action]')) {
+    const { toggle, id } = toggleRow.dataset;
+    if (toggle === 'mag') { state.openMag[id] = !state.openMag[id]; render(); return; }
+    if (toggle === 'prolaz') { state.openProlaz[id] = !state.openProlaz[id]; render(); return; }
+    if (toggle === 'regal') { state.openRegal[id] = !state.openRegal[id]; render(); return; }
+  }
+
+  // 2. Action buttons
   const el = e.target.closest('[data-action]');
-  if (!el) { document.addEventListener('click', handleClick, { once: true }); return; }
+  if (!el) return;
+  e.stopPropagation();
   const action = el.dataset.action;
   const d = el.dataset;
 
-  const actions = {
-    toggleSettings: () => { state.settingsOpen = !state.settingsOpen; render(); },
-    openAddGuma: () => { state.modal = 'addGuma'; state.form = {...EMPTY_FORM}; state.submitAttempted = false; render(); },
-    openAddMag: () => { state.modal = 'addMag'; state.form = { naziv: '' }; render(); },
-    closeModal: () => { state.modal = null; render(); },
-    saveMag: () => doSaveMag(),
-    saveGuma: () => doSaveGuma(),
-    tabStanje: () => { state.statusTab = 'stanje'; render(); },
-    tabProdato: () => { state.statusTab = 'prodato'; render(); },
-    search: () => render(),
-    openDetail: () => {
-      const g = state.gume.find(x => x.id == d.id);
-      if (g) { state.detailGuma = g; state.modal = 'detail'; render(); }
-    },
-    openEditGuma: () => {
-      const g = state.gume.find(x => x.id == d.id);
-      if (!g) return;
-      state.form = { sezona: g.sezona, sirina: g.sirina, visina: g.visina, promjer: g.promjer, napomena: g.napomena||'', policaKod: g.polica_kod||'', slike: g.slike ? [...g.slike] : [] };
-      state.editingId = g.id;
-      state.modal = 'editGuma';
-      state.submitAttempted = false;
-      render();
-    },
-    openSell: () => { state.sellPrice = ''; state.modal = 'sell'; render(); },
-    confirmSell: () => doSell(),
-    deleteGuma: () => doDeleteGuma(d.id),
-    addProlaz: () => doAddProlaz(d.mid),
-    delProlaz: () => doDelProlaz(d.mid, d.pid),
-    addRegal: () => doAddRegal(d.mid, d.pid),
-    delRegal: () => doDelRegal(d.mid, d.pid, d.rid),
-    addPolica: () => doAddPolica(d.mid, d.pid, d.rid),
-    addCustomPolica: () => doAddCustomPolica(d),
-    delPolica: () => doDelPolica(d.mid, d.pid, d.rid, d.plid),
-    delMag: () => doDelMag(d.id),
-    openFilePicker: () => { document.getElementById('file-input')?.click(); },
-    removeImg: () => { state.form.slike = state.form.slike.filter((_,i) => i != d.idx); render(); },
-  };
+  if (action === 'toggleSettings') { state.settingsOpen = !state.settingsOpen; render(); }
+  else if (action === 'openAddGuma') { state.modal = 'addGuma'; state.form = {...EMPTY_FORM}; state.submitAttempted = false; render(); }
+  else if (action === 'openAddMag') { state.modal = 'addMag'; state.form = { naziv: '' }; render(); }
+  else if (action === 'closeModal') { state.modal = null; render(); }
+  else if (action === 'saveMag') { doSaveMag(); }
+  else if (action === 'saveGuma') { doSaveGuma(); }
+  else if (action === 'tabStanje') { state.statusTab = 'stanje'; render(); }
+  else if (action === 'tabProdato') { state.statusTab = 'prodato'; render(); }
+  else if (action === 'search') { render(); }
+  else if (action === 'openDetail') {
+    const g = state.gume.find(x => x.id == d.id);
+    if (g) { state.detailGuma = g; state.modal = 'detail'; render(); }
+  }
+  else if (action === 'openEditGuma') {
+    const g = state.gume.find(x => x.id == d.id);
+    if (!g) return;
+    state.form = { sezona: g.sezona, sirina: g.sirina, visina: g.visina, promjer: g.promjer, napomena: g.napomena||'', policaKod: g.polica_kod||'', slike: g.slike ? [...g.slike] : [] };
+    state.editingId = g.id; state.modal = 'editGuma'; state.submitAttempted = false; render();
+  }
+  else if (action === 'openSell') { state.sellPrice = ''; state.modal = 'sell'; render(); }
+  else if (action === 'confirmSell') { doSell(); }
+  else if (action === 'deleteGuma') { doDeleteGuma(d.id); }
+  else if (action === 'addProlaz') { doAddProlaz(d.mid); }
+  else if (action === 'delProlaz') { doDelProlaz(d.mid, d.pid); }
+  else if (action === 'addRegal') { doAddRegal(d.mid, d.pid); }
+  else if (action === 'delRegal') { doDelRegal(d.mid, d.pid, d.rid); }
+  else if (action === 'addPolica') { doAddPolica(d.mid, d.pid, d.rid); }
+  else if (action === 'addCustomPolica') { doAddCustomPolica(d); }
+  else if (action === 'delPolica') { doDelPolica(d.mid, d.pid, d.rid, d.plid); }
+  else if (action === 'delMag') { doDelMag(d.id); }
+  else if (action === 'openFilePicker') { document.getElementById('file-input')?.click(); }
+  else if (action === 'removeImg') { state.form.slike = (state.form.slike||[]).filter((_,i) => i != d.idx); render(); }
+});
 
-  const fn = actions[action];
-  if (fn) fn();
+// Jedan globalni input listener
+document.addEventListener('input', function(e) {
+  const t = e.target;
 
-  // toggle tree rows
-  const toggleEl = e.target.closest('[data-toggle]');
-  if (toggleEl && !el.closest('[data-action]')?.dataset.action?.startsWith('del') && action !== 'delMag' && action !== 'delProlaz' && action !== 'delRegal' && action !== 'addProlaz' && action !== 'addRegal' && action !== 'addPolica' && action !== 'addCustomPolica' && action !== 'delPolica') {
-    // toggle handled separately below
+  // Filter inputs
+  if (t.dataset.filter) {
+    state.filters[t.dataset.filter] = t.value;
+    render(); return;
   }
 
-  document.addEventListener('click', handleClick, { once: true });
-}
+  // Form fields
+  const formMap = { 'f-sezona':'sezona','f-sirina':'sirina','f-visina':'visina','f-promjer':'promjer','f-polica':'policaKod','f-napomena':'napomena' };
+  if (formMap[t.id]) { state.form[formMap[t.id]] = t.value; render(); return; }
 
-// Attach toggle separately on tree rows
-document.addEventListener('click', function treeToggle(e) {
-  const row = e.target.closest('[data-toggle]');
-  if (!row) return;
-  // Don't toggle if clicking a del/add btn inside
-  if (e.target.closest('[data-action]')) return;
-  const { toggle, id } = row.dataset;
-  if (toggle === 'mag') { state.openMag[id] = !state.openMag[id]; render(); }
-  if (toggle === 'prolaz') { state.openProlaz[id] = !state.openProlaz[id]; render(); }
-  if (toggle === 'regal') { state.openRegal[id] = !state.openRegal[id]; render(); }
+  // Custom polica input
+  if (t.classList.contains('custom-polica-inp')) {
+    state.customPolica[t.dataset.rid] = t.value; render(); return;
+  }
+
+  // Sell price
+  if (t.id === 'sell-price') { state.sellPrice = t.value; render(); return; }
+
+  // File input — koristi change event ne input
+  if (t.id === 'file-input') { return; } // handled by change listener below
+});
+
+// File input change (poseban event)
+document.addEventListener('change', function(e) {
+  if (e.target.id === 'file-input') handleFileInput(e);
+});
+
+// Jedan globalni keydown listener
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    if (e.target.id === 'mag-naziv') { doSaveMag(); }
+    if (e.target.classList.contains('custom-polica-inp')) {
+      const row = e.target.closest('.custom-polica-row');
+      const btn = row?.querySelector('[data-action="addCustomPolica"]');
+      if (btn) doAddCustomPolica(btn.dataset);
+    }
+  }
+  if (e.key === 'Escape' && state.modal) { state.modal = null; render(); }
 });
 
 // ===== ACTIONS =====
