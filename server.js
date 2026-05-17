@@ -178,6 +178,34 @@ app.delete('/api/korisnici/:id', requireAdmin, async (req,res) => {
   res.json({ok:true});
 });
 
+app.put('/api/korisnici/:id', requireAdmin, async (req,res) => {
+  try {
+    const {username, password, role} = req.body;
+    if (!username?.trim()) return res.status(400).json({error:'Korisnicko ime je obavezno'});
+    const existing = await dbGet('SELECT * FROM korisnici WHERE id=?',[req.params.id]);
+    if (!existing) return res.status(404).json({error:'Korisnik nije pronaden'});
+    let sql = 'UPDATE korisnici SET username=?, role=? WHERE id=?';
+    let params = [username.trim(), role||existing.role, req.params.id];
+    if (password?.trim()) {
+      sql = 'UPDATE korisnici SET username=?, role=?, password_hash=? WHERE id=?';
+      params = [username.trim(), role||existing.role, hash(password), req.params.id];
+    }
+    await dbRun(sql, params);
+    const updated = await dbGet('SELECT id,username,role,created_at FROM korisnici WHERE id=?',[req.params.id]);
+    res.json(updated);
+  } catch(e) { res.status(400).json({error:'Korisnicko ime vec postoji'}); }
+});
+
+// BACKUP — download SQLite DB file
+app.get('/api/backup', requireAdmin, (req,res) => {
+  const dbFile = dbPath;
+  if (!fs.existsSync(dbFile)) return res.status(404).json({error:'Baza ne postoji'});
+  const date = new Date().toISOString().slice(0,10);
+  res.setHeader('Content-Disposition', `attachment; filename="autodelic-backup-${date}.db"`);
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.sendFile(path.resolve(dbFile));
+});
+
 // MAGACINI
 async function getMagaciniTree() {
   const magacini = await dbAll('SELECT * FROM magacini ORDER BY id');
