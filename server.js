@@ -11,14 +11,12 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '100mb' }));
 
-// Public folder
 let publicPath = path.join(__dirname, 'public');
 if (!fs.existsSync(publicPath)) publicPath = path.join(__dirname, 'Public');
 if (!fs.existsSync(publicPath)) publicPath = path.join(process.cwd(), 'public');
 if (!fs.existsSync(publicPath)) publicPath = path.join(process.cwd(), 'Public');
 app.use(express.static(publicPath));
 
-// DB setup
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'data', 'gume.db');
 if (!fs.existsSync(path.dirname(dbPath))) fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
@@ -86,6 +84,8 @@ db.serialize(() => {
       prodato INTEGER DEFAULT 0,
       cijena_prodaje TEXT,
       datum_prodaje TEXT,
+      dodao_korisnik TEXT,
+      prodao_korisnik TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (polica_id) REFERENCES police(id) ON DELETE SET NULL
     );
@@ -96,7 +96,10 @@ db.serialize(() => {
     INSERT OR IGNORE INTO counters (key, value) VALUES ('gu', 9);
     INSERT OR IGNORE INTO counters (key, value) VALUES ('po', 9);
   `);
-  // Create default admin if not exists
+  // Add columns if they don't exist (for existing DBs)
+  db.run("ALTER TABLE gume ADD COLUMN dodao_korisnik TEXT", ()=>{});
+  db.run("ALTER TABLE gume ADD COLUMN prodao_korisnik TEXT", ()=>{});
+
   const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
   db.get('SELECT id FROM korisnici WHERE username=?', ['admin'], (err, row) => {
     if (!row) {
@@ -114,12 +117,11 @@ async function nextCounter(key) {
   return next;
 }
 
-// Auth middleware
 async function requireAuth(req, res, next) {
   const token = req.headers['authorization']?.replace('Bearer ','');
   if (!token) return res.status(401).json({error:'Nisi prijavljen'});
   const sesija = await dbGet('SELECT s.*,k.role,k.username FROM sesije s JOIN korisnici k ON s.korisnik_id=k.id WHERE s.token=?',[token]);
-  if (!sesija) return res.status(401).json({error:'Sesija istekla, prijavi se ponovo'});
+  if (!sesija) return res.status(401).json({error:'Sesija istekla'});
   req.user = sesija;
   next();
 }
@@ -131,11 +133,11 @@ async function requireAdmin(req, res, next) {
   });
 }
 
-// ===== AUTH ROUTES =====
+// AUTH
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({error:'Unesite korisnicko ime i lozinku'});
+    if (!username||!password) return res.status(400).json({error:'Unesite korisnicko ime i lozinku'});
     const k = await dbGet('SELECT * FROM korisnici WHERE username=? AND password_hash=?',[username.trim(), hash(password)]);
     if (!k) return res.status(401).json({error:'Pogresno korisnicko ime ili lozinka'});
     const token = genToken();
@@ -153,39 +155,26 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
   res.json({username:req.user.username, role:req.user.role});
 });
 
-// ===== KORISNICI (admin only) =====
-app.get('/api/korisnici', requireAdmin, async (req, res) => {
-  const lista = await dbAll('SELECT id,username,role,created_at FROM korisnici ORDER BY id');
-  res.json(lista);
+// KORISNICI
+app.get('/api/korisnici', requireAdmin, async (req,res) => {
+  res.json(await dbAll('SELECT id,username,role,created_at FROM korisnici ORDER BY id'));
 });
-
-app.post('/api/korisnici', requireAdmin, async (req, res) => {
+app.post('/api/korisnici', requireAdmin, async (req,res) => {
   try {
-    const { username, password, role } = req.body;
-    if (!username || !password) return res.status(400).json({error:'Unesite korisnicko ime i lozinku'});
-    const r = await dbRun('INSERT INTO korisnici (username,password_hash,role) VALUES (?,?,?)',
-      [username.trim(), hash(password), role||'radnik']);
-    res.json({id:r.lastID, username:username.trim(), role:role||'radnik'});
-  } catch(e) {
-    res.status(400).json({error:'Korisnicko ime vec postoji'});
-  }
+    const {username,password,role} = req.body;
+    if (!username||!password) return res.status(400).json({error:'Unesite korisnicko ime i lozinku'});
+    const r = await dbRun('INSERT INTO korisnici (username,password_hash,role) VALUES (?,?,?)',[username.trim(),hash(password),role||'radnik']);
+    res.json({id:r.lastID,username:username.trim(),role:role||'radnik'});
+  } catch(e) { res.status(400).json({error:'Korisnicko ime vec postoji'}); }
 });
-
-app.delete('/api/korisnici/:id', requireAdmin, async (req, res) => {
+app.delete('/api/korisnici/:id', requireAdmin, async (req,res) => {
   const k = await dbGet('SELECT role FROM korisnici WHERE id=?',[req.params.id]);
   if (k?.role==='admin') return res.status(400).json({error:'Ne mozete obrisati admin nalog'});
   await dbRun('DELETE FROM korisnici WHERE id=?',[req.params.id]);
   res.json({ok:true});
 });
 
-app.post('/api/korisnici/:id/password', requireAdmin, async (req, res) => {
-  const { password } = req.body;
-  if (!password) return res.status(400).json({error:'Unesite novu lozinku'});
-  await dbRun('UPDATE korisnici SET password_hash=? WHERE id=?',[hash(password),req.params.id]);
-  res.json({ok:true});
-});
-
-// ===== MAGACINI (admin only) =====
+// MAGACINI
 async function getMagaciniTree() {
   const magacini = await dbAll('SELECT * FROM magacini ORDER BY id');
   const result = [];
@@ -211,7 +200,7 @@ app.post('/api/magacini', requireAdmin, async (req,res) => {
   const {naziv} = req.body;
   if (!naziv?.trim()) return res.status(400).json({error:'Naziv obavezan'});
   const r = await dbRun('INSERT INTO magacini (naziv) VALUES (?)',[naziv.trim()]);
-  res.json({id:r.lastID, naziv:naziv.trim(), prolazi:[]});
+  res.json({id:r.lastID,naziv:naziv.trim(),prolazi:[]});
 });
 app.delete('/api/magacini/:id', requireAdmin, async (req,res) => {
   await dbRun('DELETE FROM magacini WHERE id=?',[req.params.id]); res.json({ok:true});
@@ -224,7 +213,7 @@ app.post('/api/prolazi', requireAdmin, async (req,res) => {
   const next = last ? String.fromCharCode(last.charCodeAt(0)+1) : 'A';
   const naziv = 'Prolaz '+next;
   const r = await dbRun('INSERT INTO prolazi (magacin_id,naziv) VALUES (?,?)',[magacin_id,naziv]);
-  res.json({id:r.lastID, magacin_id, naziv, regali:[]});
+  res.json({id:r.lastID,magacin_id,naziv,regali:[]});
 });
 app.delete('/api/prolazi/:id', requireAdmin, async (req,res) => {
   await dbRun('DELETE FROM prolazi WHERE id=?',[req.params.id]); res.json({ok:true});
@@ -237,7 +226,7 @@ app.post('/api/regali', requireAdmin, async (req,res) => {
   const next = nums.length ? Math.max(...nums)+1 : 1;
   const naziv = 'R'+next;
   const r = await dbRun('INSERT INTO regali (prolaz_id,naziv) VALUES (?,?)',[prolaz_id,naziv]);
-  res.json({id:r.lastID, prolaz_id, naziv, police:[]});
+  res.json({id:r.lastID,prolaz_id,naziv,police:[]});
 });
 app.delete('/api/regali/:id', requireAdmin, async (req,res) => {
   await dbRun('DELETE FROM regali WHERE id=?',[req.params.id]); res.json({ok:true});
@@ -254,22 +243,22 @@ app.post('/api/police/auto', requireAdmin, async (req,res) => {
     const num = await nextCounter('po');
     const naziv = 'P'+num;
     const r = await dbRun('INSERT INTO police (regal_id,naziv) VALUES (?,?)',[regal_id,naziv]);
-    res.json({id:r.lastID, regal_id, naziv});
+    res.json({id:r.lastID,regal_id,naziv});
   } catch(e) { res.status(400).json({error:'Polica vec postoji'}); }
 });
 app.post('/api/police/custom', requireAdmin, async (req,res) => {
   try {
-    const {regal_id, naziv:raw} = req.body;
+    const {regal_id,naziv:raw} = req.body;
     const naziv = raw.toUpperCase().startsWith('P') ? raw.toUpperCase() : 'P'+raw.toUpperCase();
     const r = await dbRun('INSERT INTO police (regal_id,naziv) VALUES (?,?)',[regal_id,naziv]);
-    res.json({id:r.lastID, regal_id, naziv});
+    res.json({id:r.lastID,regal_id,naziv});
   } catch(e) { res.status(400).json({error:'Polica vec postoji'}); }
 });
 app.delete('/api/police/:id', requireAdmin, async (req,res) => {
   await dbRun('DELETE FROM police WHERE id=?',[req.params.id]); res.json({ok:true});
 });
 
-// ===== GUME =====
+// GUME
 function formatGuma(g) {
   return {...g, slike:JSON.parse(g.slike||'[]'), prodato:g.prodato===1};
 }
@@ -286,8 +275,7 @@ app.get('/api/gume', requireAuth, async (req,res) => {
   if (promjer) { sql+=' AND promjer LIKE ?'; p.push('%'+promjer+'%'); }
   if (sifra) { sql+=' AND sifra LIKE ?'; p.push('%'+sifra+'%'); }
   sql += ' ORDER BY id DESC';
-  const gume = await dbAll(sql,p);
-  res.json(gume.map(formatGuma));
+  res.json((await dbAll(sql,p)).map(formatGuma));
 });
 
 app.post('/api/gume', requireAuth, async (req,res) => {
@@ -298,10 +286,9 @@ app.post('/api/gume', requireAuth, async (req,res) => {
     if (!polica) return res.status(400).json({error:'Polica "'+policaKod+'" ne postoji'});
     const num = await nextCounter('gu');
     const sifra = 'GU'+num;
-    await dbRun('INSERT INTO gume (sifra,sezona,sirina,visina,promjer,napomena,polica_id,polica_kod,slike) VALUES (?,?,?,?,?,?,?,?,?)',
-      [sifra,sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[])]);
-    const g = await dbGet('SELECT * FROM gume WHERE sifra=?',[sifra]);
-    res.json(formatGuma(g));
+    await dbRun('INSERT INTO gume (sifra,sezona,sirina,visina,promjer,napomena,polica_id,polica_kod,slike,dodao_korisnik) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      [sifra,sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),req.user.username]);
+    res.json(formatGuma(await dbGet('SELECT * FROM gume WHERE sifra=?',[sifra])));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
@@ -312,8 +299,18 @@ app.put('/api/gume/:id', requireAuth, async (req,res) => {
     if (!polica) return res.status(400).json({error:'Polica "'+policaKod+'" ne postoji'});
     await dbRun('UPDATE gume SET sezona=?,sirina=?,visina=?,promjer=?,napomena=?,polica_id=?,polica_kod=?,slike=? WHERE id=?',
       [sezona,sirina,visina,promjer,napomena||'',polica.id,policaKod,JSON.stringify(slike||[]),req.params.id]);
-    const g = await dbGet('SELECT * FROM gume WHERE id=?',[req.params.id]);
-    res.json(formatGuma(g));
+    res.json(formatGuma(await dbGet('SELECT * FROM gume WHERE id=?',[req.params.id])));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// Premjesti gumu na drugu policu
+app.post('/api/gume/:id/premjesti', requireAuth, async (req,res) => {
+  try {
+    const {policaKod} = req.body;
+    const polica = await dbGet('SELECT * FROM police WHERE naziv=?',[policaKod]);
+    if (!polica) return res.status(400).json({error:'Polica "'+policaKod+'" ne postoji'});
+    await dbRun('UPDATE gume SET polica_id=?,polica_kod=? WHERE id=?',[polica.id,policaKod,req.params.id]);
+    res.json(formatGuma(await dbGet('SELECT * FROM gume WHERE id=?',[req.params.id])));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
@@ -321,7 +318,8 @@ app.post('/api/gume/:id/prodaj', requireAuth, async (req,res) => {
   const {cijena} = req.body;
   const datum = new Date().toLocaleDateString('hr-HR');
   const cijenaTxt = cijena ? parseFloat(cijena).toLocaleString('hr-HR')+' KM' : null;
-  await dbRun('UPDATE gume SET prodato=1,cijena_prodaje=?,datum_prodaje=? WHERE id=?',[cijenaTxt,datum,req.params.id]);
+  await dbRun('UPDATE gume SET prodato=1,cijena_prodaje=?,datum_prodaje=?,prodao_korisnik=? WHERE id=?',
+    [cijenaTxt,datum,req.user.username,req.params.id]);
   res.json(formatGuma(await dbGet('SELECT * FROM gume WHERE id=?',[req.params.id])));
 });
 
@@ -329,7 +327,40 @@ app.delete('/api/gume/:id', requireAdmin, async (req,res) => {
   await dbRun('DELETE FROM gume WHERE id=?',[req.params.id]); res.json({ok:true});
 });
 
-// Serve frontend
+// ANALITIKA (admin only)
+app.get('/api/analitika', requireAdmin, async (req,res) => {
+  const [
+    ukupnoGuma, naStan, prodatoCount,
+    prihodUkupno, prodajaPoSezonama, prodajaPoMjesecima,
+    topRadnici, gumePoPolici, skoroDodane
+  ] = await Promise.all([
+    dbGet('SELECT COUNT(*) as c FROM gume'),
+    dbGet('SELECT COUNT(*) as c FROM gume WHERE prodato=0'),
+    dbGet('SELECT COUNT(*) as c FROM gume WHERE prodato=1'),
+    dbGet('SELECT SUM(CAST(REPLACE(REPLACE(cijena_prodaje," KM",""),".","") AS REAL)) as ukupno FROM gume WHERE prodato=1 AND cijena_prodaje IS NOT NULL'),
+    dbAll('SELECT sezona, COUNT(*) as ukupno, SUM(prodato) as prodato FROM gume GROUP BY sezona'),
+    dbAll(`SELECT substr(created_at,1,7) as mj, COUNT(*) as dodano,
+      SUM(CASE WHEN prodato=1 THEN 1 ELSE 0 END) as prodano
+      FROM gume GROUP BY mj ORDER BY mj DESC LIMIT 12`),
+    dbAll(`SELECT dodao_korisnik as korisnik, COUNT(*) as dodao,
+      (SELECT COUNT(*) FROM gume g2 WHERE g2.prodao_korisnik=g1.dodao_korisnik) as prodao
+      FROM gume g1 WHERE dodao_korisnik IS NOT NULL GROUP BY dodao_korisnik ORDER BY dodao DESC`),
+    dbAll(`SELECT polica_kod, COUNT(*) as guma_count FROM gume WHERE prodato=0 AND polica_kod IS NOT NULL GROUP BY polica_kod ORDER BY guma_count DESC LIMIT 10`),
+    dbAll('SELECT sifra,sezona,sirina,visina,promjer,polica_kod,created_at FROM gume WHERE prodato=0 ORDER BY created_at DESC LIMIT 5'),
+  ]);
+
+  res.json({
+    ukupnoGuma: ukupnoGuma?.c||0,
+    naStan: naStan?.c||0,
+    prodatoCount: prodatoCount?.c||0,
+    prodajaPoSezonama,
+    prodajaPoMjesecima,
+    topRadnici,
+    gumePoPolici,
+    skoroDodane,
+  });
+});
+
 app.get('*', (req,res) => {
   const attempts = [
     path.join(__dirname,'public','index.html'),
@@ -343,5 +374,4 @@ app.get('*', (req,res) => {
 });
 
 app.use((err,req,res,next) => { console.error(err); res.status(500).json({error:err.message}); });
-
 app.listen(PORT, () => console.log('Auto Delic Gume na portu', PORT));
