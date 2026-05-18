@@ -11,8 +11,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0e1018;--surf:#171b27;--card:#1c2133;--border:#252d42;--accent:#f0b429;--red:#e8532a;--blue:#4b8ef0;--green:#27ae60;--purple:#9b59b6;--text:#e6e9f4;--muted:#6e7a99;--radius:10px}
-.light{--bg:#f0f2f7;--surf:#ffffff;--card:#f7f9fc;--border:#dde1ed;--text:#1a1f2e;--muted:#7a8299;}
+:root{--bg:#0d1117;--surf:#161b22;--card:#21262d;--border:#30363d;--accent:#f0b429;--red:#f85149;--blue:#58a6ff;--green:#3fb950;--purple:#bc8cff;--text:#e6edf3;--muted:#8b949e;--radius:10px}
+.light{--bg:#f6f8fa;--surf:#ffffff;--card:#f0f3f6;--border:#d0d7de;--accent:#b35f00;--red:#cf222e;--blue:#0969da;--green:#1a7f37;--purple:#8250df;--text:#1f2328;--muted:#57606a;}
 body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-tap-highlight-color:transparent;padding-bottom:env(safe-area-inset-bottom,0)}
 .app{min-height:100vh;display:flex;flex-direction:column}
 
@@ -323,7 +323,7 @@ function LoginScreen({onLogin}) {
   const [error, setError] = useState('');
 
   const doLogin = async () => {
-    if (!username||!password) { setError('Unesite korisnicko ime i lozinku'); return; }
+    if (!username||!password) { setError('Unesite korisničko ime i lozinku'); return; }
     setLoading(true); setError('');
     try {
       const data = await api('/auth/login', {method:'POST', body:{username,password}});
@@ -337,18 +337,18 @@ function LoginScreen({onLogin}) {
     <div className="login-wrap">
       <div className="login-card">
         <div className="login-logo"><I.TireSm/> AUTO DELIC</div>
-        <div className="login-sub">Sistem za pracenje guma</div>
+        <div className="login-sub">Sistem za praćenje guma</div>
         {error && <div className="login-err">{error}</div>}
-        <div className="fg2"><label>Korisnicko ime</label>
+        <div className="fg2"><label>Korisničko ime</label>
           <input autoFocus value={username} onChange={e=>setUsername(e.target.value)}
-            onKeyDown={e=>e.key==='Enter'&&doLogin()} placeholder="admin"/>
+            onKeyDown={e=>e.key==='Enter'&&doLogin()} placeholder="korisničko ime"/>
         </div>
         <div className="fg2"><label>Lozinka</label>
           <input type="password" value={password} onChange={e=>setPassword(e.target.value)}
             onKeyDown={e=>e.key==='Enter'&&doLogin()} placeholder="••••••"/>
         </div>
         <button className="btn-save" style={{width:'100%',marginTop:4,padding:'10px',fontSize:14}} onClick={doLogin} disabled={loading}>
-          {loading?'Prijava...':'Prijavi se'}
+          {loading?'Prijavljivanje...':'Prijavi se'}
         </button>
       </div>
     </div>
@@ -468,29 +468,29 @@ function App() {
     catch(e){ showToast(e.message,'err'); }
   };
   // Custom dimension options (persisted in localStorage)
-  const [customSirina, setCustomSirina] = useState(()=>{ try{return JSON.parse(localStorage.getItem('adg_sirina')||'[]');}catch{return [];} });
-  const [customVisina, setCustomVisina] = useState(()=>{ try{return JSON.parse(localStorage.getItem('adg_visina')||'[]');}catch{return [];} });
-  const [customPromjer, setCustomPromjer] = useState(()=>{ try{return JSON.parse(localStorage.getItem('adg_promjer')||'[]');}catch{return [];} });
+  const [customŠirina, setCustomŠirina] = useState(()=>{ try{return JSON.parse(localStorage.getItem('adg_sirina')||'[]');}catch{return [];} });
+  const [customProfil, setCustomProfil] = useState(()=>{ try{return JSON.parse(localStorage.getItem('adg_visina')||'[]');}catch{return [];} });
+  const [customPrečnik, setCustomPrečnik] = useState(()=>{ try{return JSON.parse(localStorage.getItem('adg_promjer')||'[]');}catch{return [];} });
   const [newDimVal, setNewDimVal] = useState({sirina:'',visina:'',promjer:''});
 
   const isAdmin = user?.role === 'admin';
-  const sirina_opts = useMemo(()=>[...SIRINA_OPTIONS,...customSirina].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>parseInt(a)-parseInt(b)),[customSirina]);
-  const visina_opts = useMemo(()=>[...VISINA_OPTIONS,...customVisina].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>parseInt(a)-parseInt(b)),[customVisina]);
-  const promjer_opts = useMemo(()=>[...PROMJER_OPTIONS,...customPromjer].filter((v,i,a)=>a.indexOf(v)===i),[customPromjer]);
+  const sirina_opts = useMemo(()=>[...SIRINA_OPTIONS,...customŠirina].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>parseInt(a)-parseInt(b)),[customŠirina]);
+  const visina_opts = useMemo(()=>[...VISINA_OPTIONS,...customProfil].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>parseInt(a)-parseInt(b)),[customProfil]);
+  const promjer_opts = useMemo(()=>[...PROMJER_OPTIONS,...customPrečnik].filter((v,i,a)=>a.indexOf(v)===i),[customPrečnik]);
 
   const addCustomDim = (type, val) => {
     val = val.trim();
     if(!val) return;
-    if(type==='sirina'){ const n=[...customSirina,val]; setCustomSirina(n); localStorage.setItem('adg_sirina',JSON.stringify(n)); }
-    if(type==='visina'){ const n=[...customVisina,val]; setCustomVisina(n); localStorage.setItem('adg_visina',JSON.stringify(n)); }
-    if(type==='promjer'){ const n=[...customPromjer,val.toUpperCase()]; setCustomPromjer(n); localStorage.setItem('adg_promjer',JSON.stringify(n)); }
+    if(type==='sirina'){ const n=[...customŠirina,val]; setCustomŠirina(n); localStorage.setItem('adg_sirina',JSON.stringify(n)); }
+    if(type==='visina'){ const n=[...customProfil,val]; setCustomProfil(n); localStorage.setItem('adg_visina',JSON.stringify(n)); }
+    if(type==='promjer'){ const n=[...customPrečnik,val.toUpperCase()]; setCustomPrečnik(n); localStorage.setItem('adg_promjer',JSON.stringify(n)); }
     setNewDimVal(p=>({...p,[type]:''}));
     showToast('Dimenzija dodana');
   };
   const removeCustomDim = (type, val) => {
-    if(type==='sirina'){ const n=customSirina.filter(x=>x!==val); setCustomSirina(n); localStorage.setItem('adg_sirina',JSON.stringify(n)); }
-    if(type==='visina'){ const n=customVisina.filter(x=>x!==val); setCustomVisina(n); localStorage.setItem('adg_visina',JSON.stringify(n)); }
-    if(type==='promjer'){ const n=customPromjer.filter(x=>x!==val); setCustomPromjer(n); localStorage.setItem('adg_promjer',JSON.stringify(n)); }
+    if(type==='sirina'){ const n=customŠirina.filter(x=>x!==val); setCustomŠirina(n); localStorage.setItem('adg_sirina',JSON.stringify(n)); }
+    if(type==='visina'){ const n=customProfil.filter(x=>x!==val); setCustomProfil(n); localStorage.setItem('adg_visina',JSON.stringify(n)); }
+    if(type==='promjer'){ const n=customPrečnik.filter(x=>x!==val); setCustomPrečnik(n); localStorage.setItem('adg_promjer',JSON.stringify(n)); }
   };
 
   const showToast = useCallback((msg, type='ok') => {
@@ -511,7 +511,7 @@ function App() {
       setMagacini(m); setGume(g); setPolice(p);
       const maxGu = g.reduce((mx,x)=>{ const n=parseInt(x.sifra.replace('GU',''))||0; return n>mx?n:mx; },9);
       setNextGuNum(maxGu+1);
-    } catch(e){ showToast('Greska: '+e.message,'err'); }
+    } catch(e){ showToast('Greška: '+e.message,'err'); }
     setLoading(false);
   },[showToast]);
 
@@ -564,7 +564,7 @@ function App() {
     } catch(e){ showToast(e.message,'err'); }
   };
 
-  const doDelMag = async(id)=>{ if(!window.confirm('Brisanje magacina ce obrisati i sve prolaze, regale i police unutar njega.\nDa li ste sigurni?')) return; await api('/magacini/'+id,{method:'DELETE'}); setMagacini(p=>p.filter(m=>m.id!=id)); await loadPolice(); showToast('Magacin obrisan'); };
+  const doDelMag = async(id)=>{ if(!window.confirm('Brisanje magacina će obrisati i sve prolaze, regale i police unutar njega.\nDa li ste sigurni?')) return; await api('/magacini/'+id,{method:'DELETE'}); setMagacini(p=>p.filter(m=>m.id!=id)); await loadPolice(); showToast('Magacin obrisan'); };
   const doAddProlaz = async(mid)=>{ const pr=await api('/prolazi',{method:'POST',body:{magacin_id:mid}}); pr.regali=[]; setMagacini(p=>p.map(m=>m.id!=mid?m:{...m,prolazi:[...m.prolazi,pr]})); setOpenMag(p=>({...p,[mid]:true})); setOpenProlaz(p=>({...p,[pr.id]:true})); };
   const doDelProlaz = async(mid,pid)=>{ if(!window.confirm('Obrisati prolaz i sve u njemu?')) return; await api('/prolazi/'+pid,{method:'DELETE'}); setMagacini(p=>p.map(m=>m.id!=mid?m:{...m,prolazi:m.prolazi.filter(pr=>pr.id!=pid)})); await loadPolice(); };
   const doAddRegal = async(mid,pid)=>{ const r=await api('/regali',{method:'POST',body:{prolaz_id:pid}}); r.police=[]; setMagacini(p=>p.map(m=>m.id!=mid?m:{...m,prolazi:m.prolazi.map(pr=>pr.id!=pid?pr:{...pr,regali:[...pr.regali,r]})})); setOpenProlaz(p=>({...p,[pid]:true})); setOpenRegal(p=>({...p,[r.id]:true})); };
@@ -575,7 +575,7 @@ function App() {
 
   // ===== KORISNICI OPS =====
   const doAddUser = async()=>{
-    if(!newUser.username||!newUser.password){ showToast('Unesite korisnicko ime i lozinku','err'); return; }
+    if(!newUser.username||!newUser.password){ showToast('Unesite korisničko ime i lozinku','err'); return; }
     try {
       const k=await api('/korisnici',{method:'POST',body:newUser});
       setKorisnici(p=>[...p,k]);
@@ -583,23 +583,23 @@ function App() {
       showToast('Korisnik "'+k.username+'" kreiran');
     } catch(e){ showToast(e.message,'err'); }
   };
-  const doDelUser = async(id)=>{ if(!window.confirm('Da li ste sigurni da zelite obrisati ovog korisnika?')) return; await api('/korisnici/'+id,{method:'DELETE'}); setKorisnici(p=>p.filter(k=>k.id!=id)); showToast('Korisnik obrisan'); };
+  const doDelUser = async(id)=>{ if(!window.confirm('Da li ste sigurni da želite obrisati ovog korisnika?')) return; await api('/korisnici/'+id,{method:'DELETE'}); setKorisnici(p=>p.filter(k=>k.id!=id)); showToast('Korisnik obrisan'); };
 
   const doEditUser = async()=>{
-    if(!editUser||!editUser.username.trim()){ showToast('Korisnicko ime je obavezno','err'); return; }
+    if(!editUser||!editUser.username.trim()){ showToast('Korisničko ime je obavezno','err'); return; }
     try {
       const body = {username:editUser.username.trim(), role:editUser.role};
       if(editUser.password.trim()) body.password = editUser.password.trim();
       const updated = await api('/korisnici/'+editUser.id, {method:'PUT', body});
       setKorisnici(p=>p.map(k=>k.id===updated.id?updated:k));
       setEditUser(null);
-      showToast('Korisnik "'+updated.username+'" azuriran');
+      showToast('Korisnik "'+updated.username+'" ažuriran');
     } catch(e){ showToast(e.message,'err'); }
   };
 
   const doBackup = async()=>{
     try {
-      showToast('Preuzimanje backupa...');
+      showToast('Preuzimanje rezervne kopije...');
       const token = getToken();
       const res = await fetch('/api/backup', {headers:{'Authorization':'Bearer '+token}});
       if (!res.ok) { const d=await res.json(); showToast(d.error||'Greska','err'); return; }
@@ -610,8 +610,8 @@ function App() {
       a.href = url; a.download = 'autodelic-backup-'+date+'.db';
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
-      showToast('Backup preuzet!');
-    } catch(e){ showToast('Greska: '+e.message,'err'); }
+      showToast('Rezervna kopija preuzeta!');
+    } catch(e){ showToast('Greška: '+e.message,'err'); }
   };
 
   // ===== IMAGE UPLOAD WITH PROGRESS =====
@@ -647,7 +647,7 @@ function App() {
     try {
       const body={sezona:form.sezona,sirina:form.sirina,visina:form.visina,promjer:form.promjer,napomena:form.napomena,policaKod:policaMatch.naziv,slike:form.slike||[],dubina:form.dubina||null,dot:form.dot||null,tip:form.tip||null,cijena:form.cijena||null};
       let g;
-      if(modal==='editGuma'&&editingId){ g=await api('/gume/'+editingId,{method:'PUT',body}); setGume(p=>p.map(x=>x.id===g.id?g:x)); showToast('Guma azurirana'); }
+      if(modal==='editGuma'&&editingId){ g=await api('/gume/'+editingId,{method:'PUT',body}); setGume(p=>p.map(x=>x.id===g.id?g:x)); showToast('Guma ažurirana'); }
       else { g=await api('/gume',{method:'POST',body}); setGume(p=>[g,...p]); setNextGuNum(n=>n+1); showToast('Guma '+g.sifra+' dodana'); }
       setModal(null); setSubmitAttempted(false); setForm({...EMPTY_FORM});
     } catch(e){ showToast(e.message,'err'); }
@@ -663,7 +663,7 @@ function App() {
       setGume(p=>p.map(x=>x.id===g.id?g:x));
       if(detailG&&detailG.id===g.id) setDetailG(g);
       setMoveModal(null); setMoveKod('');
-      showToast('Guma premjestena na policu '+polica.naziv);
+      showToast('Guma premještena na policu '+polica.naziv);
     } catch(e){ showToast(e.message,'err'); }
   };
 
@@ -682,7 +682,7 @@ function App() {
   };
 
   const doDelete = async(id)=>{
-    if(!window.confirm('Da li ste sigurni da zelite obrisati ovu gumu? Ova akcija se ne moze ponistiti.')) return;
+    if(!window.confirm('Da li ste sigurni da želite obrisati ovu gumu? Ova akcija se ne može poništiti.')) return;
     await api('/gume/'+id,{method:'DELETE'});
     setGume(p=>p.filter(g=>g.id!=id)); setDetailG(null); setModal(null);
     showToast('Guma obrisana');
@@ -701,12 +701,12 @@ function App() {
         <div className="logo"><I.TireSm/> AUTO <span className="logo-w">DELIC</span></div>
         <div className="nav-right">
           <div className={"user-badge"+(isAdmin?" admin":"")}><I.User/> {user.username}</div>
-          {isAdmin&&<button className={"btn-gear"+(settingsOpen?" on":"")} onClick={()=>setSettingsOpen(s=>!s)} title="Podesavanja"><I.Gear/></button>}
+          {isAdmin&&<button className={"btn-gear"+(settingsOpen?" on":"")} onClick={()=>setSettingsOpen(s=>!s)} title="Podešavanja"><I.Gear/></button>}
           {isAdmin&&<button className="btn-gear" title="Analitika" onClick={loadAnalitika}>📊</button>}
           <button className="btn-gear" title={theme==='dark'?'Svijetla tema':'Tamna tema'} onClick={toggleTheme} style={{fontSize:15}}>
             {theme==='dark'?'☀️':'🌙'}
           </button>
-          {isAdmin&&<button className="btn-gear" title="Log aktivnosti" onClick={loadLog} style={{fontSize:14}}>📋</button>}
+          {isAdmin&&<button className="btn-gear" title="Dnevnik aktivnosti" onClick={loadLog} style={{fontSize:14}}>📋</button>}
           <button className="btn-gear" title="Odjava" onClick={doLogout} style={{color:'var(--red)',borderColor:'rgba(232,83,42,.3)'}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
@@ -718,7 +718,7 @@ function App() {
         {settingsOpen&&isAdmin&&(
           <div className="set-panel">
             <div className="set-head">
-              <div className="set-title"><I.Gear/> Podesavanja</div>
+              <div className="set-title"><I.Gear/> Podešavanja</div>
             </div>
             <div className="set-tabs">
               <button className={"set-tab"+(setTab==='magacin'?" on":"")} onClick={()=>setSetTab('magacin')}><I.House/> Magacin</button>
@@ -784,7 +784,7 @@ function App() {
                 <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:7,padding:'12px 14px',marginBottom:12}}>
                   <div style={{fontFamily:'Barlow Condensed',fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)',marginBottom:9}}>Novi korisnik</div>
                   <div className="two-col" style={{gap:7,marginBottom:7}}>
-                    <div className="fg2" style={{marginBottom:0}}><label>Korisnicko ime</label><input value={newUser.username} onChange={e=>setNewUser(u=>({...u,username:e.target.value}))} placeholder="marko"/></div>
+                    <div className="fg2" style={{marginBottom:0}}><label>Korisničko ime</label><input value={newUser.username} onChange={e=>setNewUser(u=>({...u,username:e.target.value}))} placeholder="marko"/></div>
                     <div className="fg2" style={{marginBottom:0}}><label>Lozinka</label><input type="password" value={newUser.password} onChange={e=>setNewUser(u=>({...u,password:e.target.value}))} placeholder="••••••"/></div>
                   </div>
                   <div style={{display:'flex',gap:7,alignItems:'center'}}>
@@ -813,9 +813,9 @@ function App() {
                   ))}
                   <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)'}}>
                     <button className="btn-new" style={{background:'var(--blue)',width:'100%',justifyContent:'center',gap:6}} onClick={doBackup}>
-                      💾 Preuzmi backup baze podataka
+                      💾 Preuzmi rezervnu kopiju podataka
                     </button>
-                    <div style={{fontSize:10,color:'var(--muted)',marginTop:5,textAlign:'center'}}>SQLite .db fajl — sačuvaj na sigurno mjesto</div>
+                    <div style={{fontSize:10,color:'var(--muted)',marginTop:5,textAlign:'center'}}>JSON fajl — sačuvaj na sigurno mjesto</div>
                   </div>
                 </div>
               </>
@@ -824,9 +824,9 @@ function App() {
             {setTab==='dimenzije'&&(
               <div>
                 {[
-                  {label:'Sirina (mm)', type:'sirina', base:SIRINA_OPTIONS, custom:customSirina},
-                  {label:'Profil (%)', type:'visina', base:VISINA_OPTIONS, custom:customVisina},
-                  {label:'Promjer', type:'promjer', base:PROMJER_OPTIONS, custom:customPromjer},
+                  {label:'Širina (mm)', type:'sirina', base:SIRINA_OPTIONS, custom:customŠirina},
+                  {label:'Profil (%)', type:'visina', base:VISINA_OPTIONS, custom:customProfil},
+                  {label:'Prečnik', type:'promjer', base:PROMJER_OPTIONS, custom:customPrečnik},
                 ].map(({label,type,base,custom})=>(
                   <div key={type} style={{marginBottom:14,background:'var(--card)',border:'1px solid var(--border)',borderRadius:7,padding:'11px 13px'}}>
                     <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)',marginBottom:8}}>{label}</div>
@@ -860,13 +860,13 @@ function App() {
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4,flexWrap:'wrap',gap:8}}>
           <div className="hero" style={{padding:'10px 0 6px',textAlign:'left',flex:1}}>
             <h1 style={{fontSize:26}}>Pretraga <em>Guma</em></h1>
-            <p>Pronadi gumu za nekoliko sekundi</p>
+            <p>Pronađi gumu za nekoliko sekundi</p>
           </div>
           <button className="btn-add" style={{flexShrink:0}} onClick={()=>{setForm({...EMPTY_FORM});setEditingId(null);setSubmitAttempted(false);setUploadState({uploading:false,done:0,total:0});setModal('addGuma');}}><I.Plus/> Dodaj gumu</button>
         </div>
         <div className="sf-wrap">
           <div className="sf-grid">
-            <div className="fg sf-full"><label>Interna sifra</label><input placeholder="npr. GU10" value={filters.sifra} onChange={e=>setFilters(f=>({...f,sifra:e.target.value}))}/></div>
+            <div className="fg sf-full"><label>Interna šifra</label><input placeholder="npr. GU10" value={filters.sifra} onChange={e=>setFilters(f=>({...f,sifra:e.target.value}))}/></div>
             <div className="fg"><label>Sezona</label><select value={filters.sezona} onChange={e=>setFilters(f=>({...f,sezona:e.target.value}))}><option value="">Sve</option><option>Zimska</option><option>Ljetna</option></select></div>
             <div className="fg"><label>Tip</label>
               <select style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 9px',outline:'none'}}
@@ -877,7 +877,7 @@ function App() {
                 <option value="set">Set (4 kom)</option>
               </select>
             </div>
-            <div className="fg"><label>Sirina (mm)</label>
+            <div className="fg"><label>Širina (mm)</label>
               <select style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 9px',outline:'none'}}
                 value={filters.sirina} onChange={e=>setFilters(f=>({...f,sirina:e.target.value}))}>
                 <option value="">Sve</option>{sirina_opts.map(o=><option key={o}>{o}</option>)}
@@ -889,15 +889,15 @@ function App() {
                 <option value="">Sve</option>{visina_opts.map(o=><option key={o}>{o}</option>)}
               </select>
             </div>
-            <div className="fg"><label>Promjer</label>
+            <div className="fg"><label>Prečnik</label>
               <select style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:'var(--text)',fontFamily:"Barlow,sans-serif",fontSize:13,padding:'7px 9px',outline:'none'}}
                 value={filters.promjer} onChange={e=>setFilters(f=>({...f,promjer:e.target.value}))}>
                 <option value="">Sve</option>{promjer_opts.map(o=><option key={o}>{o}</option>)}
               </select>
             </div>
             <div className="fg" style={{display:'flex',gap:5}}>
-              <button className="btn-srch" style={{flex:2}}><I.Search/> Trazi</button>
-              <button className="btn-srch" style={{flex:1,background:'var(--border)',color:'var(--muted)'}} onClick={()=>setFilters({sezona:'',sirina:'',visina:'',promjer:'',sifra:'',tip:''})}>Reset</button>
+              <button className="btn-srch" style={{flex:2}}><I.Search/> Traži</button>
+              <button className="btn-srch" style={{flex:1,background:'var(--border)',color:'var(--muted)'}} onClick={()=>setFilters({sezona:'',sirina:'',visina:'',promjer:'',sifra:'',tip:''})}>Poništi</button>
             </div>
           </div>
         </div>
@@ -908,7 +908,7 @@ function App() {
         </div>
         <div className="res-count">Prikazano: <b>{filtered.length}</b> guma</div>
 
-        {loading?<div className="empty"><p>Ucitavanje...</p></div>
+        {loading?<div className="empty"><p>Učitavanje...</p></div>
         :filtered.length===0?<div className="empty"><I.Tire/><p>{gume.length===0?'Nema guma. Dodaj prvu!':'Nema rezultata.'}</p></div>
         :<div className="tire-grid">
           {filtered.map(g=>(
@@ -931,10 +931,10 @@ function App() {
       {/* MODAL: EDIT KORISNIKA */}
       {editUser&&(<div className="overlay" onClick={()=>setEditUser(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
         <div className="modal-title">Uredi korisnika <button className="btn-close" onClick={()=>setEditUser(null)}>×</button></div>
-        <div className="fg2"><label>Korisnicko ime</label>
-          <input autoFocus value={editUser.username} onChange={e=>setEditUser(u=>({...u,username:e.target.value}))} placeholder="korisnicko_ime"/>
+        <div className="fg2"><label>Korisničko ime</label>
+          <input autoFocus value={editUser.username} onChange={e=>setEditUser(u=>({...u,username:e.target.value}))} placeholder="korisničko_ime"/>
         </div>
-        <div className="fg2"><label>Nova lozinka (ostavi prazno da ne mijenjash)</label>
+        <div className="fg2"><label>Nova lozinka (ostavi prazno da ne mijenjаš)</label>
           <input type="password" value={editUser.password} onChange={e=>setEditUser(u=>({...u,password:e.target.value}))} placeholder="••••••"/>
         </div>
         <div className="fg2"><label>Uloga</label>
@@ -959,7 +959,7 @@ function App() {
       {/* MODAL: DODAJ/EDITUJ GUMU */}
       {(modal==='addGuma'||modal==='editGuma')&&(<div className="overlay" onClick={()=>setModal(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
         <div className="modal-title">{modal==='editGuma'?'Uredi gumu':'Dodaj gumu'} <button className="btn-close" onClick={()=>setModal(null)}>×</button></div>
-        {modal==='addGuma'&&<div className="sifra-prev"><span>Sifra:</span> GU{nextGuNum}</div>}
+        {modal==='addGuma'&&<div className="sifra-prev"><span>Šifra:</span> GU{nextGuNum}</div>}
         <div className="fg2"><label>Sezona *</label>
           <select value={form.sezona} onChange={e=>setForm(f=>({...f,sezona:e.target.value}))}>
             <option value="">— Odaberi —</option><option>Zimska</option><option>Ljetna</option>
@@ -968,7 +968,7 @@ function App() {
         <div className="fg2">
           <label>Tip (količina)</label>
           <div style={{display:'flex',gap:5}}>
-            {[{v:'',l:'—'},  {v:'samac',l:'Samac (1)'},{v:'par',l:'Par (2)'},{v:'set',l:'Set (4)'}].map(({v,l})=>(
+            {[{v:'',l:'—'},  {v:'samac',l:'Komad (1)'},{v:'par',l:'Par (2)'},{v:'set',l:'Set (4)'}].map(({v,l})=>(
               <button key={v} type="button"
                 onClick={()=>setForm(f=>({...f,tip:v}))}
                 style={{flex:1,padding:'7px 4px',border:'1.5px solid',borderRadius:5,fontSize:11,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'0.5px',textTransform:'uppercase',cursor:'pointer',
@@ -982,19 +982,19 @@ function App() {
           </div>
         </div>
         <div className="two-col">
-          <div className="fg2"><label>Sirina (mm) *</label>
-            <ComboBox value={form.sirina} onChange={v=>setForm(f=>({...f,sirina:v}))} options={sirina_opts} placeholder="Sirina..." />
+          <div className="fg2"><label>Širina (mm) *</label>
+            <ComboBox value={form.sirina} onChange={v=>setForm(f=>({...f,sirina:v}))} options={sirina_opts} placeholder="Širina..." />
           </div>
           <div className="fg2"><label>Profil (%) *</label>
             <ComboBox value={form.visina} onChange={v=>setForm(f=>({...f,visina:v}))} options={visina_opts} placeholder="Profil..." />
           </div>
         </div>
-        <div className="fg2"><label>Promjer *</label>
-          <ComboBox value={form.promjer} onChange={v=>setForm(f=>({...f,promjer:v.toUpperCase()}))} options={promjer_opts} placeholder="Promjer..." normalize={v=>v.toUpperCase()}/>
+        <div className="fg2"><label>Prečnik *</label>
+          <ComboBox value={form.promjer} onChange={v=>setForm(f=>({...f,promjer:v.toUpperCase()}))} options={promjer_opts} placeholder="Prečnik..." normalize={v=>v.toUpperCase()}/>
         </div>
         <div className="two-col">
           <div className="fg2"><label>Dubina šare (mm)</label>
-            <input type="number" step="0.5" min="0" max="12" placeholder="npr. 7.5" value={form.dubina} onChange={e=>setForm(f=>({...f,dubina:e.target.value}))}/>
+            <input type="number" step="0.5" min="0" max="12" placeholder="npr. 7,5" value={form.dubina} onChange={e=>setForm(f=>({...f,dubina:e.target.value}))}/>
           </div>
           <div className="fg2"><label>Godina (DOT)</label>
             <input type="number" min="2000" max="2099" placeholder="npr. 2022" value={form.dot} onChange={e=>setForm(f=>({...f,dot:e.target.value}))}/>
@@ -1010,7 +1010,7 @@ function App() {
           </div>
         </div>}
         <div className="fg2">
-          <label>Sifra police * (obavezno)</label>
+          <label>Šifra police * (obavezno)</label>
           <input className={policaClass} placeholder="npr. P10" value={form.policaKod} onChange={e=>setForm(f=>({...f,policaKod:e.target.value}))} autoComplete="off"/>
           {form.policaKod.trim()&&policaMatch&&<div className="ph ok"><I.Check/> {policaMatch.magacin_naziv} &rsaquo; {policaMatch.prolaz_naziv} &rsaquo; {policaMatch.regal_naziv} &rsaquo; {policaMatch.naziv}</div>}
           {form.policaKod.trim()&&!policaMatch&&<div className="ph err">Polica "{form.policaKod}" ne postoji</div>}
@@ -1023,13 +1023,13 @@ function App() {
           <label>Slike</label>
           <div className={"img-zone"+(uploadState.uploading?' uploading':'')} onClick={()=>!uploadState.uploading&&(()=>{if(fileRef.current){fileRef.current.removeAttribute('capture');fileRef.current.click();}})()  }>
             <I.Img/>
-            <span>{uploadState.uploading?'Procesiranje slika...':'Klikni za dodavanje slika (vise odjednom)'}</span>
+            <span>{uploadState.uploading?'Obrađivanje slika...':'Klikni za dodavanje slika (više odjednom)'}</span>
             {!uploadState.uploading&&<span style={{fontSize:10,color:'var(--muted)'}}>JPG, PNG — automatski se optimizuju</span>}
           </div>
           {uploadState.uploading&&(
             <div className="upload-progress">
               <div className="upload-bar-wrap"><div className="upload-bar" style={{width:uploadProgress+'%'}}/></div>
-              <div className="upload-status">Obradjena {uploadState.done} od {uploadState.total} slika ({uploadProgress}%)</div>
+              <div className="upload-status">Obrađena {uploadState.done} od {uploadState.total} slika ({uploadProgress}%)</div>
             </div>
           )}
           <input ref={fileRef} type="file" accept="image/*" multiple capture="environment" style={{display:'none'}} onChange={handleImgs}/>
@@ -1053,7 +1053,7 @@ function App() {
         <div className="modal-foot">
           <button className="btn-cancel" onClick={()=>setModal(null)}>Odustani</button>
           <button className="btn-save" onClick={doSaveGuma} disabled={!canSave}>
-            {uploadState.uploading?'Cekaj upload...':modal==='editGuma'?'Sacuvaj izmjene':'Sacuvaj gumu'}
+            {uploadState.uploading?'Čekaj slanje...':modal==='editGuma'?'Sačuvaj izmjene':'Sačuvaj gumu'}
           </button>
         </div>
       </div></div>)}
@@ -1074,10 +1074,10 @@ function App() {
           </div>
         )}
         <div className="specs-grid">
-          <div className="spec-box"><div className="spec-lbl">Sirina</div><div className="spec-val">{detailG.sirina} mm</div></div>
-          <div className="spec-box"><div className="spec-lbl">Visina</div><div className="spec-val">{detailG.visina}%</div></div>
-          <div className="spec-box"><div className="spec-lbl">Promjer</div><div className="spec-val">{/^\d/.test(detailG.promjer||'')?'R':''}{detailG.promjer}"</div></div>
-          <div className="spec-box"><div className="spec-lbl">Sifra</div><div className="spec-val" style={{color:'var(--accent)'}}>{detailG.sifra}</div></div>
+          <div className="spec-box"><div className="spec-lbl">Širina</div><div className="spec-val">{detailG.sirina} mm</div></div>
+          <div className="spec-box"><div className="spec-lbl">Profil</div><div className="spec-val">{detailG.visina}%</div></div>
+          <div className="spec-box"><div className="spec-lbl">Prečnik</div><div className="spec-val">{/^\d/.test(detailG.promjer||'')?'R':''}{detailG.promjer}"</div></div>
+          <div className="spec-box"><div className="spec-lbl">Šifra</div><div className="spec-val" style={{color:'var(--accent)'}}>{detailG.sifra}</div></div>
         </div>
         {detailG.cijena&&<div style={{background:'rgba(240,180,41,.08)',border:'1px solid rgba(240,180,41,.25)',borderRadius:6,padding:'8px 12px',marginBottom:9,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>Cijena</span>
@@ -1095,7 +1095,7 @@ function App() {
           {detailG.prodao_korisnik&&<span>· Prodao: <b style={{color:'var(--text)'}}>{detailG.prodao_korisnik}</b></span>}
         </div>
         <div className="modal-foot">
-          {isAdmin&&<div className="foot-left"><button className="btn-del-sm" onClick={()=>doDelete(detailG.id)}><I.Trash/> Obrisi</button></div>}
+          {isAdmin&&<div className="foot-left"><button className="btn-del-sm" onClick={()=>doDelete(detailG.id)}><I.Trash/> Obriši</button></div>}
           {!detailG.prodato&&<button className="btn-edit" style={{color:'var(--blue)',borderColor:'rgba(75,142,240,.3)'}} onClick={()=>{setMoveModal(detailG);setMoveKod('');setDetailG(null);}}>📦 Premjesti</button>}
           <button className="btn-edit" style={{color:'var(--muted)'}} onClick={()=>loadHistorija(detailG.id)}>📜 Historija</button>
           {!detailG.prodato&&<button className="btn-edit" onClick={()=>openEdit(detailG)}><I.Edit/> Uredi</button>}
@@ -1108,7 +1108,7 @@ function App() {
       {detailG&&sellModal&&(<div className="overlay" onClick={()=>setSellModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
         <div className="modal-title">Prodaj gumu <button className="btn-close" onClick={()=>setSellModal(false)}>×</button></div>
         <div className="sell-box">
-          <p>Prodajes: <strong>{detailG.sifra} — {detailG.sirina}/{detailG.visina} {/^\d/.test(detailG.promjer||'')?'R':''}{detailG.promjer} ({detailG.sezona})</strong></p>
+          <p>Prodaješ: <strong>{detailG.sifra} — {detailG.sirina}/{detailG.visina} {/^\d/.test(detailG.promjer||'')?'R':''}{detailG.promjer} ({detailG.sezona})</strong></p>
           <div className="fg2" style={{marginTop:10}}>
             <label>Prodajna cijena (opcionalno)</label>
             <div className="price-row">
@@ -1132,7 +1132,7 @@ function App() {
         {(()=>{
           const pm = police.find(p=>p.naziv.toLowerCase()===moveKod.trim().toLowerCase());
           return (<div className="fg2">
-            <label>Nova sifra police</label>
+            <label>Nova šifra police</label>
             <input className={moveKod.trim()?(pm?'ok':'err'):''} autoFocus placeholder="npr. P15"
               value={moveKod} onChange={e=>setMoveKod(e.target.value)}
               onKeyDown={e=>e.key==='Enter'&&doMovePolica()}/>
@@ -1181,7 +1181,7 @@ function App() {
 
         {/* Aktivnost po mjesecima */}
         {analitika.prodajaPoMjesecima.length>0&&<div style={{marginBottom:12}}>
-          <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)',marginBottom:6}}>Aktivnost (zadnjih 12 mj.)</div>
+          <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)',marginBottom:6}}>Aktivnost (posljednjih 12 mj.)</div>
           <div style={{display:'flex',gap:3,alignItems:'flex-end',height:50}}>
             {[...analitika.prodajaPoMjesecima].reverse().map(m=>{
               const max = Math.max(...analitika.prodajaPoMjesecima.map(x=>x.dodano),1);
@@ -1214,7 +1214,7 @@ function App() {
 
         {/* Najpunija polica */}
         {analitika.gumePoPolici.length>0&&<div>
-          <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)',marginBottom:6}}>Police s najvise guma (na stanju)</div>
+          <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)',marginBottom:6}}>Police s najviše guma (na stanju)</div>
           <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
             {analitika.gumePoPolici.map(p=>(
               <div key={p.polica_kod} style={{background:'rgba(75,142,240,.1)',border:'1px solid rgba(75,142,240,.25)',color:'var(--blue)',borderRadius:4,fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,padding:'2px 8px'}}>
@@ -1233,7 +1233,7 @@ function App() {
                 <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,color:'var(--muted)',width:14}}>{i+1}.</span>
                 <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:14,flex:1,letterSpacing:'1px'}}>{d.dimenzija}</span>
                 <span style={{fontSize:10,color:'var(--muted)'}}>Ukupno: <b style={{color:'var(--text)'}}>{d.ukupno}</b></span>
-                <span style={{fontSize:10,color:'var(--muted)'}}>Stanje: <b style={{color:'var(--green)'}}>{d.na_stanju}</b></span>
+                <span style={{fontSize:10,color:'var(--muted)'}}>Na stanju: <b style={{color:'var(--green)'}}>{d.na_stanju}</b></span>
                 <span style={{fontSize:10,color:'var(--muted)'}}>Prod.: <b style={{color:'var(--purple)'}}>{d.prodato}</b></span>
               </div>
             ))}
@@ -1244,7 +1244,7 @@ function App() {
 
       {/* MODAL: LOG AKTIVNOSTI */}
       {showLog&&(<div className="overlay" onClick={()=>setShowLog(false)}><div className="modal" style={{maxWidth:600}} onClick={e=>e.stopPropagation()}>
-        <div className="modal-title">Log aktivnosti <button className="btn-close" onClick={()=>setShowLog(false)}>×</button></div>
+        <div className="modal-title">Dnevnik aktivnosti <button className="btn-close" onClick={()=>setShowLog(false)}>×</button></div>
         <div style={{maxHeight:'70vh',overflowY:'auto'}}>
           {aktivnosti.length===0
             ? <div style={{textAlign:'center',padding:'30px 0',color:'var(--muted)',fontSize:13}}>Nema zabilježenih aktivnosti</div>
@@ -1252,7 +1252,7 @@ function App() {
                 const dt = new Date(a.created_at);
                 const timeStr = dt.toLocaleDateString('hr-HR')+' '+dt.toLocaleTimeString('hr-HR',{hour:'2-digit',minute:'2-digit'});
                 const akcijaNaziv = {
-                  PRIJAVA:'Prijava',DODANA_GUMA:'Dodana guma',EDITOVANA_GUMA:'Editovana guma',
+                  PRIJAVA:'Prijava',DODANA_GUMA:'Dodana guma',EDITOVANA_GUMA:'Izmijenjena guma',
                   PREMJESTENA_GUMA:'Premještena',PRODANA_GUMA:'Prodana guma',OBRISANA_GUMA:'Obrisana guma'
                 }[a.akcija]||a.akcija;
                 return (<div key={i} className="log-item">
