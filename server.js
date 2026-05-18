@@ -540,6 +540,25 @@ app.get('/api/analitika', requireAdmin, async (req,res) => {
   }
 });
 
+// JAVNI KATALOG — bez autentifikacije, samo na stanju
+app.get('/api/katalog', async (req,res) => {
+  try {
+    const gume = await dbAll(GUME_SELECT + ' WHERE g.prodato=0 ORDER BY g.id DESC');
+    res.json({ gume: gume.map(formatGuma) });
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// Katalog stranica
+app.get('/katalog', (req,res) => {
+  const attempts = [
+    path.join(__dirname,'public','katalog.html'),
+    path.join(process.cwd(),'public','katalog.html'),
+  ];
+  const p = attempts.find(x=>fs.existsSync(x));
+  if(!p) return res.status(404).send('Katalog nije pronađen');
+  res.sendFile(p);
+});
+
 app.get('*', (req,res) => {
   const attempts = [
     path.join(__dirname,'public','index.html'),
