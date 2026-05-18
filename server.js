@@ -483,44 +483,61 @@ app.get('/api/aktivnosti', requireAdmin, async (req,res) => {
 
 // ANALITIKA (admin only)
 app.get('/api/analitika', requireAdmin, async (req,res) => {
-  const [
-    ukupnoGuma, naStan, prodatoCount,
-    prihodUkupno, prodajaPoSezonama, prodajaPoMjesecima,
-    topRadnici, gumePoPolici, skoroDodane, topDimenzije
-  ] = await Promise.all([
-    dbGet('SELECT COUNT(*) as c FROM gume'),
-    dbGet('SELECT COUNT(*) as c FROM gume WHERE prodato=0'),
-    dbGet('SELECT COUNT(*) as c FROM gume WHERE prodato=1'),
-    dbGet('SELECT SUM(CAST(REPLACE(REPLACE(cijena_prodaje," KM",""),".","") AS REAL)) as ukupno FROM gume WHERE prodato=1 AND cijena_prodaje IS NOT NULL'),
-    dbAll('SELECT sezona, COUNT(*) as ukupno, SUM(prodato) as prodato FROM gume GROUP BY sezona'),
-    dbAll(`SELECT substr(created_at,1,7) as mj, COUNT(*) as dodano,
-      SUM(CASE WHEN prodato=1 THEN 1 ELSE 0 END) as prodano
-      FROM gume GROUP BY mj ORDER BY mj DESC LIMIT 12`),
-    dbAll(`SELECT dodao_korisnik as korisnik, COUNT(*) as dodao,
-      (SELECT COUNT(*) FROM gume g2 WHERE g2.prodao_korisnik=g1.dodao_korisnik) as prodao
-      FROM gume g1 WHERE dodao_korisnik IS NOT NULL GROUP BY dodao_korisnik ORDER BY dodao DESC`),
-    dbAll(`SELECT polica_kod, COUNT(*) as guma_count FROM gume WHERE prodato=0 AND polica_kod IS NOT NULL GROUP BY polica_kod ORDER BY guma_count DESC LIMIT 10`),
-    dbAll('SELECT sifra,sezona,sirina,visina,promjer,polica_kod,created_at FROM gume WHERE prodato=0 ORDER BY created_at DESC LIMIT 5'),
-    dbAll(`SELECT sirina||'/'||visina||' R'||promjer as dimenzija,
-      COUNT(*) as ukupno,
-      SUM(prodato) as prodato,
-      SUM(CASE WHEN prodato=0 THEN 1 ELSE 0 END) as na_stanju
-      FROM gume
-      GROUP BY dimenzija
-      ORDER BY ukupno DESC LIMIT 10`),
-  ]);
+  try {
+    const ukupnoGuma   = await dbGet('SELECT COUNT(*) as c FROM gume') || {c:0};
+    const naStan       = await dbGet('SELECT COUNT(*) as c FROM gume WHERE prodato=0') || {c:0};
+    const prodatoCount = await dbGet('SELECT COUNT(*) as c FROM gume WHERE prodato=1') || {c:0};
 
-  res.json({
-    ukupnoGuma: ukupnoGuma?.c||0,
-    naStan: naStan?.c||0,
-    prodatoCount: prodatoCount?.c||0,
-    prodajaPoSezonama,
-    prodajaPoMjesecima,
-    topRadnici,
-    gumePoPolici,
-    skoroDodane,
-    topDimenzije,
-  });
+    const prodajaPoSezonama = await dbAll(
+      'SELECT sezona, COUNT(*) as ukupno, SUM(prodato) as prodato FROM gume GROUP BY sezona');
+
+    const prodajaPoMjesecima = await dbAll(
+      `SELECT substr(created_at,1,7) as mj,
+        COUNT(*) as dodano,
+        SUM(CASE WHEN prodato=1 THEN 1 ELSE 0 END) as prodano
+       FROM gume GROUP BY mj ORDER BY mj DESC LIMIT 12`);
+
+    const topRadnici = await dbAll(
+      `SELECT dodao_korisnik as korisnik, COUNT(*) as dodao
+       FROM gume WHERE dodao_korisnik IS NOT NULL
+       GROUP BY dodao_korisnik ORDER BY dodao DESC`);
+
+    // Add prodao count separately to avoid correlated subquery issues
+    for (const r of topRadnici) {
+      const p = await dbGet('SELECT COUNT(*) as c FROM gume WHERE prodao_korisnik=?', [r.korisnik]);
+      r.prodao = p?.c || 0;
+    }
+
+    const gumePoPolici = await dbAll(
+      `SELECT polica_kod, COUNT(*) as guma_count FROM gume
+       WHERE prodato=0 AND polica_kod IS NOT NULL
+       GROUP BY polica_kod ORDER BY guma_count DESC LIMIT 10`);
+
+    const topDimenzije = await dbAll(
+      `SELECT sirina||'/'||visina||' '||promjer as dimenzija,
+        COUNT(*) as ukupno,
+        SUM(prodato) as prodato,
+        SUM(CASE WHEN prodato=0 THEN 1 ELSE 0 END) as na_stanju
+       FROM gume GROUP BY dimenzija ORDER BY ukupno DESC LIMIT 10`);
+
+    const prodajaPoMjesecimaFixed = (prodajaPoMjesecima||[]).map(m=>({
+      mj: m.mj, dodano: Number(m.dodano)||0, prodano: Number(m.prodano)||0
+    }));
+
+    res.json({
+      ukupnoGuma: Number(ukupnoGuma.c)||0,
+      naStan: Number(naStan.c)||0,
+      prodatoCount: Number(prodatoCount.c)||0,
+      prodajaPoSezonama: prodajaPoSezonama||[],
+      prodajaPoMjesecima: prodajaPoMjesecimaFixed,
+      topRadnici: topRadnici||[],
+      gumePoPolici: gumePoPolici||[],
+      topDimenzije: topDimenzije||[],
+    });
+  } catch(e) {
+    console.error('Analitika error:', e);
+    res.status(500).json({error: e.message});
+  }
 });
 
 app.get('*', (req,res) => {
