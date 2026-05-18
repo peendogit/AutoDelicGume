@@ -457,19 +457,19 @@ app.post('/api/gume/:id/prodaj', requireAuth, async (req,res) => {
   res.json(g);
 });
 
-app.delete('/api/gume/:id', requireAdmin, async (req,res) => {
-  const g = await dbGet('SELECT sifra,sirina,visina,promjer FROM gume WHERE id=?',[req.params.id]);
-  await dbRun('DELETE FROM gume WHERE id=?',[req.params.id]);
-  if (g) await logActivity(req.user.username, 'OBRISANA_GUMA', `${g.sifra} — ${g.sirina}/${g.visina} ${g.promjer}`);
-  res.json({ok:true});
-});
-
-// HISTORIJA PREMJEŠTANJA
+// HISTORIJA PREMJEŠTANJA — mora biti prije DELETE /:id
 app.get('/api/gume/:id/historija', requireAuth, async (req,res) => {
   const historija = await dbAll(
     'SELECT * FROM historija_premjestanja WHERE guma_id=? ORDER BY created_at DESC',
     [req.params.id]);
   res.json(historija);
+});
+
+app.delete('/api/gume/:id', requireAdmin, async (req,res) => {
+  const g = await dbGet('SELECT sifra,sirina,visina,promjer FROM gume WHERE id=?',[req.params.id]);
+  await dbRun('DELETE FROM gume WHERE id=?',[req.params.id]);
+  if (g) await logActivity(req.user.username, 'OBRISANA_GUMA', `${g.sifra} — ${g.sirina}/${g.visina} ${g.promjer}`);
+  res.json({ok:true});
 });
 
 // LOG AKTIVNOSTI (admin only)
