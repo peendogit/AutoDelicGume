@@ -1717,32 +1717,13 @@ function App(){
   useEffect(()=>{if(user&&(page==='gume'||page==='dashboard')&&!gumeLoaded)loadGume();},[user,page]);
 
   const [isOnline,setIsOnline]=useState(navigator.onLine);
-  const [offlineQueue,setOfflineQueue]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_offline_queue')||'[]');}catch{return [];}});
+  const [offlineQueue] = useState([]);
 
   useEffect(()=>{
-    const on=()=>{
-      setIsOnline(true);
-      // Replay queued requests
-      const q=JSON.parse(localStorage.getItem('adg_offline_queue')||'[]');
-      if(q.length&&navigator.serviceWorker.controller){
-        navigator.serviceWorker.controller.postMessage({type:'REPLAY_QUEUE',queue:q});
-        localStorage.removeItem('adg_offline_queue');
-        setOfflineQueue([]);
-        showToast('Konekcija vraćena — '+q.length+' zahtjeva sinhronizovano ✓');
-      }
-    };
+    const on=()=>{ setIsOnline(true); showToast('Konekcija vraćena ✓'); };
     const off=()=>setIsOnline(false);
     window.addEventListener('online',on);
     window.addEventListener('offline',off);
-    // Listen for SW messages
-    if(navigator.serviceWorker) navigator.serviceWorker.addEventListener('message',e=>{
-      if(e.data?.type==='OFFLINE_QUEUE'){
-        const q=JSON.parse(localStorage.getItem('adg_offline_queue')||'[]');
-        q.push(e.data);localStorage.setItem('adg_offline_queue',JSON.stringify(q));
-        setOfflineQueue([...q]);
-        showToast('Offline — izmjena sačuvana lokalno',null);
-      }
-    });
     return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off);};
   },[]);
 
@@ -1821,16 +1802,9 @@ function App(){
     </div>
 
     {lightbox&&<Lightbox images={lightbox.images} startIndex={lightbox.index} onClose={()=>setLightbox(null)}/>}
-    {!isOnline&&<div className="offline-bar">⚡ Nema interneta — offline mod{offlineQueue.length>0?' · '+offlineQueue.length+' u redu čekanja':''}</div>}
+    {!isOnline&&<div className="offline-bar">⚡ Nema interneta — podaci se ne mogu osvježiti</div>}
     {toast&&<div className={'toast'+(toast.type==='err'?' err':'')}>{toast.msg}</div>}
   </div>);
-}
-
-// Register Service Worker for offline
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('/sw.js').then(()=>console.log('SW registered')).catch(e=>console.log('SW error',e));
-  });
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><App/></ErrorBoundary>);
