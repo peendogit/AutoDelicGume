@@ -147,6 +147,12 @@ async function initDB() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS counters (
+      key TEXT PRIMARY KEY,
+      value INTEGER DEFAULT 0
+    )
+  `);
   await dbExec(`INSERT OR IGNORE INTO counters (key, value) VALUES ('gu', 9)`);
   await dbExec(`INSERT OR IGNORE INTO counters (key, value) VALUES ('po', 9)`);
   await dbExec(`INSERT OR IGNORE INTO counters (key, value) VALUES ('au', 0)`);
