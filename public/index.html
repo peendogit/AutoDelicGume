@@ -274,6 +274,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .olx-link{display:inline-flex;align-items:center;gap:5px;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--green);border-radius:5px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;text-decoration:none;cursor:pointer}
 
 /* TOAST */
+.offline-bar{position:fixed;top:0;left:0;right:0;background:#f85149;color:#fff;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:5px;z-index:1000;display:flex;align-items:center;justify-content:center;gap:6px}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1f2e;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:999;white-space:nowrap;border-left:3px solid var(--green);box-shadow:0 4px 20px rgba(0,0,0,.4);pointer-events:none}
 .toast.err{border-left-color:var(--red)}
 
@@ -528,6 +529,10 @@ function Dashboard({user,onNav}){
           <div style={{fontSize:10,color:'var(--muted)'}}>{timeAgo(a.created_at)}</div>
         </div>)}
       </div>
+    </div>
+    <div className="card-panel" style={{marginTop:14}}>
+      <div className="section-title">📦 Premještanje guma</div>
+      <PremjestanjeWidget showToast={showToast}/>
     </div>
     {user.role==='admin'&&<div className="card-panel" style={{marginTop:14}}>
       <div className="section-title">Posljednje aktivnosti</div>
@@ -1110,10 +1115,34 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
 
   return(<div className="page">
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,flexWrap:'wrap',gap:8}}>
-      <div><div className="page-title">Gume</div><div className="page-sub">Pretraga i upravljanje</div></div>
+      <div><div className="page-title">Gume</div><div className="page-sub">Pretraga i upravljanje · <span style={{cursor:"pointer",color:"var(--blue)",fontSize:11}} onClick={()=>setPolicaSearch(s=>!s)}>🔍 pretraga po polici</span></div></div>
       <button className="btn-add-main" onClick={openAdd}><Icons.Plus size={13}/> Dodaj gumu</button>
     </div>
 
+    {/* PRETRAGA PO POLICI — skrivena */}
+    {policaSearch&&<div style={{background:'rgba(88,166,255,.08)',border:'1.5px solid rgba(88,166,255,.3)',borderRadius:8,padding:'12px 14px',marginBottom:10,display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+      <span style={{fontSize:12,color:'var(--blue)',fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,textTransform:'uppercase',letterSpacing:'1px',flexShrink:0}}>🔍 Polica:</span>
+      <input style={{flex:1,minWidth:80,background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:'var(--text)',fontFamily:'Barlow,sans-serif',fontSize:13,padding:'6px 9px',outline:'none'}}
+        placeholder="npr. P10" value={policaSearchVal} onChange={e=>setPolicaSearchVal(e.target.value.toUpperCase())}
+        onKeyDown={async e=>{
+          if(e.key==='Enter'&&policaSearchVal.trim()){
+            try{const g=await api('/police/'+encodeURIComponent(policaSearchVal.trim())+'/gume');setPolicaGume(g);}
+            catch(err){showToast(err.message,'err');}
+          }
+        }}/>
+      <button className="btn-new" onClick={async()=>{if(!policaSearchVal.trim())return;try{const g=await api('/police/'+encodeURIComponent(policaSearchVal.trim())+'/gume');setPolicaGume(g);}catch(err){showToast(err.message,'err');}}}>Traži</button>
+      {policaGume!==null&&<button style={{background:'none',border:'1px solid var(--border)',color:'var(--muted)',borderRadius:4,padding:'4px 8px',cursor:'pointer',fontSize:11}} onClick={()=>{setPolicaGume(null);setPolicaSearchVal('');}}>× Zatvori</button>}
+    </div>}
+    {policaGume!==null&&<div style={{background:'var(--surf)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 14px',marginBottom:10}}>
+      <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)',marginBottom:8}}>Polica {policaSearchVal} — {policaGume.length} guma</div>
+      {policaGume.length===0?<div style={{fontSize:12,color:'var(--muted)'}}>Nema guma na ovoj polici</div>:
+      <div className="tire-grid">{policaGume.map(g=><div key={g.id} className="tire-card" onClick={()=>setDetailG(g)}>
+        <div className="tire-thumb">{g.slike&&g.slike.length>0?<img src={g.slike[0]} alt="" loading="lazy"/>:<Icons.Tire size={30}/>}</div>
+        <span className={'bs '+(g.sezona==='Zimska'?'z':'l')} style={{fontSize:8,padding:'1px 4px'}}>{g.sezona==='Zimska'?'❄':'☀'}</span>
+        <span className="bsif" style={{fontSize:8}}>{g.sifra}</span>
+        <div className="tire-info"><div className="tire-size" style={{fontSize:14}}>{g.sirina}/{g.visina} {/^[0-9]/.test(g.promjer||'')?'R':''}{g.promjer}</div></div>
+      </div>)}</div>}
+    </div>}
     {/* FILTERI */}
     <div className="sf-wrap">
       <div className="sf-grid">
@@ -1392,6 +1421,249 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
   </div>);
 }
 
+
+// ===== PREMJEŠTANJE WIDGET (na Dashboardu) =====
+function PremjestanjeWidget({showToast}){
+  const [sifre,setSifre]=useState('');
+  const [policaKod,setPolicaKod]=useState('');
+  const [police,setPolice]=useState([]);
+  const [rezultat,setRezultat]=useState(null);
+  const [loading,setLoading]=useState(false);
+
+  useEffect(()=>{api('/police').then(setPolice).catch(()=>{});},[]);
+
+  const policaMatch=useMemo(()=>{
+    if(!policaKod.trim())return null;
+    return police.find(p=>p.naziv.toLowerCase()===policaKod.trim().toLowerCase())||null;
+  },[policaKod,police]);
+
+  const doMove=async()=>{
+    const lista=sifre.split(/[\n,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean);
+    if(!lista.length){showToast('Unesite šifre guma','err');return;}
+    if(!policaMatch){showToast('Polica ne postoji','err');return;}
+    setLoading(true);
+    try{
+      const r=await api('/gume/batch-premjesti',{method:'POST',body:{sifre:lista,policaKod:policaMatch.naziv}});
+      setRezultat(r);
+      showToast(r.uspjesno+' od '+lista.length+' guma premješteno na '+policaMatch.naziv);
+      if(r.uspjesno===lista.length){setSifre('');setPolicaKod('');}
+    }catch(e){showToast(e.message,'err');}
+    setLoading(false);
+  };
+
+  return(<div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+      <div className="fg2" style={{marginBottom:0}}>
+        <label>Šifre guma (jedna ili više)</label>
+        <textarea style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:13,fontWeight:700,padding:'8px 10px',outline:'none',resize:'vertical',minHeight:72,letterSpacing:'1px',textTransform:'uppercase'}}
+          placeholder={"GU10\nGU11\nGU12"} value={sifre} onChange={e=>setSifre(e.target.value)}/>
+        <div style={{fontSize:10,color:'var(--muted)',marginTop:2}}>Razdvoji enterom, zarezom ili razmakom</div>
+      </div>
+      <div className="fg2" style={{marginBottom:0}}>
+        <label>Nova polica</label>
+        <input style={{width:'100%',background:'var(--card)',border:'1.5px solid '+(policaKod.trim()?(policaMatch?'var(--green)':'var(--red)'):'var(--border)'),borderRadius:5,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:16,fontWeight:800,padding:'8px 10px',outline:'none',letterSpacing:'1px',textTransform:'uppercase'}}
+          placeholder="P10" value={policaKod} onChange={e=>setPolicaKod(e.target.value.toUpperCase())}/>
+        {policaKod.trim()&&policaMatch&&<div style={{fontSize:10,color:'var(--green)',marginTop:3}}>✓ {policaMatch.magacin_naziv} › {policaMatch.prolaz_naziv} › {policaMatch.regal_naziv}</div>}
+        {policaKod.trim()&&!policaMatch&&<div style={{fontSize:10,color:'var(--red)',marginTop:3}}>Polica ne postoji</div>}
+        {!policaKod.trim()&&police.length>0&&<div style={{fontSize:9,color:'var(--muted)',marginTop:3}}>Dostupne: {police.slice(0,8).map(p=>p.naziv).join(', ')}{police.length>8&&'...'}</div>}
+      </div>
+    </div>
+    <button className="btn-add-main" style={{width:'100%',justifyContent:'center'}} onClick={doMove} disabled={loading||!policaMatch||!sifre.trim()}>
+      {loading?'Premještanje...':'📦 Premjesti gume'}
+    </button>
+    {rezultat&&<div style={{marginTop:10,background:'var(--card)',borderRadius:6,padding:'10px 12px'}}>
+      <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)',marginBottom:6}}>Rezultat premještanja</div>
+      {rezultat.rezultati.map((r,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,padding:'3px 0'}}>
+        <span style={{color:r.ok?'var(--green)':'var(--red)',fontSize:14}}>{r.ok?'✓':'✗'}</span>
+        <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:700}}>{r.sifra}</span>
+        <span style={{color:'var(--muted)'}}>{r.ok?'→ '+r.polica_nova:r.greska}</span>
+      </div>)}
+    </div>}
+  </div>);
+}
+
+// ===== FINANSIJE MODULE =====
+function FinansijeModul({showToast}){
+  const [data,setData]=useState(null);const [period,setPeriod]=useState('mjesec');const [loading,setLoading]=useState(false);
+
+  const load=async(p)=>{
+    setLoading(true);
+    try{const d=await api('/finansije?period='+p);setData(d);}
+    catch(e){showToast(e.message,'err');}
+    setLoading(false);
+  };
+  useEffect(()=>{load(period);},[period]);
+
+  const prihodGume=useMemo(()=>{
+    if(!data)return 0;
+    return (data.gumeProdate||[]).reduce((s,g)=>{
+      const v=parseFloat(g.cijena_prodaje?.replace(' KM','').replace(',','.').replace('.',''))||0;
+      return s+v;
+    },0);
+  },[data]);
+
+  const prihodAuta=useMemo(()=>{
+    if(!data)return 0;
+    return (data.autaProdana||[]).reduce((s,a)=>s+(parseFloat(a.prodajna_cijena)||0),0);
+  },[data]);
+
+  const ukupniTroskovi=useMemo(()=>{
+    if(!data)return 0;
+    return (data.troskoviOtpada||[]).reduce((s,t)=>s+(parseFloat(t.iznos)||0),0);
+  },[data]);
+
+  const PERIOD_OPTS=[['danas','Danas'],['sedmica','7 dana'],['mjesec','Ovaj mj.'],['godina','Ova god.'],['sve','Sve']];
+
+  if(loading&&!data)return<div className="page"><div style={{color:'var(--muted)',padding:40,textAlign:'center'}}>Učitavanje...</div></div>;
+
+  return(<div className="page">
+    <div className="page-header" style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
+      <div><div className="page-title">Finansijski izvještaj</div><div className="page-sub">Prihodi, troškovi i vrijednost lagera</div></div>
+      <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+        {PERIOD_OPTS.map(([v,l])=><button key={v} className={'stab'+(period===v?' as':'')} style={{flex:'none',padding:'5px 10px'}} onClick={()=>setPeriod(v)}>{l}</button>)}
+      </div>
+    </div>
+
+    {data&&<>
+      {/* KPI */}
+      <div className="kpi-grid" style={{gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))'}}>
+        <div className="kpi green"><div className="kpi-lbl">Prihod — Gume</div><div className="kpi-val" style={{color:'var(--green)',fontSize:22}}>{prihodGume.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{data.gumeProdate?.length||0} prodanih</div></div>
+        <div className="kpi blue"><div className="kpi-lbl">Prihod — Auta</div><div className="kpi-val" style={{color:'var(--blue)',fontSize:22}}>{prihodAuta.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{data.autaProdana?.length||0} prodanih</div></div>
+        <div className="kpi red"><div className="kpi-lbl">Troškovi otpada</div><div className="kpi-val" style={{color:'var(--red)',fontSize:22}}>{ukupniTroskovi.toLocaleString('sr-Latn-RS')} KM</div></div>
+        <div className="kpi accent"><div className="kpi-lbl">Neto (prihod-trošak)</div><div className="kpi-val" style={{color:(prihodGume+prihodAuta-ukupniTroskovi)>=0?'var(--green)':'var(--red)',fontSize:22}}>{(prihodGume+prihodAuta-ukupniTroskovi).toLocaleString('sr-Latn-RS')} KM</div></div>
+      </div>
+
+      {/* Vrijednost lagera */}
+      <div className="card-panel">
+        <div className="section-title">Vrijednost lagera (trenutno na stanju)</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:6,padding:'10px 14px'}}>
+            <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:9,fontWeight:700,letterSpacing:'2px',textTransform:'uppercase',color:'var(--muted)',marginBottom:4}}>Gume na stanju</div>
+            <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:22,fontWeight:900,color:'var(--accent)'}}>{(data.gumeStanje?.vrijednost||0).toLocaleString('sr-Latn-RS')} KM</div>
+            <div style={{fontSize:10,color:'var(--muted)',marginTop:2}}>{data.gumeStanje?.count||0} kom sa unesenom cijenom</div>
+          </div>
+          <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:6,padding:'10px 14px'}}>
+            <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:9,fontWeight:700,letterSpacing:'2px',textTransform:'uppercase',color:'var(--muted)',marginBottom:4}}>Auta na stanju</div>
+            <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:22,fontWeight:900,color:'var(--accent)'}}>{(data.autaStanje?.vrijednost||0).toLocaleString('sr-Latn-RS')} KM</div>
+            <div style={{fontSize:10,color:'var(--muted)',marginTop:2}}>{data.autaStanje?.count||0} vozila</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Prodane gume */}
+      {(data.gumeProdate||[]).length>0&&<div className="card-panel">
+        <div className="section-title">Prodane gume ({data.gumeProdate.length})</div>
+        <div style={{maxHeight:200,overflowY:'auto'}}>
+          {data.gumeProdate.map((g,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid var(--border)',fontSize:12}}>
+            <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,width:50,color:'var(--accent)'}}>{g.sifra}</span>
+            <span style={{flex:1,color:'var(--muted)'}}>{g.sirina}/{g.visina} R{g.promjer} {g.sezona}</span>
+            <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,color:'var(--green)'}}>{g.cijena_prodaje||'—'}</span>
+            <span style={{fontSize:10,color:'var(--muted)',width:55,textAlign:'right'}}>{g.datum_prodaje}</span>
+          </div>)}
+        </div>
+      </div>}
+
+      {/* Prodana auta */}
+      {(data.autaProdana||[]).length>0&&<div className="card-panel">
+        <div className="section-title">Prodana auta ({data.autaProdana.length})</div>
+        <div style={{maxHeight:200,overflowY:'auto'}}>
+          {data.autaProdana.map((a,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid var(--border)',fontSize:12}}>
+            <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,width:55,color:'var(--accent)'}}>{a.sifra}</span>
+            <span style={{flex:1}}>{a.marka} {a.model} {a.godiste&&'('+a.godiste+')'}</span>
+            {a.nabavna_cijena&&<span style={{color:'var(--red)',fontSize:11}}>{a.nabavna_cijena} KM</span>}
+            <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,color:'var(--green)'}}>{a.prodajna_cijena||'—'} KM</span>
+          </div>)}
+        </div>
+      </div>}
+    </>}
+    <div className="site-footer">© 2025 <span>Delite Solutions</span></div>
+  </div>);
+}
+
+// ===== TROŠKOVI OTPADA MODULE =====
+function TroskoviOtpadaModul({showToast}){
+  const [lista,setLista]=useState([]);const [modal,setModal]=useState(false);
+  const [form,setForm]=useState({kategorija:'',opis:'',iznos:'',datum:new Date().toISOString().slice(0,10)});
+  const [filterMj,setFilterMj]=useState(new Date().toISOString().slice(0,7));
+
+  const KATEGORIJE=['Gorivo','Radnici','Režije (struja, voda)','Alat i oprema','Održavanje vozila','Zakup','Osiguranje','Ostalo'];
+
+  const load=async()=>{try{const d=await api('/troskovi-otpada');setLista(d);}catch(e){showToast(e.message,'err');}};
+  useEffect(()=>{load();},[]);
+
+  const filtered=useMemo(()=>lista.filter(t=>!filterMj||t.datum.startsWith(filterMj)),[lista,filterMj]);
+  const ukupno=useMemo(()=>filtered.reduce((s,t)=>s+(parseFloat(t.iznos)||0),0),[filtered]);
+  const poKat=useMemo(()=>{
+    const m={};filtered.forEach(t=>{m[t.kategorija]=(m[t.kategorija]||0)+(parseFloat(t.iznos)||0);});
+    return Object.entries(m).sort((a,b)=>b[1]-a[1]);
+  },[filtered]);
+
+  const doAdd=async()=>{
+    if(!form.kategorija||!form.iznos){showToast('Kategorija i iznos su obavezni','err');return;}
+    try{const t=await api('/troskovi-otpada',{method:'POST',body:form});setLista(p=>[t,...p]);setModal(false);setForm({kategorija:'',opis:'',iznos:'',datum:new Date().toISOString().slice(0,10)});showToast('Trošak dodan');}
+    catch(e){showToast(e.message,'err');}
+  };
+
+  const doDel=async(id)=>{if(!window.confirm('Obrisati trošak?'))return;await api('/troskovi-otpada/'+id,{method:'DELETE'});setLista(p=>p.filter(t=>t.id!=id));showToast('Trošak obrisan');};
+
+  const mjeseci=useMemo(()=>[...new Set(lista.map(t=>t.datum.slice(0,7)))].sort().reverse(),[lista]);
+
+  return(<div className="page">
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
+      <div><div className="page-title">Troškovi otpada</div><div className="page-sub">Gorivo, radnici, režije i ostalo</div></div>
+      <button className="btn-add-main" onClick={()=>setModal(true)}><Icons.Plus size={13}/> Dodaj trošak</button>
+    </div>
+
+    {/* Filter po mjesecu */}
+    <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap',alignItems:'center'}}>
+      <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:9,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>Mjesec:</span>
+      <button className={'stab'+(filterMj===''?' as':'')} style={{flex:'none',padding:'4px 10px'}} onClick={()=>setFilterMj('')}>Svi</button>
+      {mjeseci.slice(0,6).map(m=><button key={m} className={'stab'+(filterMj===m?' as':'')} style={{flex:'none',padding:'4px 10px'}} onClick={()=>setFilterMj(m)}>{m}</button>)}
+    </div>
+
+    {/* Summary */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:8,marginBottom:14}}>
+      <div className="kpi red" style={{padding:'10px 12px'}}><div className="kpi-lbl">Ukupno</div><div className="kpi-val" style={{color:'var(--red)',fontSize:22}}>{ukupno.toLocaleString('sr-Latn-RS')} KM</div></div>
+      {poKat.slice(0,3).map(([k,v])=><div key={k} className="kpi" style={{padding:'10px 12px'}}><div className="kpi-lbl">{k}</div><div className="kpi-val" style={{fontSize:18}}>{v.toLocaleString('sr-Latn-RS')} KM</div></div>)}
+    </div>
+
+    {/* Lista */}
+    {filtered.length===0?<div className="empty"><Icons.Money size={36}/><p>Nema troškova za ovaj period.</p></div>:
+    <div style={{display:'flex',flexDirection:'column',gap:5}}>
+      {filtered.map(t=><div key={t.id} style={{display:'flex',alignItems:'center',gap:10,background:'var(--card)',border:'1px solid var(--border)',borderRadius:6,padding:'9px 12px'}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:1}}>
+            <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:800}}>{t.kategorija}</span>
+            {t.opis&&<span style={{fontSize:11,color:'var(--muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.opis}</span>}
+          </div>
+          <div style={{fontSize:10,color:'var(--muted)'}}>{t.datum} · {t.korisnik}</div>
+        </div>
+        <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:16,fontWeight:900,color:'var(--red)',flexShrink:0}}>{parseFloat(t.iznos).toLocaleString('sr-Latn-RS')} KM</div>
+        <button className="del-btn" onClick={()=>doDel(t.id)}><Icons.Trash/></button>
+      </div>)}
+    </div>}
+
+    {modal&&<div className="overlay" onClick={()=>setModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">Novi trošak <button className="btn-close" onClick={()=>setModal(false)}>×</button></div>
+      <div className="fg2"><label>Kategorija *</label>
+        <select value={form.kategorija} onChange={e=>setForm(f=>({...f,kategorija:e.target.value}))}>
+          <option value="">— Odaberi —</option>
+          {KATEGORIJE.map(k=><option key={k} value={k}>{k}</option>)}
+        </select>
+      </div>
+      <div className="fg2"><label>Opis</label><input placeholder="Detalji..." value={form.opis} onChange={e=>setForm(f=>({...f,opis:e.target.value}))}/></div>
+      <div className="two-col">
+        <div className="fg2"><label>Iznos (KM) *</label>
+          <div className="price-row"><input className="price-inp" type="number" min="0" step="0.5" placeholder="0" value={form.iznos} onChange={e=>setForm(f=>({...f,iznos:e.target.value}))}/><span className="price-curr">KM</span></div>
+        </div>
+        <div className="fg2"><label>Datum</label><input type="date" value={form.datum} onChange={e=>setForm(f=>({...f,datum:e.target.value}))}/></div>
+      </div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button><button className="btn-save" onClick={doAdd}>Dodaj trošak</button></div>
+    </div></div>}
+    <div className="site-footer">© 2025 <span>Delite Solutions</span></div>
+  </div>);
+}
+
 // ===== MAIN APP =====
 function App(){
   const [user,setUser]=useState(null);const [authChecked,setAuthChecked]=useState(false);
@@ -1427,6 +1699,36 @@ function App(){
   useEffect(()=>{if(user){loadPoliceAndMag();}}, [user]);
   useEffect(()=>{if(user&&(page==='gume'||page==='dashboard')&&!gumeLoaded)loadGume();},[user,page]);
 
+  const [isOnline,setIsOnline]=useState(navigator.onLine);
+  const [offlineQueue,setOfflineQueue]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_offline_queue')||'[]');}catch{return [];}});
+
+  useEffect(()=>{
+    const on=()=>{
+      setIsOnline(true);
+      // Replay queued requests
+      const q=JSON.parse(localStorage.getItem('adg_offline_queue')||'[]');
+      if(q.length&&navigator.serviceWorker.controller){
+        navigator.serviceWorker.controller.postMessage({type:'REPLAY_QUEUE',queue:q});
+        localStorage.removeItem('adg_offline_queue');
+        setOfflineQueue([]);
+        showToast('Konekcija vraćena — '+q.length+' zahtjeva sinhronizovano ✓');
+      }
+    };
+    const off=()=>setIsOnline(false);
+    window.addEventListener('online',on);
+    window.addEventListener('offline',off);
+    // Listen for SW messages
+    navigator.serviceWorker?.addEventListener('message',e=>{
+      if(e.data?.type==='OFFLINE_QUEUE'){
+        const q=JSON.parse(localStorage.getItem('adg_offline_queue')||'[]');
+        q.push(e.data);localStorage.setItem('adg_offline_queue',JSON.stringify(q));
+        setOfflineQueue([...q]);
+        showToast('Offline — izmjena sačuvana lokalno',null);
+      }
+    });
+    return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off);};
+  },[]);
+
   const doLogout=async()=>{try{await api('/auth/logout',{method:'POST'});}catch(e){}localStorage.removeItem('adg_token');setUser(null);setGume([]);setGumeLoaded(false);};
   const nav=(p)=>{setPage(p);setSidebarOpen(false);};
 
@@ -1441,10 +1743,12 @@ function App(){
     {id:'troskovi',label:'Troškovi',icon:<Icons.Money size={18}/>,adminOnly:true},
     {id:'analitika',label:'Analitika',icon:<Icons.Chart size={18}/>,adminOnly:true},
     {id:'log',label:'Dnevnik',icon:<Icons.Log size={18}/>,adminOnly:true},
+    {id:'finansije',label:'Finansije',icon:<Icons.Money size={18}/>,adminOnly:true},
+    {id:'troskovi_otpada',label:'Troškovi',icon:<Icons.Trash size={18}/>,adminOnly:true},
     {id:'podesavanja',label:'Podešavanja',icon:<Icons.Gear size={18}/>,adminOnly:true},
   ].filter(i=>i.always||(i.adminOnly&&isAdmin));
 
-  const pageTitles={dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',troskovi:'Troškovi popravke',analitika:'Analitika',log:'Dnevnik aktivnosti',podesavanja:'Podešavanja'};
+  const pageTitles={dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',troskovi:'Troškovi popravke',finansije:'Finansijski izvještaj',troskovi_otpada:'Troškovi otpada',analitika:'Analitika',log:'Dnevnik aktivnosti',podesavanja:'Podešavanja'};
 
   return(<div className="layout">
     {/* SIDEBAR OVERLAY on mobile */}
@@ -1494,12 +1798,22 @@ function App(){
       {page==='troskovi'&&isAdmin&&<TroskoviModul user={user} showToast={showToast}/>}
       {page==='analitika'&&isAdmin&&<AnalitikaModul showToast={showToast}/>}
       {page==='log'&&isAdmin&&<LogModul showToast={showToast}/>}
+      {page==='finansije'&&isAdmin&&<FinansijeModul showToast={showToast}/>}
+      {page==='troskovi_otpada'&&isAdmin&&<TroskoviOtpadaModul showToast={showToast}/>}
       {page==='podesavanja'&&isAdmin&&<PodesavanjaModul user={user} showToast={showToast} magacini={magacini} setMagacini={setMagacini} police={police} loadPolice={loadPoliceAndMag}/>}
     </div>
 
     {lightbox&&<Lightbox images={lightbox.images} startIndex={lightbox.index} onClose={()=>setLightbox(null)}/>}
+    {!isOnline&&<div className="offline-bar">⚡ Nema interneta — offline mod{offlineQueue.length>0?' · '+offlineQueue.length+' u redu čekanja':''}</div>}
     {toast&&<div className={'toast'+(toast.type==='err'?' err':'')}>{toast.msg}</div>}
   </div>);
+}
+
+// Register Service Worker for offline
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/sw.js').then(()=>console.log('SW registered')).catch(e=>console.log('SW error',e));
+  });
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
