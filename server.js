@@ -180,6 +180,19 @@ async function initDB() {
     )
   `);
 
+  // REDOVNI (RECURRING) TROŠKOVI
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS redovni_troskovi (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      naziv TEXT NOT NULL,
+      kategorija TEXT NOT NULL,
+      iznos REAL NOT NULL,
+      dan_u_mjesecu INTEGER DEFAULT 1,
+      aktivan INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // TROŠKOVI OTPADA (gorivo, radnici, režije...)
   await dbExec(`
     CREATE TABLE IF NOT EXISTS troskovi_otpada (
@@ -600,7 +613,6 @@ app.get('/api/analitika', requireAdmin, async (req,res) => {
        FROM gume WHERE dodao_korisnik IS NOT NULL
        GROUP BY dodao_korisnik ORDER BY dodao DESC`);
 
-    // Add prodao count separately to avoid correlated subquery issues
     for (const r of topRadnici) {
       const p = await dbGet('SELECT COUNT(*) as c FROM gume WHERE prodao_korisnik=?', [r.korisnik]);
       r.prodao = p?.c || 0;
@@ -618,6 +630,72 @@ app.get('/api/analitika', requireAdmin, async (req,res) => {
         SUM(CASE WHEN prodato=0 THEN 1 ELSE 0 END) as na_stanju
        FROM gume GROUP BY dimenzija ORDER BY ukupno DESC LIMIT 10`);
 
+    // ===== ABC ANALIZA =====
+    // Sve prodane gume po dimenziji — sortirane po broju prodaja
+    const abcRaw = await dbAll(
+      `SELECT sirina||'/'||visina||' '||promjer as dimenzija,
+        COUNT(*) as prodato_kom,
+        SUM(CASE WHEN prodato=0 THEN 1 ELSE 0 END) as na_stanju
+       FROM gume GROUP BY dimenzija ORDER BY prodato_kom DESC`);
+
+    // Izračunaj ABC kategorije (Pareto 80/15/5)
+    const ukupnoProdano = abcRaw.reduce((s,r)=>s+Number(r.prodato_kom),0);
+    let kumulativ = 0;
+    const abcAnaliza = abcRaw.map(r=>{
+      kumulativ += Number(r.prodato_kom);
+      const posto = ukupnoProdano>0 ? (kumulativ/ukupnoProdano*100) : 0;
+      const kategorija = posto<=80 ? 'A' : posto<=95 ? 'B' : 'C';
+      return {...r, kumulativ_posto: Math.round(posto), kategorija};
+    });
+
+    // ===== PROGNOZA =====
+    // Uzmi prodaju po mjesecima za prošlu godinu i napravi prognozu
+    const godinuDana = new Date();
+    godinuDana.setFullYear(godinuDana.getFullYear()-1);
+    const odDatum = godinuDana.toISOString().slice(0,7);
+
+    const prodajaMjesecno = await dbAll(
+      `SELECT substr(datum_prodaje,7,4)||'-'||substr(datum_prodaje,4,2) as mj,
+        COUNT(*) as prodano
+       FROM gume WHERE prodato=1 AND datum_prodaje IS NOT NULL
+       AND datum_prodaje >= ?
+       GROUP BY mj ORDER BY mj`,
+      [odDatum.slice(0,4)+'-01-01']);
+
+    // Prosječna prodaja po mjesecu
+    const prosjecno = prodajaMjesecno.length>0
+      ? Math.round(prodajaMjesecno.reduce((s,m)=>s+Number(m.prodano),0)/prodajaMjesecno.length)
+      : 0;
+
+    // Sezonski faktori — zimske vs ljetne
+    const zimskeProdaja = await dbAll(
+      `SELECT substr(datum_prodaje,4,7) as mj_god, COUNT(*) as kom
+       FROM gume WHERE prodato=1 AND sezona='Zimska' AND datum_prodaje IS NOT NULL
+       GROUP BY mj_god`);
+    const ljetneProdaja = await dbAll(
+      `SELECT substr(datum_prodaje,4,7) as mj_god, COUNT(*) as kom
+       FROM gume WHERE prodato=1 AND sezona='Ljetna' AND datum_prodaje IS NOT NULL
+       GROUP BY mj_god`);
+
+    // Prognoza za sljedećih 6 mjeseci
+    const prognoza = [];
+    const sada = new Date();
+    for(let i=1; i<=6; i++){
+      const d = new Date(sada);
+      d.setMonth(d.getMonth()+i);
+      const mj = d.toISOString().slice(0,7);
+      const mjes = d.getMonth()+1;
+      // Sezonski faktor: oktobar-decembar-januar-mart = zimske, ostalo = ljetne
+      const jeZimskiMjesec = [10,11,12,1,2,3].includes(mjes);
+      prognoza.push({
+        mj,
+        naziv: d.toLocaleDateString('sr-Latn-RS',{month:'long',year:'numeric'}),
+        prognoza_kom: prosjecno,
+        sezona: jeZimskiMjesec ? 'Zimska' : 'Ljetna',
+        napomena: prosjecno===0 ? 'Nema dovoljno podataka' : null,
+      });
+    }
+
     const prodajaPoMjesecimaFixed = (prodajaPoMjesecima||[]).map(m=>({
       mj: m.mj, dodano: Number(m.dodano)||0, prodano: Number(m.prodano)||0
     }));
@@ -631,6 +709,9 @@ app.get('/api/analitika', requireAdmin, async (req,res) => {
       topRadnici: topRadnici||[],
       gumePoPolici: gumePoPolici||[],
       topDimenzije: topDimenzije||[],
+      abcAnaliza: abcAnaliza||[],
+      prognoza: prognoza||[],
+      prosjecnaMjesecnaProdaja: prosjecno,
     });
   } catch(e) {
     console.error('Analitika error:', e);
@@ -878,6 +959,36 @@ app.get('/api/police/:naziv/gume', requireAuth, async (req,res) => {
     const gume = await dbAll(GUME_SELECT + ' WHERE g.polica_kod=? AND g.prodato=0 ORDER BY g.id',[naziv]);
     res.json(gume.map(formatGuma));
   } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== REDOVNI TROŠKOVI =====
+app.get('/api/redovni-troskovi', requireAdmin, async (req,res) => {
+  try { res.json(await dbAll('SELECT * FROM redovni_troskovi ORDER BY dan_u_mjesecu, naziv')); }
+  catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/redovni-troskovi', requireAdmin, async (req,res) => {
+  try {
+    const {naziv, kategorija, iznos, dan_u_mjesecu} = req.body;
+    if(!naziv||!iznos) return res.status(400).json({error:'Naziv i iznos su obavezni'});
+    const r = await dbRun('INSERT INTO redovni_troskovi (naziv,kategorija,iznos,dan_u_mjesecu) VALUES (?,?,?,?)',
+      [naziv, kategorija||'Ostalo', parseFloat(iznos), parseInt(dan_u_mjesecu)||1]);
+    res.json(await dbGet('SELECT * FROM redovni_troskovi WHERE id=?',[r.lastID]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.put('/api/redovni-troskovi/:id', requireAdmin, async (req,res) => {
+  try {
+    const {naziv, kategorija, iznos, dan_u_mjesecu, aktivan} = req.body;
+    await dbRun('UPDATE redovni_troskovi SET naziv=?,kategorija=?,iznos=?,dan_u_mjesecu=?,aktivan=? WHERE id=?',
+      [naziv, kategorija||'Ostalo', parseFloat(iznos), parseInt(dan_u_mjesecu)||1, aktivan?1:0, req.params.id]);
+    res.json(await dbGet('SELECT * FROM redovni_troskovi WHERE id=?',[req.params.id]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/redovni-troskovi/:id', requireAdmin, async (req,res) => {
+  try { await dbRun('DELETE FROM redovni_troskovi WHERE id=?',[req.params.id]); res.json({ok:true}); }
+  catch(e) { res.status(500).json({error:e.message}); }
 });
 
 // ===== TROŠKOVI OTPADA =====
