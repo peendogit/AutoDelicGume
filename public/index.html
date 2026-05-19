@@ -329,7 +329,7 @@ function resizeImage(file,maxW=1200,maxH=1200,quality=0.82){
     };reader.readAsDataURL(file);
   });
 }
-function promjerDisp(p){if(!p)return '';return /^\d/.test(p)?'R'+p:p;}
+function promjerDisp(p){if(!p)return '';return /^[0-9]/.test(p)?'R'+p:p;}
 function tipLbl(t){return {komad:'Komad (1)',par:'Par (2)',set:'Set (4)'}[t]||t||'';}
 function statusLbl(s){return {na_stanju:'Na stanju',prodat:'Prodat',u_dijelovima:'U dijelovima'}[s]||s||'';}
 function timeAgo(dt){
@@ -1025,7 +1025,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
         {g.tip&&<span className={'tip-badge tip-'+g.tip} style={{position:'absolute',bottom:g.prodato?22:7,right:7}}>{g.tip==='komad'?'1 kom':g.tip==='par'?'2 kom':'4 kom'}</span>}
         {g.prodato&&<div className="bsold">Prodato{g.datum_prodaje?' · '+g.datum_prodaje:''}</div>}
         <div className="tire-info">
-          <div className="tire-size">{g.sirina}/{g.visina} {/^\d/.test(g.promjer||'')?'R':''}{g.promjer}</div>
+          <div className="tire-size">{g.sirina}/{g.visina} {/^[0-9]/.test(g.promjer||'')?'R':''}{g.promjer}</div>
           <div className="tire-cod">{g.sifra}</div>
           <div className="tire-loc">{g.loc_magacin?`${g.loc_magacin} › ${g.loc_prolaz} › ${g.loc_regal} › ${g.polica_kod}`:g.polica_kod||'—'}</div>
         </div>
@@ -1034,7 +1034,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
 
     {/* DETAIL */}
     {detailG&&!sellModal&&!lightbox&&<div className="overlay" onClick={()=>setDetailG(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
-      <div className="modal-title">{detailG.sirina}/{detailG.visina} {/^\d/.test(detailG.promjer||'')?'R':''}{detailG.promjer} <button className="btn-close" onClick={()=>setDetailG(null)}>×</button></div>
+      <div className="modal-title">{detailG.sirina}/{detailG.visina} {/^[0-9]/.test(detailG.promjer||'')?'R':''}{detailG.promjer} <button className="btn-close" onClick={()=>setDetailG(null)}>×</button></div>
       <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:12,flexWrap:'wrap'}}>
         <span className={'bs '+(detailG.sezona==='Zimska'?'z':'l')} style={{position:'static',display:'inline-flex'}}>{detailG.sezona==='Zimska'?'❄':'☀'} {detailG.sezona}</span>
         <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:17,color:'var(--accent)',letterSpacing:2}}>{detailG.sifra}</span>
@@ -1045,7 +1045,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
       <div className="specs-grid">
         <div className="spec-box"><div className="spec-lbl">Širina</div><div className="spec-val">{detailG.sirina} mm</div></div>
         <div className="spec-box"><div className="spec-lbl">Profil</div><div className="spec-val">{detailG.visina}%</div></div>
-        <div className="spec-box"><div className="spec-lbl">Prečnik</div><div className="spec-val">{/^\d/.test(detailG.promjer||'')?'R':''}{detailG.promjer}"</div></div>
+        <div className="spec-box"><div className="spec-lbl">Prečnik</div><div className="spec-val">{/^[0-9]/.test(detailG.promjer||'')?'R':''}{detailG.promjer}"</div></div>
         <div className="spec-box"><div className="spec-lbl">Šifra</div><div className="spec-val" style={{color:'var(--accent)'}}>{detailG.sifra}</div></div>
       </div>
       {(detailG.dubina||detailG.dot)&&<div style={{display:'flex',gap:7,marginBottom:8,flexWrap:'wrap'}}>
@@ -1072,7 +1072,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
     {/* SELL */}
     {detailG&&sellModal&&<div className="overlay" onClick={()=>setSellModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
       <div className="modal-title">Prodaj gumu <button className="btn-close" onClick={()=>setSellModal(false)}>×</button></div>
-      <div className="sell-box"><p>Prodaješ: <strong>{detailG.sifra} — {detailG.sirina}/{detailG.visina} {/^\d/.test(detailG.promjer||'')?'R':''}{detailG.promjer} ({detailG.sezona})</strong></p>
+      <div className="sell-box"><p>Prodaješ: <strong>{detailG.sifra} — {detailG.sirina}/{detailG.visina} {/^[0-9]/.test(detailG.promjer||'')?'R':''}{detailG.promjer} ({detailG.sezona})</strong></p>
         <div className="fg2" style={{marginTop:10}}><label>Prodajna cijena (opcionalno)</label>
           <div className="price-row"><input className="price-inp" type="number" placeholder="0" value={sellPrice} onChange={e=>setSellPrice(e.target.value)} autoFocus onKeyDown={e=>e.key==='Enter'&&doSell()}/><span className="price-curr">KM</span></div>
         </div>
@@ -1386,6 +1386,6 @@ function App(){
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
-
+</script>
 </body>
 </html>
