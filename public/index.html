@@ -545,11 +545,10 @@ function Dashboard({user,onNav,showToast}){
           <div style={{fontSize:10,color:'var(--muted)'}}>{timeAgo(a.created_at)}</div>
         </div>)}
       </div>
-    </div>
+    </div>}
     <div className="card-panel" style={{marginTop:14}}>
       <div className="section-title">📦 Premještanje guma</div>
       <PremjestanjeWidget showToast={showToast}/>
-    </div>
     </div>
     {user.role==='admin'&&<div className="card-panel" style={{marginTop:14}}>
       <div className="section-title">Posljednje aktivnosti</div>
