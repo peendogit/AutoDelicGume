@@ -546,10 +546,6 @@ function Dashboard({user,onNav,showToast}){
         </div>)}
       </div>
     </div>}
-    <div className="card-panel" style={{marginTop:14}}>
-      <div className="section-title">📦 Premještanje guma</div>
-      <PremjestanjeWidget showToast={showToast}/>
-    </div>
     {user.role==='admin'&&<div className="card-panel" style={{marginTop:14}}>
       <div className="section-title">Posljednje aktivnosti</div>
       {(data.aktivnosti||[]).length===0?<div style={{fontSize:12,color:'var(--muted)'}}>Nema aktivnosti</div>:
@@ -1067,6 +1063,10 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
   const [customSirina,setCustomSirina]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_sirina')||'[]');}catch{return [];}});
   const [customVisina,setCustomVisina]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_visina')||'[]');}catch{return [];}});
   const [customPromjer,setCustomPromjer]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_promjer')||'[]');}catch{return [];}});
+  const [policaSearch,setPolicaSearch]=useState(false);
+  const [premjestanjeOpen,setPremjestanjeOpen]=useState(false);
+  const [policaSearchVal,setPolicaSearchVal]=useState('');
+  const [policaGume,setPolicaGume]=useState(null);
   const imgHook=useImageUpload([]);
 
   const sirina_opts=useMemo(()=>[...SIRINA_OPTIONS,...customSirina].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>parseInt(a)-parseInt(b)),[customSirina]);
@@ -1176,7 +1176,16 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
       <button className={'stab'+(statusTab==='stanje'?' as':'')} onClick={()=>setStatusTab('stanje')}>Na stanju ({stanjeCount})</button>
       <button className={'stab'+(statusTab==='prodato'?' ap':'')} onClick={()=>setStatusTab('prodato')}>Prodato ({prodatoCount})</button>
     </div>
-    <div className="res-count">Prikazano: <b>{filtered.length}</b> guma</div>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:8}}>
+      <div className="res-count" style={{marginBottom:0}}>Prikazano: <b>{filtered.length}</b> guma</div>
+      <button style={{background:'none',border:'1px solid var(--border)',color:'var(--muted)',borderRadius:5,fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',padding:'4px 10px',cursor:'pointer'}} onClick={()=>setPremjestanjeOpen(p=>!p)}>
+        📦 Premještanje guma
+      </button>
+    </div>
+    {premjestanjeOpen&&<div className="card-panel" style={{marginBottom:12}}>
+      <div className="section-title" style={{marginBottom:10}}>📦 Premještanje guma</div>
+      <PremjestanjeWidget showToast={showToast} police={police}/>
+    </div>}
 
     {filtered.length===0?<div className="empty"><Icons.Tire size={40}/><p>{gume.length===0?'Nema guma. Dodaj prvu!':'Nema rezultata.'}</p></div>:
     <div className="tire-grid">
@@ -1446,7 +1455,7 @@ function PremjestanjeWidget({showToast}){
   const [rezultat,setRezultat]=useState(null);
   const [loading,setLoading]=useState(false);
 
-  useEffect(()=>{api('/police').then(setPolice).catch(()=>{});},[]);
+  useEffect(()=>{if(!policeProp)api('/police').then(setPolice).catch(()=>{});},[]);
 
   const policaMatch=useMemo(()=>{
     if(!policaKod.trim())return null;
