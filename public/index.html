@@ -511,7 +511,7 @@ function LoginScreen({onLogin}){
 }
 
 // ===== DASHBOARD =====
-function Dashboard({user,onNav}){
+function Dashboard({user,onNav,showToast}){
   const [data,setData]=useState(null);
   useEffect(()=>{api('/dashboard').then(setData).catch(console.error);},[]);
   if(!data)return <div className="page"><div style={{color:'var(--muted)',padding:40,textAlign:'center',fontFamily:'Barlow Condensed,sans-serif',letterSpacing:2,textTransform:'uppercase',fontSize:13}}>Učitavanje...</div></div>;
@@ -1808,7 +1808,7 @@ function App(){
       </div>
 
       {/* PAGES */}
-      {page==='dashboard'&&<ErrorBoundary><Dashboard user={user} onNav={nav}/></ErrorBoundary>}
+      {page==='dashboard'&&<ErrorBoundary><Dashboard user={user} onNav={nav} showToast={showToast}/></ErrorBoundary>}
       {page==='gume'&&<ErrorBoundary><GumeModul user={user} showToast={showToast} gume={gume} setGume={setGume} police={police} magacini={magacini} loadPolice={loadPoliceAndMag} lightbox={lightbox} setLightbox={setLightbox}/></ErrorBoundary>}
       {page==='auta'&&<ErrorBoundary><AutaModul user={user} showToast={showToast}/></ErrorBoundary>}
       {page==='zadaci'&&isAdmin&&<ZadaciModul user={user} showToast={showToast}/>}
@@ -1833,7 +1833,7 @@ if('serviceWorker' in navigator){
   });
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><App/></ErrorBoundary>);
 </script>
 </body>
 </html>
