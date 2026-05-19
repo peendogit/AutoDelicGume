@@ -180,6 +180,19 @@ async function initDB() {
     )
   `);
 
+  // HISTORIJA CIJENA AUTA
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS cijena_historija (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      auto_id INTEGER NOT NULL,
+      stara_cijena TEXT,
+      nova_cijena TEXT NOT NULL,
+      korisnik TEXT NOT NULL,
+      napomena TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // ZADACI (to-do)
   await dbExec(`
     CREATE TABLE IF NOT EXISTS zadaci (
@@ -675,6 +688,12 @@ app.post('/api/auta', requireAuth, async (req,res) => {
 app.put('/api/auta/:id', requireAuth, async (req,res) => {
   try {
     const {marka,model,godiste,boja,km,motor,vin,napomena,slike,nabavna_cijena,prodajna_cijena,olx_link,status} = req.body;
+    // Log price change if prodajna_cijena changed
+    const stari = await dbGet('SELECT prodajna_cijena FROM auta WHERE id=?',[req.params.id]);
+    if (stari && stari.prodajna_cijena !== (prodajna_cijena||null)) {
+      await dbRun('INSERT INTO cijena_historija (auto_id,stara_cijena,nova_cijena,korisnik) VALUES (?,?,?,?)',
+        [req.params.id, stari.prodajna_cijena||null, prodajna_cijena||'0', req.user.username]);
+    }
     await dbRun(`UPDATE auta SET marka=?,model=?,godiste=?,boja=?,km=?,motor=?,vin=?,napomena=?,slike=?,
       nabavna_cijena=?,prodajna_cijena=?,olx_link=?,status=? WHERE id=?`,
       [marka,model,godiste||null,boja||null,km||null,motor||null,vin||null,napomena||'',
@@ -682,6 +701,14 @@ app.put('/api/auta/:id', requireAuth, async (req,res) => {
     const a = await dbGet('SELECT * FROM auta WHERE id=?',[req.params.id]);
     await logActivity(req.user.username,'EDITOVANO_AUTO',`${a.sifra} — ${a.marka} ${a.model}`);
     res.json({...a, slike:JSON.parse(a.slike||'[]')});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// Historija cijena za auto
+app.get('/api/auta/:id/cijena-historija', requireAdmin, async (req,res) => {
+  try {
+    const historija = await dbAll('SELECT * FROM cijena_historija WHERE auto_id=? ORDER BY created_at DESC',[req.params.id]);
+    res.json(historija);
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
