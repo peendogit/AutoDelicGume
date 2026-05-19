@@ -287,6 +287,9 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 /* COMBOBOX */
 .combo-custom{width:100%;margin-top:5px;background:var(--card);border:1.5px solid var(--accent);border-radius:5px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;padding:8px 10px;outline:none}
 
+.dead-capital{position:absolute;top:7px;left:7px;background:rgba(248,81,73,.9);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:900;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;border-radius:3px;display:flex;align-items:center;gap:3px}
+.site-footer{text-align:center;padding:18px 20px;color:var(--muted);font-size:11px;border-top:1px solid var(--border);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;font-weight:700;margin-top:auto}
+.site-footer span{color:var(--accent)}
 @media(max-width:600px){
   .two-col{grid-template-columns:1fr}
   .kpi-grid{grid-template-columns:1fr 1fr}
@@ -551,6 +554,16 @@ function AutaModul({user,showToast}){
   const [editId,setEditId]=useState(null);const [saving,setSaving]=useState(false);
   const [sellAutoModal,setSellAutoModal]=useState(false);
   const [sellAutoPrice,setSellAutoPrice]=useState('');
+  const [cijenaHistorija,setCijenaHistorija]=useState(null); // null=closed, array=open
+  const MRTAV_KAPITAL_DANI = 90; // vozilo stoji vise od 90 dana
+
+  const daniNaSkladistu = (created_at) => Math.floor((Date.now()-new Date(created_at).getTime())/(1000*60*60*24));
+  const jeMrtavKapital = (a) => a.status==='na_stanju' && daniNaSkladistu(a.created_at) >= MRTAV_KAPITAL_DANI;
+
+  const loadCijenaHistorija = async(autoId) => {
+    try { const h = await api('/auta/'+autoId+'/cijena-historija'); setCijenaHistorija(h); }
+    catch(e) { showToast(e.message,'err'); }
+  };
   const imgHook=useImageUpload([]);
   const isAdmin=user.role==='admin';
 
@@ -590,10 +603,29 @@ function AutaModul({user,showToast}){
   };
 
   return(<div className="page">
-    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
-      <div><div className="page-title">Auta</div><div className="page-sub">Vozila na stanju i prodato</div></div>
-      <button className="btn-add-main" onClick={openAdd}><Icons.Plus size={13}/> Dodaj auto</button>
-    </div>
+    {(()=>{
+      const naStanju = auta.filter(a=>a.status==='na_stanju');
+      const ukupnaVrijednost = naStanju.reduce((s,a)=>s+(parseFloat(a.prodajna_cijena)||0),0);
+      const mrtavKapitalCount = naStanju.filter(a=>jeMrtavKapital(a)).length;
+      return(<>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,flexWrap:'wrap',gap:8}}>
+          <div><div className="page-title">Auta</div><div className="page-sub">Vozila na stanju i prodato</div></div>
+          <button className="btn-add-main" onClick={openAdd}><Icons.Plus size={13}/> Dodaj auto</button>
+        </div>
+        <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap'}}>
+          <div className="kpi green" style={{flex:1,minWidth:140,padding:'10px 14px'}}>
+            <div className="kpi-lbl">Ukupna vrijednost lagera</div>
+            <div className="kpi-val" style={{color:'var(--green)',fontSize:26}}>{ukupnaVrijednost.toLocaleString('sr-Latn-RS')} KM</div>
+            <div className="kpi-sub">{naStanju.length} vozila na stanju</div>
+          </div>
+          {mrtavKapitalCount>0&&<div className="kpi red" style={{flex:1,minWidth:140,padding:'10px 14px'}}>
+            <div className="kpi-lbl">⚠️ Mrtav kapital (&gt;90 dana)</div>
+            <div className="kpi-val" style={{color:'var(--red)',fontSize:26}}>{mrtavKapitalCount}</div>
+            <div className="kpi-sub">vozila stoje predugo</div>
+          </div>}
+        </div>
+      </>);
+    })()}
     <div className="status-tabs" style={{justifyContent:'flex-start',gap:6}}>
       {[['na_stanju','Na stanju','as'],['prodat','Prodato','ap']].map(([s,l,cls])=>
         <button key={s} className={'stab'+(statusFilter===s?' '+(cls||'as'):'')} onClick={()=>setStatusFilter(s)}>{l} ({counts[s]||0})</button>)}
@@ -603,6 +635,7 @@ function AutaModul({user,showToast}){
       {filtered.map(a=><div key={a.id} className="auto-card" onClick={()=>setDetail(a)}>
         <div className="auto-img">{a.slike&&a.slike.length>0?<img src={a.slike[0]} alt="" loading="lazy"/>:<Icons.Car size={40}/>}</div>
         <span className={'auto-status '+a.status}>{statusLbl(a.status)}</span>
+          {jeMrtavKapital(a)&&<span className="dead-capital">🔴 {daniNaSkladistu(a.created_at)}d</span>}
         <div className="auto-info">
           <div className="auto-name">{a.marka} {a.model}</div>
           <div className="auto-sub">{[a.godiste,a.motor,a.km&&a.km+' km'].filter(Boolean).join(' · ')}</div>
@@ -626,8 +659,18 @@ function AutaModul({user,showToast}){
         {detail.km&&<div className="spec-box"><div className="spec-lbl">Kilometraža</div><div className="spec-val">{detail.km} km</div></div>}
         {detail.boja&&<div className="spec-box"><div className="spec-lbl">Boja</div><div className="spec-val" style={{fontSize:14}}>{detail.boja}</div></div>}
         {isAdmin&&detail.nabavna_cijena&&<div className="spec-box"><div className="spec-lbl">Nabavna cijena</div><div className="spec-val" style={{fontSize:14,color:'var(--red)'}}>{detail.nabavna_cijena} KM</div></div>}
-        {detail.prodajna_cijena&&<div className="spec-box"><div className="spec-lbl">Prodajna cijena</div><div className="spec-val" style={{fontSize:14,color:'var(--green)'}}>{detail.prodajna_cijena} KM</div></div>}
+        {detail.prodajna_cijena&&<div className="spec-box"><div className="spec-lbl">Prodajna cijena</div>
+          <div style={{display:'flex',alignItems:'center',gap:6}}>
+            <div className="spec-val" style={{fontSize:14,color:'var(--green)'}}>{detail.prodajna_cijena} KM</div>
+            <button title="Historija cijena" onClick={()=>loadCijenaHistorija(detail.id)} style={{background:'none',border:'1px solid var(--border)',borderRadius:4,color:'var(--muted)',cursor:'pointer',padding:'2px 5px',fontSize:11,display:'flex',alignItems:'center',gap:3}}>
+              <Icons.History size={11}/> historija
+            </button>
+          </div>
+        </div>}
       </div>
+      {jeMrtavKapital(detail)&&<div style={{background:'rgba(248,81,73,.1)',border:'1.5px solid rgba(248,81,73,.4)',borderRadius:6,padding:'8px 12px',marginBottom:8,display:'flex',alignItems:'center',gap:8,fontSize:12,color:'var(--red)'}}>
+        🔴 <b>Mrtav kapital</b> — vozilo stoji {daniNaSkladistu(detail.created_at)} dana bez prodaje
+      </div>}
       {detail.vin&&<div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:5,padding:'6px 10px',fontSize:11,marginBottom:8}}>VIN: <b>{detail.vin}</b></div>}
       {detail.napomena&&<><div className="sec-lbl">Napomena</div><p style={{fontSize:12,color:'var(--muted)',lineHeight:1.6,marginBottom:8}}>{detail.napomena}</p></>}
       <div className="modal-foot">
@@ -665,6 +708,28 @@ function AutaModul({user,showToast}){
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(null)}>Odustani</button><button className="btn-save" onClick={doSave} disabled={saving||imgHook.uploadState.uploading}>{saving?'Čuvanje...':'Sačuvaj auto'}</button></div>
     </div></div>}
 
+    {cijenaHistorija!==null&&<div className="overlay" onClick={()=>setCijenaHistorija(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">Historija cijena <button className="btn-close" onClick={()=>setCijenaHistorija(null)}>×</button></div>
+      <div style={{maxHeight:'60vh',overflowY:'auto'}}>
+        {cijenaHistorija.length===0
+          ?<div style={{textAlign:'center',padding:'24px 0',color:'var(--muted)',fontSize:13}}>Cijena nije mijenjana</div>
+          :cijenaHistorija.map((h,i)=>{
+            const dt=new Date(h.created_at);
+            const timeStr=dt.toLocaleDateString('sr-Latn-RS')+' '+dt.toLocaleTimeString('sr-Latn-RS',{hour:'2-digit',minute:'2-digit'});
+            return(<div key={i} className="log-item">
+              <div style={{flex:1}}>
+                <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:14,fontWeight:800,display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{color:'var(--red)',textDecoration:'line-through'}}>{h.stara_cijena?h.stara_cijena+' KM':'—'}</span>
+                  <span style={{color:'var(--muted)'}}>→</span>
+                  <span style={{color:'var(--green)'}}>{h.nova_cijena} KM</span>
+                </div>
+                <div className="log-detail">Mijenjao: <b style={{color:'var(--text)'}}>{h.korisnik}</b></div>
+              </div>
+              <span className="log-time">{timeStr}</span>
+            </div>);
+          })}
+      </div>
+    </div></div>}
     {sellAutoModal&&detail&&<div className="overlay" onClick={()=>setSellAutoModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
       <div className="modal-title">Prodaj auto <button className="btn-close" onClick={()=>setSellAutoModal(false)}>×</button></div>
       <div className="sell-box">
@@ -679,6 +744,7 @@ function AutaModul({user,showToast}){
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>setSellAutoModal(false)}>Odustani</button><button className="btn-save" style={{background:'var(--green)',color:'#fff'}} onClick={doSellAuto}>Potvrdi prodaju</button></div>
     </div></div>}
     {lightbox&&<Lightbox images={lightbox.images} startIndex={lightbox.index} onClose={()=>setLightbox(null)}/>}
+  <div className="site-footer">© 2025 <span>Delite Solutions</span></div>
   </div>);
 }
 
@@ -736,6 +802,7 @@ function ZadaciModul({user,showToast}){
       <div className="fg2"><label>Prioritet</label><select value={form.prioritet} onChange={e=>setForm(f=>({...f,prioritet:e.target.value}))}><option value="visok">Visok</option><option value="srednji">Srednji</option><option value="nizak">Nizak</option></select></div>
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button><button className="btn-save" onClick={doAdd}>Dodaj zadatak</button></div>
     </div></div>}
+  <div className="site-footer">© 2025 <span>Delite Solutions</span></div>
   </div>);
 }
 
@@ -870,6 +937,7 @@ function TroskoviModul({user,showToast}){
       {dioForm.nabavljeno&&<div className="fg2"><label>Stvarna cijena (KM)</label><input type="number" value={dioForm.stvarna_cijena} onChange={e=>setDioForm(f=>({...f,stvarna_cijena:e.target.value}))} placeholder="0"/></div>}
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>{setDioModal(null);setEditDio(null);}}>Odustani</button><button className="btn-save" onClick={()=>doAddDio(dioModal)}>{editDio?'Sačuvaj':'Dodaj dio'}</button></div>
     </div></div>}
+  <div className="site-footer">© 2025 <span>Delite Solutions</span></div>
   </div>);
 }
 
@@ -920,6 +988,7 @@ function AnalitikaModul({showToast}){
         {data.gumePoPolici.map(p=><div key={p.polica_kod} style={{background:'rgba(88,166,255,.1)',border:'1px solid rgba(88,166,255,.25)',color:'var(--blue)',borderRadius:4,fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,padding:'2px 8px'}}>{p.polica_kod} <span style={{color:'var(--muted)'}}>{p.guma_count}x</span></div>)}
       </div>
     </div>}
+  <div className="site-footer">© 2025 <span>Delite Solutions</span></div>
   </div>);
 }
 
@@ -946,6 +1015,7 @@ function LogModul({showToast}){
         </div>);
       })}
     </div>
+  <div className="site-footer">© 2025 <span>Delite Solutions</span></div>
   </div>);
 }
 
@@ -1176,6 +1246,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
         <button className="btn-save" onClick={doSave} disabled={!canSave}>{imgHook.uploadState.uploading?'Čekaj slanje...':editingId?'Sačuvaj izmjene':'Sačuvaj gumu'}</button>
       </div>
     </div></div>}
+  <div className="site-footer">© 2025 <span>Delite Solutions</span></div>
   </div>);
 }
 
