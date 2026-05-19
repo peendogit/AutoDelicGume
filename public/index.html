@@ -1448,14 +1448,14 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
 
 
 // ===== PREMJEŠTANJE WIDGET (na Dashboardu) =====
-function PremjestanjeWidget({showToast}){
+function PremjestanjeWidget({showToast,police:policeProp}){
   const [sifre,setSifre]=useState('');
   const [policaKod,setPolicaKod]=useState('');
-  const [police,setPolice]=useState([]);
+  const [police,setPolice]=useState(policeProp||[]);
   const [rezultat,setRezultat]=useState(null);
   const [loading,setLoading]=useState(false);
 
-  useEffect(()=>{if(!policeProp)api('/police').then(setPolice).catch(()=>{});},[]);
+  useEffect(()=>{if(!policeProp||policeProp.length===0)api('/police').then(setPolice).catch(()=>{});},[]);
 
   const policaMatch=useMemo(()=>{
     if(!policaKod.trim())return null;
