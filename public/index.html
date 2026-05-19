@@ -22,6 +22,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .content{flex:1;margin-left:220px;min-height:100vh;display:flex;flex-direction:column;transition:margin .25s}
 .content.full{margin-left:0}
 @media(max-width:768px){.sidebar{transform:translateX(-220px)}.sidebar.open{transform:translateX(0)}.content{margin-left:0}}
+@media(min-width:769px){.sidebar{transform:translateX(0)}.content{margin-left:220px}}
 
 /* SIDEBAR */
 .sb-logo{padding:18px 16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
@@ -127,7 +128,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .auto-status{position:absolute;top:7px;right:7px;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:3px}
 .auto-status.na_stanju{background:rgba(63,185,80,.2);color:var(--green);border:1px solid var(--green)}
 .auto-status.prodat{background:rgba(188,140,255,.2);color:var(--purple);border:1px solid var(--purple)}
-.auto-status.u_dijelovima{background:rgba(248,81,73,.15);color:var(--red);border:1px solid var(--red)}
+
 .auto-info{padding:10px 12px}
 .auto-name{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;letter-spacing:.5px;margin-bottom:2px}
 .auto-sub{font-size:11px;color:var(--muted);margin-bottom:6px}
@@ -331,7 +332,7 @@ function resizeImage(file,maxW=1200,maxH=1200,quality=0.82){
 }
 function promjerDisp(p){if(!p)return '';return /^[0-9]/.test(p)?'R'+p:p;}
 function tipLbl(t){return {komad:'Komad (1)',par:'Par (2)',set:'Set (4)'}[t]||t||'';}
-function statusLbl(s){return {na_stanju:'Na stanju',prodat:'Prodat',u_dijelovima:'U dijelovima'}[s]||s||'';}
+function statusLbl(s){return {na_stanju:'Na stanju',prodat:'Prodat'}[s]||s||'';}
 function timeAgo(dt){
   const sec=Math.floor((Date.now()-new Date(dt).getTime())/1000);
   if(sec<60)return 'upravo';if(sec<3600)return Math.floor(sec/60)+' min';
@@ -548,6 +549,8 @@ function AutaModul({user,showToast}){
   const [lightbox,setLightbox]=useState(null);
   const [form,setForm]=useState({marka:'',model:'',godiste:'',boja:'',km:'',motor:'',vin:'',napomena:'',olx_link:'',nabavna_cijena:'',prodajna_cijena:'',status:'na_stanju'});
   const [editId,setEditId]=useState(null);const [saving,setSaving]=useState(false);
+  const [sellAutoModal,setSellAutoModal]=useState(false);
+  const [sellAutoPrice,setSellAutoPrice]=useState('');
   const imgHook=useImageUpload([]);
   const isAdmin=user.role==='admin';
 
@@ -555,10 +558,19 @@ function AutaModul({user,showToast}){
   useEffect(()=>{load();},[]);
 
   const filtered=auta.filter(a=>!statusFilter||a.status===statusFilter);
-  const counts={na_stanju:auta.filter(a=>a.status==='na_stanju').length,prodat:auta.filter(a=>a.status==='prodat').length,u_dijelovima:auta.filter(a=>a.status==='u_dijelovima').length};
+  const counts={na_stanju:auta.filter(a=>a.status==='na_stanju').length,prodat:auta.filter(a=>a.status==='prodat').length};
 
   const openAdd=()=>{setForm({marka:'',model:'',godiste:'',boja:'',km:'',motor:'',vin:'',napomena:'',olx_link:'',nabavna_cijena:'',prodajna_cijena:'',status:'na_stanju'});imgHook.setSlike([]);setEditId(null);setModal('form');};
   const openEdit=(a)=>{setForm({marka:a.marka,model:a.model,godiste:a.godiste||'',boja:a.boja||'',km:a.km||'',motor:a.motor||'',vin:a.vin||'',napomena:a.napomena||'',olx_link:a.olx_link||'',nabavna_cijena:a.nabavna_cijena||'',prodajna_cijena:a.prodajna_cijena||'',status:a.status||'na_stanju'});imgHook.setSlike(a.slike?[...a.slike]:[]);setEditId(a.id);setDetail(null);setModal('form');};
+
+  const doSellAuto=async()=>{
+    try{
+      const updated=await api('/auta/'+detail.id,{method:'PUT',body:{...detail,slike:detail.slike,status:'prodat',prodajna_cijena:sellAutoPrice||detail.prodajna_cijena}});
+      setAuta(p=>p.map(a=>a.id===updated.id?updated:a));
+      setSellAutoModal(false);setDetail(null);setSellAutoPrice('');
+      showToast(detail.marka+' '+detail.model+' označen kao prodat');
+    }catch(e){showToast(e.message,'err');}
+  };
 
   const doSave=async()=>{
     if(!form.marka||!form.model){showToast('Marka i model su obavezni','err');return;}
@@ -583,8 +595,8 @@ function AutaModul({user,showToast}){
       <button className="btn-add-main" onClick={openAdd}><Icons.Plus size={13}/> Dodaj auto</button>
     </div>
     <div className="status-tabs" style={{justifyContent:'flex-start',gap:6}}>
-      {[['na_stanju','Na stanju','as'],['prodat','Prodato','ap'],['u_dijelovima','U dijelovima','']].map(([s,l,cls])=>
-        <button key={s} className={'stab'+(statusFilter===s?' '+(cls||'as'):'')} style={statusFilter===s&&s==='u_dijelovima'?{borderColor:'var(--red)',color:'var(--red)',background:'rgba(248,81,73,.08)'}:{}} onClick={()=>setStatusFilter(s)}>{l} ({counts[s]||0})</button>)}
+      {[['na_stanju','Na stanju','as'],['prodat','Prodato','ap']].map(([s,l,cls])=>
+        <button key={s} className={'stab'+(statusFilter===s?' '+(cls||'as'):'')} onClick={()=>setStatusFilter(s)}>{l} ({counts[s]||0})</button>)}
     </div>
     {loading?<div className="empty">Učitavanje...</div>:filtered.length===0?<div className="empty"><Icons.Car size={40}/><p>Nema auta.</p></div>:
     <div className="auto-grid">
@@ -620,8 +632,9 @@ function AutaModul({user,showToast}){
       {detail.napomena&&<><div className="sec-lbl">Napomena</div><p style={{fontSize:12,color:'var(--muted)',lineHeight:1.6,marginBottom:8}}>{detail.napomena}</p></>}
       <div className="modal-foot">
         {isAdmin&&<div className="foot-left"><button className="btn-sm red" onClick={()=>doDel(detail.id)}><Icons.Trash/> Obriši</button></div>}
-        {detail.olx_link&&<a href={detail.olx_link} target="_blank" className="olx-link"><Icons.Link size={12}/> OLX oglas</a>}
+        {detail.olx_link&&<a href={detail.olx_link} target="_blank" rel="noopener noreferrer" className="olx-link" onClick={e=>{e.stopPropagation();}}><Icons.Link size={12}/> OLX oglas</a>}
         <button className="btn-cancel" onClick={()=>openEdit(detail)}><Icons.Edit/> Uredi</button>
+        {detail.status==='na_stanju'&&<button className="btn-save" style={{background:'var(--green)',color:'#fff'}} onClick={()=>setSellAutoModal(true)}>Prodaj</button>}
       </div>
     </div></div>}
 
@@ -641,7 +654,7 @@ function AutaModul({user,showToast}){
         <div className="fg2"><label>Boja</label><input placeholder="Crna" value={form.boja} onChange={e=>setForm(f=>({...f,boja:e.target.value}))}/></div>
       </div>
       <div className="fg2"><label>VIN broj</label><input placeholder="WVW..." value={form.vin} onChange={e=>setForm(f=>({...f,vin:e.target.value.toUpperCase()}))}/></div>
-      <div className="fg2"><label>Status</label><select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}><option value="na_stanju">Na stanju</option><option value="prodat">Prodat</option><option value="u_dijelovima">U dijelovima</option></select></div>
+      <div className="fg2"><label>Status</label><select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}><option value="na_stanju">Na stanju</option><option value="prodat">Prodat</option></select></div>
       {isAdmin&&<div className="two-col">
         <div className="fg2"><label>Nabavna cijena (KM)</label><input type="number" placeholder="0" value={form.nabavna_cijena} onChange={e=>setForm(f=>({...f,nabavna_cijena:e.target.value}))}/></div>
         <div className="fg2"><label>Prodajna cijena (KM)</label><input type="number" placeholder="0" value={form.prodajna_cijena} onChange={e=>setForm(f=>({...f,prodajna_cijena:e.target.value}))}/></div>
@@ -652,6 +665,19 @@ function AutaModul({user,showToast}){
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(null)}>Odustani</button><button className="btn-save" onClick={doSave} disabled={saving||imgHook.uploadState.uploading}>{saving?'Čuvanje...':'Sačuvaj auto'}</button></div>
     </div></div>}
 
+    {sellAutoModal&&detail&&<div className="overlay" onClick={()=>setSellAutoModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">Prodaj auto <button className="btn-close" onClick={()=>setSellAutoModal(false)}>×</button></div>
+      <div className="sell-box">
+        <p>Prodaješ: <strong>{detail.marka} {detail.model}{detail.godiste?' ('+detail.godiste+')':''}</strong></p>
+        <div className="fg2" style={{marginTop:10}}><label>Prodajna cijena (KM)</label>
+          <div className="price-row">
+            <input className="price-inp" type="number" placeholder="0" autoFocus value={sellAutoPrice} onChange={e=>setSellAutoPrice(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doSellAuto()}/>
+            <span className="price-curr">KM</span>
+          </div>
+        </div>
+      </div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>setSellAutoModal(false)}>Odustani</button><button className="btn-save" style={{background:'var(--green)',color:'#fff'}} onClick={doSellAuto}>Potvrdi prodaju</button></div>
+    </div></div>}
     {lightbox&&<Lightbox images={lightbox.images} startIndex={lightbox.index} onClose={()=>setLightbox(null)}/>}
   </div>);
 }
@@ -759,12 +785,13 @@ function TroskoviModul({user,showToast}){
 
   const kalkulacija=(t)=>{
     const nab=parseFloat(t.nabavna_cijena)||0;
-    const planDijelovi=(t.dijel||[]).reduce((s,d)=>s+(parseFloat(d.planirana_cijena)||0),0);
-    const stvarDijelovi=(t.dijel||[]).filter(d=>d.nabavljeno).reduce((s,d)=>s+(parseFloat(d.stvarna_cijena)||0),0);
-    const nabavljeno=(t.dijel||[]).filter(d=>d.nabavljeno).length;
+    const dij=t.dijelovi||[];
+    const planDijelovi=dij.reduce((s,d)=>s+(parseFloat(d.planirana_cijena)||0),0);
+    const stvarDijelovi=dij.filter(d=>d.nabavljeno).reduce((s,d)=>s+(parseFloat(d.stvarna_cijena)||0),0);
+    const nabavljeno=dij.filter(d=>d.nabavljeno).length;
     const ukupno=nab+stvarDijelovi;
     const planirano=nab+planDijelovi;
-    return{nab,planDijelovi,stvarDijelovi,nabavljeno,ukupno,planirano,total:(t.dijel||[]).length};
+    return{nab,planDijelovi,stvarDijelovi,nabavljeno,ukupno,planirano,total:dij.length};
   };
 
   return(<div className="page">
@@ -961,6 +988,15 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
 
   const openAdd=()=>{setForm({...EMPTY_GUMA});imgHook.setSlike([]);setEditingId(null);setSubmitAttempted(false);setModal('form');};
   const openEdit=(g)=>{setForm({sezona:g.sezona,sirina:g.sirina,visina:g.visina,promjer:g.promjer,napomena:g.napomena||'',policaKod:g.polica_kod||'',dubina:g.dubina||'',dot:g.dot||'',tip:g.tip||'',cijena:g.cijena||''});imgHook.setSlike(g.slike?[...g.slike]:[]);setEditingId(g.id);setDetailG(null);setSubmitAttempted(false);setModal('form');};
+
+  const doSellAuto=async()=>{
+    try{
+      const updated=await api('/auta/'+detail.id,{method:'PUT',body:{...detail,slike:detail.slike,status:'prodat',prodajna_cijena:sellAutoPrice||detail.prodajna_cijena}});
+      setAuta(p=>p.map(a=>a.id===updated.id?updated:a));
+      setSellAutoModal(false);setDetail(null);setSellAutoPrice('');
+      showToast(detail.marka+' '+detail.model+' označen kao prodat');
+    }catch(e){showToast(e.message,'err');}
+  };
 
   const doSave=async()=>{
     setSubmitAttempted(true);if(!canSave||savingGuma)return;setSavingGuma(true);
@@ -1333,7 +1369,7 @@ function App(){
     {sidebarOpen&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:99}} onClick={()=>setSidebarOpen(false)}/>}
 
     {/* SIDEBAR */}
-    <aside className={'sidebar'+(sidebarOpen?' open':'')} style={window.innerWidth>768?{}:{transform:sidebarOpen?'translateX(0)':'translateX(-220px)'}}>
+    <aside className={'sidebar'+(sidebarOpen?' open':'')}>
       <div className="sb-logo">
         <span className="sb-logo-icon"><Icons.Car size={22}/></span>
         <div className="sb-logo-text">Auto Delić<span>Upravljanje otpadom</span></div>
@@ -1358,14 +1394,13 @@ function App(){
     </aside>
 
     {/* MAIN CONTENT */}
-    <div className="content" style={window.innerWidth>768?{marginLeft:220}:{marginLeft:0}}>
+    <div className="content">
       <div className="topbar">
         <button className="topbar-burger" onClick={()=>setSidebarOpen(s=>!s)}>
           <span/><span/><span/>
         </button>
         <div className="topbar-title">{pageTitles[page]||page}</div>
         <div className="topbar-actions">
-          {page==='gume'&&<button className="btn-add-main" onClick={()=>setPage('gume_add')}><Icons.Plus size={13}/> Dodaj</button>}
         </div>
       </div>
 
