@@ -180,6 +180,19 @@ async function initDB() {
     )
   `);
 
+  // TROŠKOVI OTPADA (gorivo, radnici, režije...)
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS troskovi_otpada (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kategorija TEXT NOT NULL,
+      opis TEXT DEFAULT '',
+      iznos REAL NOT NULL,
+      datum TEXT NOT NULL,
+      korisnik TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // HISTORIJA CIJENA AUTA
   await dbExec(`
     CREATE TABLE IF NOT EXISTS cijena_historija (
@@ -834,6 +847,114 @@ app.get('/api/katalog', async (req,res) => {
   try {
     const gume = await dbAll(GUME_SELECT + ' WHERE g.prodato=0 ORDER BY g.id DESC');
     res.json({ gume: gume.map(formatGuma) });
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== BATCH PREMJEŠTANJE =====
+app.post('/api/gume/batch-premjesti', requireAuth, async (req,res) => {
+  try {
+    const {sifre, policaKod} = req.body;
+    if(!sifre||!sifre.length||!policaKod) return res.status(400).json({error:'Nema podataka'});
+    const polica = await dbGet('SELECT * FROM police WHERE naziv=?',[policaKod]);
+    if(!polica) return res.status(400).json({error:'Polica "'+policaKod+'" ne postoji'});
+    const rezultati = [];
+    for(const sifra of sifre) {
+      const g = await dbGet('SELECT id,sifra,polica_kod FROM gume WHERE sifra=?',[sifra.trim().toUpperCase()]);
+      if(!g) { rezultati.push({sifra, ok:false, greska:'Ne postoji'}); continue; }
+      await dbRun('UPDATE gume SET polica_id=?,polica_kod=? WHERE id=?',[polica.id,policaKod,g.id]);
+      await dbRun('INSERT INTO historija_premjestanja (guma_id,guma_sifra,polica_sa,polica_na,korisnik) VALUES (?,?,?,?,?)',
+        [g.id, g.sifra, g.polica_kod||null, policaKod, req.user.username]);
+      await logActivity(req.user.username,'PREMJESTENA_GUMA',`${g.sifra}: ${g.polica_kod||'—'} → ${policaKod}`);
+      rezultati.push({sifra:g.sifra, ok:true, polica_nova:policaKod});
+    }
+    res.json({rezultati, uspjesno: rezultati.filter(r=>r.ok).length});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// PRETRAGA PO POLICI
+app.get('/api/police/:naziv/gume', requireAuth, async (req,res) => {
+  try {
+    const naziv = decodeURIComponent(req.params.naziv).toUpperCase();
+    const gume = await dbAll(GUME_SELECT + ' WHERE g.polica_kod=? AND g.prodato=0 ORDER BY g.id',[naziv]);
+    res.json(gume.map(formatGuma));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== TROŠKOVI OTPADA =====
+app.get('/api/troskovi-otpada', requireAdmin, async (req,res) => {
+  try {
+    const {od, do: do_} = req.query;
+    let sql = 'SELECT * FROM troskovi_otpada WHERE 1=1';
+    const p = [];
+    if(od) { sql += ' AND datum >= ?'; p.push(od); }
+    if(do_) { sql += ' AND datum <= ?'; p.push(do_); }
+    sql += ' ORDER BY datum DESC';
+    res.json(await dbAll(sql, p));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/troskovi-otpada', requireAdmin, async (req,res) => {
+  try {
+    const {kategorija, opis, iznos, datum} = req.body;
+    if(!kategorija||!iznos) return res.status(400).json({error:'Kategorija i iznos su obavezni'});
+    const r = await dbRun('INSERT INTO troskovi_otpada (kategorija,opis,iznos,datum,korisnik) VALUES (?,?,?,?,?)',
+      [kategorija, opis||'', parseFloat(iznos), datum||new Date().toISOString().slice(0,10), req.user.username]);
+    res.json(await dbGet('SELECT * FROM troskovi_otpada WHERE id=?',[r.lastID]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/troskovi-otpada/:id', requireAdmin, async (req,res) => {
+  try {
+    await dbRun('DELETE FROM troskovi_otpada WHERE id=?',[req.params.id]);
+    res.json({ok:true});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== FINANSIJSKI IZVJEŠTAJ =====
+app.get('/api/finansije', requireAdmin, async (req,res) => {
+  try {
+    const {period} = req.query; // 'danas' | 'sedmica' | 'mjesec' | 'godina' | 'sve'
+    let datumOd = '2000-01-01';
+    const now = new Date();
+    if(period==='danas') datumOd = now.toISOString().slice(0,10);
+    else if(period==='sedmica') { const d=new Date(now); d.setDate(d.getDate()-7); datumOd=d.toISOString().slice(0,10); }
+    else if(period==='mjesec') datumOd = now.toISOString().slice(0,7)+'-01';
+    else if(period==='godina') datumOd = now.getFullYear()+'-01-01';
+
+    // Prihodi od guma
+    const gumeProdate = await dbAll(
+      `SELECT sifra,sirina,visina,promjer,sezona,cijena_prodaje,datum_prodaje,prodao_korisnik
+       FROM gume WHERE prodato=1 AND datum_prodaje >= ? ORDER BY datum_prodaje DESC`,
+      [datumOd.slice(0,7) <= now.toISOString().slice(0,7) ? datumOd : '2000-01-01']);
+
+    // Prihodi od auta
+    const autaProdana = await dbAll(
+      `SELECT sifra,marka,model,godiste,nabavna_cijena,prodajna_cijena,dodao_korisnik
+       FROM auta WHERE status='prodat' ORDER BY id DESC`);
+
+    // Troškovi otpada
+    const troskoviOtpada = await dbAll(
+      `SELECT * FROM troskovi_otpada WHERE datum >= ? ORDER BY datum DESC`, [datumOd]);
+
+    // Troškovi popravke (nabavne cijene auta + dijelovi)
+    const troskoviPopravke = await dbAll('SELECT * FROM troskovi_auta ORDER BY created_at DESC');
+    for(const t of troskoviPopravke) {
+      t.dijelovi = await dbAll('SELECT * FROM troskovi_dijelovi WHERE trosak_id=?',[t.id]);
+    }
+
+    // Gume na stanju — potencijalna vrijednost
+    const gumeStanje = await dbGet('SELECT COUNT(*) as c, SUM(CAST(cijena AS REAL)) as ukupno FROM gume WHERE prodato=0 AND cijena IS NOT NULL');
+    const autaStanje = await dbGet("SELECT COUNT(*) as c, SUM(CAST(prodajna_cijena AS REAL)) as ukupno FROM auta WHERE status='na_stanju' AND prodajna_cijena IS NOT NULL");
+
+    res.json({
+      gumeProdate,
+      autaProdana,
+      troskoviOtpada,
+      troskoviPopravke,
+      gumeStanje: { count: gumeStanje?.c||0, vrijednost: gumeStanje?.ukupno||0 },
+      autaStanje: { count: autaStanje?.c||0, vrijednost: autaStanje?.ukupno||0 },
+      period: period||'sve',
+    });
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
