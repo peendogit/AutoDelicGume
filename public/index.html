@@ -753,6 +753,7 @@ function ZadaciModul({user,showToast}){
   const [zadaci,setZadaci]=useState([]);const [modal,setModal]=useState(false);
   const [form,setForm]=useState({naslov:'',opis:'',prioritet:'srednji'});
   const [filterStatus,setFilterStatus]=useState('otvoreno');
+  const [sortPrioritet,setSortPrioritet]=useState('sve'); // sve | visok | srednji | nizak
   const load=async()=>{try{const d=await api('/zadaci');setZadaci(d);}catch(e){showToast(e.message,'err');}};
   useEffect(()=>{load();},[]);
   const toggle=async(z)=>{
@@ -766,7 +767,10 @@ function ZadaciModul({user,showToast}){
     const z=await api('/zadaci',{method:'POST',body:form});setZadaci(p=>[z,...p]);setModal(false);setForm({naslov:'',opis:'',prioritet:'srednji'});showToast('Zadatak dodan');
   };
   const doDel=async(id)=>{if(!window.confirm('Obrisati zadatak?'))return;await api('/zadaci/'+id,{method:'DELETE'});setZadaci(p=>p.filter(z=>z.id!=id));showToast('Zadatak obrisan');};
-  const filtered=zadaci.filter(z=>filterStatus==='sve'||z.status===filterStatus);
+  const PRIOR_ORD={visok:0,srednji:1,nizak:2};
+  const filtered=zadaci
+    .filter(z=>(filterStatus==='sve'||z.status===filterStatus)&&(sortPrioritet==='sve'||z.prioritet===sortPrioritet))
+    .sort((a,b)=>PRIOR_ORD[a.prioritet]-PRIOR_ORD[b.prioritet]);
   const otv=zadaci.filter(z=>z.status==='otvoreno').length,zatv=zadaci.filter(z=>z.status==='zatvoreno').length;
   return(<div className="page">
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
@@ -777,6 +781,13 @@ function ZadaciModul({user,showToast}){
       <button className={'stab'+(filterStatus==='otvoreno'?' as':'')} onClick={()=>setFilterStatus('otvoreno')}>Otvoreni ({otv})</button>
       <button className={'stab'+(filterStatus==='zatvoreno'?' ap':'')} onClick={()=>setFilterStatus('zatvoreno')}>Završeni ({zatv})</button>
       <button className={'stab'+(filterStatus==='sve'?' as':'')} onClick={()=>setFilterStatus('sve')}>Svi</button>
+    </div>
+    <div style={{display:'flex',gap:5,marginBottom:12,flexWrap:'wrap'}}>
+      <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:9,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)',alignSelf:'center',marginRight:3}}>Prioritet:</span>
+      {[['sve','Svi',''],['visok','Visok','visok'],['srednji','Srednji','srednji'],['nizak','Nizak','nizak']].map(([v,l,cls])=>
+        <button key={v} className={'stab'+(sortPrioritet===v?' '+(cls?'as':'as'):'')}
+          style={{flex:'none',padding:'4px 10px',...(sortPrioritet===v&&cls==='visok'?{borderColor:'var(--red)',color:'var(--red)',background:'rgba(248,81,73,.08)'}:sortPrioritet===v&&cls==='srednji'?{borderColor:'var(--accent)',color:'var(--accent)',background:'rgba(240,180,41,.08)'}:sortPrioritet===v&&cls==='nizak'?{borderColor:'var(--blue)',color:'var(--blue)',background:'rgba(88,166,255,.08)'}:{})}}
+          onClick={()=>setSortPrioritet(v)}>{l}</button>)}
     </div>
     <div className="zadaci-list">
       {filtered.length===0&&<div className="empty"><Icons.Task size={36}/><p>Nema zadataka.</p></div>}
