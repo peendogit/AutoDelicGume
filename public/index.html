@@ -347,6 +347,22 @@ const SIRINA_OPTIONS=['155','165','175','185','195','205','215','225','235','245
 const VISINA_OPTIONS=['40','45','50','55','60','65','70','75','80'];
 const EMPTY_GUMA={sezona:'',sirina:'',visina:'',promjer:'',napomena:'',policaKod:'',slike:[],dubina:'',dot:'',tip:'',cijena:''};
 
+class ErrorBoundary extends React.Component {
+  constructor(props){super(props);this.state={error:null};}
+  static getDerivedStateFromError(e){return {error:e};}
+  render(){
+    if(this.state.error){
+      return <div style={{padding:24,background:'#1a0a0a',color:'#f85149',fontFamily:'monospace',fontSize:12,borderRadius:8,margin:16,border:'1px solid #f85149'}}>
+        <div style={{fontFamily:"Barlow Condensed,sans-serif",fontSize:16,fontWeight:900,marginBottom:12}}>❌ GREŠKA — pošalji ovo programeru:</div>
+        <pre style={{whiteSpace:'pre-wrap',wordBreak:'break-all'}}>{this.state.error?.message}</pre>
+        <pre style={{whiteSpace:'pre-wrap',wordBreak:'break-all',fontSize:10,color:'#f8514988',marginTop:8}}>{this.state.error?.stack?.slice(0,500)}</pre>
+        <button onClick={()=>this.setState({error:null})} style={{marginTop:12,background:'#f85149',color:'#fff',border:'none',borderRadius:4,padding:'6px 12px',cursor:'pointer',fontFamily:'Barlow Condensed,sans-serif',fontWeight:700}}>Pokušaj ponovo</button>
+      </div>;
+    }
+    return this.props.children;
+  }
+}
+
 // ===== ICONS =====
 const Icons={
   Tire:({size=20})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="22"/><line x1="2" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="22" y2="12"/></svg>,
@@ -498,8 +514,8 @@ function LoginScreen({onLogin}){
 function Dashboard({user,onNav}){
   const [data,setData]=useState(null);
   useEffect(()=>{api('/dashboard').then(setData).catch(console.error);},[]);
-  if(!data)return <div className="page"><div style={{color:'var(--muted)',padding:40,textAlign:'center'}}>Učitavanje...</div></div>;
-  const aktDot={PRIJAVA:'blue',DODANA_GUMA:'green',DODANA_GUMA_GUME:'green',PRODANA_GUMA:'green',PREMJESTENA_GUMA:'accent',EDITOVANA_GUMA:'accent',OBRISANA_GUMA:'red',DODAN_AUTO:'blue',PRODAT_AUTO:'green',OBRISAN_AUTO:'red'};
+  if(!data)return <div className="page"><div style={{color:'var(--muted)',padding:40,textAlign:'center',fontFamily:'Barlow Condensed,sans-serif',letterSpacing:2,textTransform:'uppercase',fontSize:13}}>Učitavanje...</div></div>;
+  const aktDot={PRIJAVA:'blue',DODANA_GUMA:'green',PRODANA_GUMA:'green',PREMJESTENA_GUMA:'accent',EDITOVANA_GUMA:'accent',OBRISANA_GUMA:'red',DODAN_AUTO:'blue',PRODAT_AUTO:'green',OBRISAN_AUTO:'red'};
   const aktNaziv={PRIJAVA:'Prijava',DODANA_GUMA:'Dodana guma',PRODANA_GUMA:'Prodana guma',PREMJESTENA_GUMA:'Premještena',EDITOVANA_GUMA:'Izmijenjena guma',OBRISANA_GUMA:'Obrisana guma',DODAN_AUTO:'Dodan auto',PRODAT_AUTO:'Prodat auto',OBRISAN_AUTO:'Obrisan auto'};
   return(<div className="page">
     <div className="page-header">
@@ -512,7 +528,7 @@ function Dashboard({user,onNav}){
       {user.role==='admin'&&<div className="kpi blue" style={{cursor:'pointer'}} onClick={()=>onNav('zadaci')}><div className="kpi-lbl">Otvoreni zadaci</div><div className="kpi-val" style={{color:'var(--blue)'}}>{data.zadaci_otvoreno}</div><div className="kpi-sub">to-do lista</div></div>}
       {user.role==='admin'&&<div className="kpi purple" style={{cursor:'pointer'}} onClick={()=>onNav('troskovi')}><div className="kpi-lbl">U popravci</div><div className="kpi-val" style={{color:'var(--purple)'}}>{data.troskovi_aktivno}</div><div className="kpi-sub">auta na popravci</div></div>}
     </div>
-    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+    {data&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
       <div className="card-panel">
         <div className="section-title">Posljednje dodano — Gume</div>
         {(data.zadnje_gume||[]).length===0?<div style={{fontSize:12,color:'var(--muted)'}}>Nema guma</div>:
@@ -533,6 +549,7 @@ function Dashboard({user,onNav}){
     <div className="card-panel" style={{marginTop:14}}>
       <div className="section-title">📦 Premještanje guma</div>
       <PremjestanjeWidget showToast={showToast}/>
+    </div>
     </div>
     {user.role==='admin'&&<div className="card-panel" style={{marginTop:14}}>
       <div className="section-title">Posljednje aktivnosti</div>
@@ -1791,14 +1808,14 @@ function App(){
       </div>
 
       {/* PAGES */}
-      {page==='dashboard'&&<Dashboard user={user} onNav={nav}/>}
-      {page==='gume'&&<GumeModul user={user} showToast={showToast} gume={gume} setGume={setGume} police={police} magacini={magacini} loadPolice={loadPoliceAndMag} lightbox={lightbox} setLightbox={setLightbox}/>}
-      {page==='auta'&&<AutaModul user={user} showToast={showToast}/>}
+      {page==='dashboard'&&<ErrorBoundary><Dashboard user={user} onNav={nav}/></ErrorBoundary>}
+      {page==='gume'&&<ErrorBoundary><GumeModul user={user} showToast={showToast} gume={gume} setGume={setGume} police={police} magacini={magacini} loadPolice={loadPoliceAndMag} lightbox={lightbox} setLightbox={setLightbox}/></ErrorBoundary>}
+      {page==='auta'&&<ErrorBoundary><AutaModul user={user} showToast={showToast}/></ErrorBoundary>}
       {page==='zadaci'&&isAdmin&&<ZadaciModul user={user} showToast={showToast}/>}
       {page==='troskovi'&&isAdmin&&<TroskoviModul user={user} showToast={showToast}/>}
       {page==='analitika'&&isAdmin&&<AnalitikaModul showToast={showToast}/>}
       {page==='log'&&isAdmin&&<LogModul showToast={showToast}/>}
-      {page==='finansije'&&isAdmin&&<FinansijeModul showToast={showToast}/>}
+      {page==='finansije'&&isAdmin&&<ErrorBoundary><FinansijeModul showToast={showToast}/></ErrorBoundary>}
       {page==='troskovi_otpada'&&isAdmin&&<TroskoviOtpadaModul showToast={showToast}/>}
       {page==='podesavanja'&&isAdmin&&<PodesavanjaModul user={user} showToast={showToast} magacini={magacini} setMagacini={setMagacini} police={police} loadPolice={loadPoliceAndMag}/>}
     </div>
