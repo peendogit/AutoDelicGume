@@ -149,6 +149,72 @@ async function initDB() {
   `);
   await dbExec(`INSERT OR IGNORE INTO counters (key, value) VALUES ('gu', 9)`);
   await dbExec(`INSERT OR IGNORE INTO counters (key, value) VALUES ('po', 9)`);
+  await dbExec(`INSERT OR IGNORE INTO counters (key, value) VALUES ('au', 0)`);
+
+  // AUTA
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS auta (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sifra TEXT NOT NULL UNIQUE,
+      marka TEXT NOT NULL,
+      model TEXT NOT NULL,
+      godiste TEXT,
+      boja TEXT,
+      km TEXT,
+      motor TEXT,
+      vin TEXT,
+      napomena TEXT DEFAULT '',
+      slike TEXT DEFAULT '[]',
+      nabavna_cijena TEXT,
+      prodajna_cijena TEXT,
+      olx_link TEXT,
+      status TEXT DEFAULT 'na_stanju',
+      dodao_korisnik TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // ZADACI (to-do)
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS zadaci (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      naslov TEXT NOT NULL,
+      opis TEXT DEFAULT '',
+      prioritet TEXT DEFAULT 'srednji',
+      status TEXT DEFAULT 'otvoreno',
+      dodao_korisnik TEXT,
+      zatvorio_korisnik TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      zatvoreno_at DATETIME
+    )
+  `);
+
+  // TROSKOVI — auto na popravci
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS troskovi_auta (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      auto_id INTEGER,
+      naziv_auta TEXT NOT NULL,
+      nabavna_cijena REAL DEFAULT 0,
+      napomena TEXT DEFAULT '',
+      dodao_korisnik TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS troskovi_dijelovi (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      trosak_id INTEGER NOT NULL,
+      naziv TEXT NOT NULL,
+      planirana_cijena REAL DEFAULT 0,
+      stvarna_cijena REAL,
+      nabavljeno INTEGER DEFAULT 0,
+      napomena TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (trosak_id) REFERENCES troskovi_auta(id) ON DELETE CASCADE
+    )
+  `);
 
   // Add columns if missing (for existing DBs)
   const alterCols = ['dodao_korisnik TEXT','prodao_korisnik TEXT','dubina TEXT','dot TEXT','cijena TEXT','tip TEXT'];
@@ -540,23 +606,202 @@ app.get('/api/analitika', requireAdmin, async (req,res) => {
   }
 });
 
+// ===== DASHBOARD =====
+app.get('/api/dashboard', requireAuth, async (req,res) => {
+  try {
+    const [gumeStanje, gumeProdato, autaStanje, autaProdato,
+           zadaciOtvoreni, troskoviAktivno,
+           aktivnosti, zadnjeGume, zadnjaAuta] = await Promise.all([
+      dbGet('SELECT COUNT(*) as c FROM gume WHERE prodato=0'),
+      dbGet('SELECT COUNT(*) as c FROM gume WHERE prodato=1'),
+      dbGet("SELECT COUNT(*) as c FROM auta WHERE status='na_stanju'"),
+      dbGet("SELECT COUNT(*) as c FROM auta WHERE status='prodat'"),
+      dbGet("SELECT COUNT(*) as c FROM zadaci WHERE status='otvoreno'"),
+      dbGet('SELECT COUNT(*) as c FROM troskovi_auta'),
+      dbAll('SELECT * FROM aktivnosti ORDER BY created_at DESC LIMIT 15'),
+      dbAll('SELECT id,sifra,sezona,sirina,visina,promjer,polica_kod,created_at FROM gume ORDER BY created_at DESC LIMIT 5'),
+      dbAll('SELECT id,sifra,marka,model,godiste,status,created_at FROM auta ORDER BY created_at DESC LIMIT 5'),
+    ]);
+    res.json({
+      gume_stanje: gumeStanje?.c||0,
+      gume_prodato: gumeProdato?.c||0,
+      auta_stanje: autaStanje?.c||0,
+      auta_prodato: autaProdato?.c||0,
+      zadaci_otvoreno: zadaciOtvoreni?.c||0,
+      troskovi_aktivno: troskoviAktivno?.c||0,
+      aktivnosti,
+      zadnje_gume: zadnjeGume,
+      zadnja_auta: zadnjaAuta,
+    });
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== AUTA =====
+app.get('/api/auta', requireAuth, async (req,res) => {
+  try {
+    const {status, q} = req.query;
+    let sql = 'SELECT * FROM auta WHERE 1=1';
+    const p = [];
+    if(status) { sql+=' AND status=?'; p.push(status); }
+    if(q) { sql+=' AND (marka LIKE ? OR model LIKE ? OR sifra LIKE ? OR vin LIKE ?)'; p.push('%'+q+'%','%'+q+'%','%'+q+'%','%'+q+'%'); }
+    sql+=' ORDER BY id DESC';
+    const auta = await dbAll(sql,p);
+    res.json(auta.map(a=>({...a, slike:JSON.parse(a.slike||'[]')})));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/auta', requireAuth, async (req,res) => {
+  try {
+    const {marka,model,godiste,boja,km,motor,vin,napomena,slike,nabavna_cijena,prodajna_cijena,olx_link} = req.body;
+    if(!marka||!model) return res.status(400).json({error:'Marka i model su obavezni'});
+    const num = await nextCounter('au');
+    const sifra = 'AU'+String(num).padStart(3,'0');
+    await dbRun(`INSERT INTO auta (sifra,marka,model,godiste,boja,km,motor,vin,napomena,slike,nabavna_cijena,prodajna_cijena,olx_link,dodao_korisnik)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [sifra,marka,model,godiste||null,boja||null,km||null,motor||null,vin||null,napomena||'',
+       JSON.stringify(slike||[]),nabavna_cijena||null,prodajna_cijena||null,olx_link||null,req.user.username]);
+    const a = await dbGet('SELECT * FROM auta WHERE sifra=?',[sifra]);
+    await logActivity(req.user.username,'DODANO_AUTO',`${a.sifra} — ${marka} ${model} ${godiste||''}`);
+    res.json({...a, slike:JSON.parse(a.slike||'[]')});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.put('/api/auta/:id', requireAuth, async (req,res) => {
+  try {
+    const {marka,model,godiste,boja,km,motor,vin,napomena,slike,nabavna_cijena,prodajna_cijena,olx_link,status} = req.body;
+    await dbRun(`UPDATE auta SET marka=?,model=?,godiste=?,boja=?,km=?,motor=?,vin=?,napomena=?,slike=?,
+      nabavna_cijena=?,prodajna_cijena=?,olx_link=?,status=? WHERE id=?`,
+      [marka,model,godiste||null,boja||null,km||null,motor||null,vin||null,napomena||'',
+       JSON.stringify(slike||[]),nabavna_cijena||null,prodajna_cijena||null,olx_link||null,status||'na_stanju',req.params.id]);
+    const a = await dbGet('SELECT * FROM auta WHERE id=?',[req.params.id]);
+    await logActivity(req.user.username,'EDITOVANO_AUTO',`${a.sifra} — ${a.marka} ${a.model}`);
+    res.json({...a, slike:JSON.parse(a.slike||'[]')});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/auta/:id', requireAdmin, async (req,res) => {
+  try {
+    const a = await dbGet('SELECT sifra,marka,model FROM auta WHERE id=?',[req.params.id]);
+    await dbRun('DELETE FROM auta WHERE id=?',[req.params.id]);
+    if(a) await logActivity(req.user.username,'OBRISANO_AUTO',`${a.sifra} — ${a.marka} ${a.model}`);
+    res.json({ok:true});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// Javni katalog auta
+app.get('/api/katalog-auta', async (req,res) => {
+  try {
+    const auta = await dbAll("SELECT id,sifra,marka,model,godiste,boja,km,motor,napomena,slike,prodajna_cijena,olx_link FROM auta WHERE status='na_stanju' ORDER BY id DESC");
+    res.json({auta: auta.map(a=>({...a, slike:JSON.parse(a.slike||'[]')}))});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== ZADACI =====
+app.get('/api/zadaci', requireAdmin, async (req,res) => {
+  try {
+    const zadaci = await dbAll("SELECT * FROM zadaci ORDER BY CASE prioritet WHEN 'visok' THEN 1 WHEN 'srednji' THEN 2 ELSE 3 END, created_at DESC");
+    res.json(zadaci);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/zadaci', requireAdmin, async (req,res) => {
+  try {
+    const {naslov,opis,prioritet} = req.body;
+    if(!naslov?.trim()) return res.status(400).json({error:'Naslov je obavezan'});
+    const r = await dbRun('INSERT INTO zadaci (naslov,opis,prioritet,dodao_korisnik) VALUES (?,?,?,?)',
+      [naslov.trim(),opis||'',prioritet||'srednji',req.user.username]);
+    res.json(await dbGet('SELECT * FROM zadaci WHERE id=?',[r.lastID]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.put('/api/zadaci/:id', requireAdmin, async (req,res) => {
+  try {
+    const {naslov,opis,prioritet,status} = req.body;
+    const zatvoreno = status==='zatvoreno' ? new Date().toISOString() : null;
+    await dbRun('UPDATE zadaci SET naslov=?,opis=?,prioritet=?,status=?,zatvorio_korisnik=?,zatvoreno_at=? WHERE id=?',
+      [naslov,opis||'',prioritet||'srednji',status||'otvoreno',
+       status==='zatvoreno'?req.user.username:null, zatvoreno, req.params.id]);
+    res.json(await dbGet('SELECT * FROM zadaci WHERE id=?',[req.params.id]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/zadaci/:id', requireAdmin, async (req,res) => {
+  try {
+    await dbRun('DELETE FROM zadaci WHERE id=?',[req.params.id]);
+    res.json({ok:true});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== TROŠKOVI =====
+app.get('/api/troskovi', requireAuth, async (req,res) => {
+  try {
+    const troskovi = await dbAll('SELECT * FROM troskovi_auta ORDER BY created_at DESC');
+    for(const t of troskovi) {
+      t.dijelovi = await dbAll('SELECT * FROM troskovi_dijelovi WHERE trosak_id=? ORDER BY created_at',[t.id]);
+    }
+    res.json(troskovi);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/troskovi', requireAuth, async (req,res) => {
+  try {
+    const {naziv_auta,nabavna_cijena,napomena,auto_id} = req.body;
+    if(!naziv_auta?.trim()) return res.status(400).json({error:'Naziv auta je obavezan'});
+    const r = await dbRun('INSERT INTO troskovi_auta (naziv_auta,nabavna_cijena,napomena,auto_id,dodao_korisnik) VALUES (?,?,?,?,?)',
+      [naziv_auta.trim(),parseFloat(nabavna_cijena)||0,napomena||'',auto_id||null,req.user.username]);
+    const t = await dbGet('SELECT * FROM troskovi_auta WHERE id=?',[r.lastID]);
+    t.dijelovi = [];
+    res.json(t);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/troskovi/:id', requireAdmin, async (req,res) => {
+  try {
+    await dbRun('DELETE FROM troskovi_auta WHERE id=?',[req.params.id]);
+    res.json({ok:true});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/troskovi/:id/dijelovi', requireAuth, async (req,res) => {
+  try {
+    const {naziv,planirana_cijena,napomena} = req.body;
+    if(!naziv?.trim()) return res.status(400).json({error:'Naziv dijela je obavezan'});
+    const r = await dbRun('INSERT INTO troskovi_dijelovi (trosak_id,naziv,planirana_cijena,napomena) VALUES (?,?,?,?)',
+      [req.params.id,naziv.trim(),parseFloat(planirana_cijena)||0,napomena||'']);
+    res.json(await dbGet('SELECT * FROM troskovi_dijelovi WHERE id=?',[r.lastID]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.put('/api/troskovi/:id/dijelovi/:did', requireAuth, async (req,res) => {
+  try {
+    const {naziv,planirana_cijena,stvarna_cijena,nabavljeno,napomena} = req.body;
+    await dbRun('UPDATE troskovi_dijelovi SET naziv=?,planirana_cijena=?,stvarna_cijena=?,nabavljeno=?,napomena=? WHERE id=?',
+      [naziv,parseFloat(planirana_cijena)||0,
+       stvarna_cijena!==undefined&&stvarna_cijena!==''?parseFloat(stvarna_cijena):null,
+       nabavljeno?1:0,napomena||'',req.params.did]);
+    res.json(await dbGet('SELECT * FROM troskovi_dijelovi WHERE id=?',[req.params.did]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/troskovi/:id/dijelovi/:did', requireAuth, async (req,res) => {
+  try {
+    await dbRun('DELETE FROM troskovi_dijelovi WHERE id=?',[req.params.did]);
+    res.json({ok:true});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== STATIC PAGES =====
+app.get('/katalog', (req,res) => {
+  const p = [path.join(__dirname,'public','katalog.html'),path.join(process.cwd(),'public','katalog.html')].find(x=>fs.existsSync(x));
+  p ? res.sendFile(p) : res.status(404).send('Nije pronađeno');
+});
+
 // JAVNI KATALOG — bez autentifikacije, samo na stanju
 app.get('/api/katalog', async (req,res) => {
   try {
     const gume = await dbAll(GUME_SELECT + ' WHERE g.prodato=0 ORDER BY g.id DESC');
     res.json({ gume: gume.map(formatGuma) });
   } catch(e) { res.status(500).json({error:e.message}); }
-});
-
-// Katalog stranica
-app.get('/katalog', (req,res) => {
-  const attempts = [
-    path.join(__dirname,'public','katalog.html'),
-    path.join(process.cwd(),'public','katalog.html'),
-  ];
-  const p = attempts.find(x=>fs.existsSync(x));
-  if(!p) return res.status(404).send('Katalog nije pronađen');
-  res.sendFile(p);
 });
 
 app.get('*', (req,res) => {
