@@ -4,6 +4,12 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#0d1117"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Auto Delić"/>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-icon" href="/icon-192.png"/>
 <title>Auto Delić</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -275,6 +281,13 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 
 /* TOAST */
 .offline-bar{position:fixed;top:0;left:0;right:0;background:#f85149;color:#fff;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:5px;z-index:1000;display:flex;align-items:center;justify-content:center;gap:6px}
+.fab{position:fixed;bottom:20px;right:20px;width:56px;height:56px;background:var(--accent);color:#000;border:none;border-radius:50%;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(240,180,41,.4);z-index:200;transition:transform .15s}
+.fab:active{transform:scale(.9)}
+.fab-menu{position:fixed;bottom:86px;right:20px;display:flex;flex-direction:column;gap:8px;align-items:flex-end;z-index:200}
+.fab-item{display:flex;align-items:center;gap:8px;cursor:pointer}
+.fab-item-lbl{background:var(--surf);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.fab-item-btn{width:40px;height:40px;background:var(--surf);border:1.5px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.fab-overlay{position:fixed;inset:0;z-index:199}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1f2e;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:999;white-space:nowrap;border-left:3px solid var(--green);box-shadow:0 4px 20px rgba(0,0,0,.4);pointer-events:none}
 .toast.err{border-left-color:var(--red)}
 
@@ -562,7 +575,7 @@ function Dashboard({user,onNav,showToast}){
 }
 
 // ===== AUTA MODULE =====
-function AutaModul({user,showToast}){
+function AutaModul({user,showToast,quickAdd,onQuickAddDone}){
   const isAdmin=user.role==='admin';
   const [auta,setAuta]=useState([]);const [loading,setLoading]=useState(true);
   const [statusFilter,setStatusFilter]=useState('');
@@ -592,6 +605,8 @@ function AutaModul({user,showToast}){
     const dijeloviSum=(t.dijelovi||[]).filter(d=>d.nabavljeno).reduce((s,d)=>s+(parseFloat(d.stvarna_cijena)||0),0);
     return (parseFloat(nabavna)||0)+dijeloviSum;
   };
+
+  useEffect(()=>{if(quickAdd){openAdd();onQuickAddDone&&onQuickAddDone();}},[quickAdd]);
 
   const load=async()=>{
     setLoading(true);
@@ -1148,7 +1163,7 @@ function LogModul({showToast}){
 }
 
 // ===== GUME MODULE =====
-function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,lightbox,setLightbox}){
+function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,lightbox,setLightbox,quickAdd,onQuickAddDone}){
   const isAdmin=user.role==='admin';
   const [statusTab,setStatusTab]=useState('stanje');
   const [filters,setFilters]=useState({sezona:'',sirina:'',visina:'',promjer:'',sifra:'',tip:''});
@@ -1168,6 +1183,8 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
   const [policaSearchVal,setPolicaSearchVal]=useState('');
   const [policaGume,setPolicaGume]=useState(null);
   const imgHook=useImageUpload([]);
+
+  useEffect(()=>{if(quickAdd){openAdd();onQuickAddDone&&onQuickAddDone();}},[ quickAdd]);
 
   const sirina_opts=useMemo(()=>[...SIRINA_OPTIONS,...customSirina].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>parseInt(a)-parseInt(b)),[customSirina]);
   const visina_opts=useMemo(()=>[...VISINA_OPTIONS,...customVisina].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>parseInt(a)-parseInt(b)),[customVisina]);
@@ -1843,6 +1860,8 @@ function App(){
   useEffect(()=>{if(user&&(page==='gume'||page==='dashboard')&&!gumeLoaded)loadGume();},[user,page]);
 
   const [isOnline,setIsOnline]=useState(navigator.onLine);
+  const [fabOpen,setFabOpen]=useState(false);
+  const [quickAddModal,setQuickAddModal]=useState(null); // 'guma' | 'auto'
   const [offlineQueue] = useState([]);
 
   useEffect(()=>{
@@ -1916,8 +1935,8 @@ function App(){
 
       {/* PAGES */}
       {page==='dashboard'&&<ErrorBoundary><Dashboard user={user} onNav={nav} showToast={showToast}/></ErrorBoundary>}
-      {page==='gume'&&<ErrorBoundary><GumeModul user={user} showToast={showToast} gume={gume} setGume={setGume} police={police} magacini={magacini} loadPolice={loadPoliceAndMag} lightbox={lightbox} setLightbox={setLightbox}/></ErrorBoundary>}
-      {page==='auta'&&isAdmin&&<ErrorBoundary><AutaModul user={user} showToast={showToast}/></ErrorBoundary>}
+      {page==='gume'&&<ErrorBoundary><GumeModul user={user} showToast={showToast} gume={gume} setGume={setGume} police={police} magacini={magacini} loadPolice={loadPoliceAndMag} lightbox={lightbox} setLightbox={setLightbox} quickAdd={quickAddModal==='guma'} onQuickAddDone={()=>setQuickAddModal(null)}/></ErrorBoundary>}
+      {page==='auta'&&isAdmin&&<ErrorBoundary><AutaModul user={user} showToast={showToast} quickAdd={quickAddModal==='auto'} onQuickAddDone={()=>setQuickAddModal(null)}/></ErrorBoundary>}
       {page==='zadaci'&&isAdmin&&<ZadaciModul user={user} showToast={showToast}/>}
       {page==='analitika'&&isAdmin&&<AnalitikaModul showToast={showToast}/>}
       {page==='log'&&isAdmin&&<LogModul showToast={showToast}/>}
@@ -1926,6 +1945,21 @@ function App(){
     </div>
 
     {lightbox&&<Lightbox images={lightbox.images} startIndex={lightbox.index} onClose={()=>setLightbox(null)}/>}
+    {/* FAB — brzo dodavanje */}
+    {user&&<>
+      {fabOpen&&<div className="fab-overlay" onClick={()=>setFabOpen(false)}/>}
+      {fabOpen&&<div className="fab-menu">
+        <div className="fab-item" onClick={()=>{setFabOpen(false);setQuickAddModal('guma');setPage('gume');}}>
+          <div className="fab-item-lbl">Dodaj gumu</div>
+          <div className="fab-item-btn">🛞</div>
+        </div>
+        {isAdmin&&<div className="fab-item" onClick={()=>{setFabOpen(false);setQuickAddModal('auto');setPage('auta');}}>
+          <div className="fab-item-lbl">Dodaj auto</div>
+          <div className="fab-item-btn">🚗</div>
+        </div>}
+      </div>}
+      <button className="fab" onClick={()=>setFabOpen(o=>!o)}>{fabOpen?'×':'+'}</button>
+    </>}
     {!isOnline&&<div className="offline-bar">⚡ Nema interneta — podaci se ne mogu osvježiti</div>}
     {toast&&<div className={'toast'+(toast.type==='err'?' err':'')}>{toast.msg}</div>}
   </div>);
