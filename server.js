@@ -196,7 +196,24 @@ async function initDB() {
       kupac_id INTEGER NOT NULL,
       opis TEXT NOT NULL,
       iznos REAL,
+      placeno REAL DEFAULT 0,
       datum TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  try { await dbExec(`ALTER TABLE kupovine ADD COLUMN placeno REAL DEFAULT 0`); } catch(e) {}
+
+  // PONUDE / RAČUNI
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS ponude (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      broj TEXT NOT NULL UNIQUE,
+      kupac_ime TEXT NOT NULL,
+      kupac_telefon TEXT,
+      stavke TEXT DEFAULT '[]',
+      napomena TEXT DEFAULT '',
+      status TEXT DEFAULT 'nacrt',
+      kreirao TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -1045,6 +1062,23 @@ app.get('/api/police/:naziv/gume', requireAuth, async (req,res) => {
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
+// Magacini sa svim policama (za kartu magacina)
+app.get('/api/magacini-full', requireAdmin, async (req,res) => {
+  try {
+    const magacini = await dbAll('SELECT * FROM magacini ORDER BY naziv');
+    for(const m of magacini) {
+      m.prolazi = await dbAll('SELECT * FROM prolazi WHERE magacin_id=? ORDER BY naziv',[m.id]);
+      for(const pr of m.prolazi) {
+        pr.regali = await dbAll('SELECT * FROM regali WHERE prolaz_id=? ORDER BY naziv',[pr.id]);
+        for(const r of pr.regali) {
+          r.police = await dbAll('SELECT * FROM police WHERE regal_id=? ORDER BY naziv',[r.id]);
+        }
+      }
+    }
+    res.json(magacini);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
 // ===== KUPCI =====
 app.get('/api/kupci', requireAdmin, async (req,res) => {
   try {
@@ -1084,10 +1118,18 @@ app.delete('/api/kupci/:id', requireAdmin, async (req,res) => {
 
 app.post('/api/kupci/:id/kupovina', requireAdmin, async (req,res) => {
   try {
-    const {opis,iznos,datum} = req.body;
-    const r = await dbRun('INSERT INTO kupovine (kupac_id,opis,iznos,datum) VALUES (?,?,?,?)',
-      [req.params.id,opis,parseFloat(iznos)||0,datum||new Date().toISOString().slice(0,10)]);
+    const {opis,iznos,placeno,datum} = req.body;
+    const r = await dbRun('INSERT INTO kupovine (kupac_id,opis,iznos,placeno,datum) VALUES (?,?,?,?,?)',
+      [req.params.id,opis,parseFloat(iznos)||0,parseFloat(placeno)||0,datum||new Date().toISOString().slice(0,10)]);
     res.json(await dbGet('SELECT * FROM kupovine WHERE id=?',[r.lastID]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.put('/api/kupci/:id/kupovina/:kid', requireAdmin, async (req,res) => {
+  try {
+    const {placeno} = req.body;
+    await dbRun('UPDATE kupovine SET placeno=? WHERE id=?',[parseFloat(placeno)||0,req.params.kid]);
+    res.json(await dbGet('SELECT * FROM kupovine WHERE id=?',[req.params.kid]));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
@@ -1123,6 +1165,32 @@ app.put('/api/cjenovnik/:id', requireAdmin, async (req,res) => {
 
 app.delete('/api/cjenovnik/:id', requireAdmin, async (req,res) => {
   try { await dbRun('DELETE FROM cjenovnik WHERE id=?',[req.params.id]); res.json({ok:true}); }
+  catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== PONUDE / RAČUNI =====
+app.get('/api/ponude', requireAdmin, async (req,res) => {
+  try {
+    const ponude = await dbAll('SELECT * FROM ponude ORDER BY created_at DESC');
+    res.json(ponude.map(p=>({...p, stavke:JSON.parse(p.stavke||'[]')})));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/ponude', requireAdmin, async (req,res) => {
+  try {
+    const {kupac_ime,kupac_telefon,stavke,napomena} = req.body;
+    const year = new Date().getFullYear();
+    const count = await dbGet('SELECT COUNT(*) as c FROM ponude WHERE broj LIKE ?',[year+'-%']);
+    const broj = year+'-'+(String((count?.c||0)+1).padStart(3,'0'));
+    const r = await dbRun('INSERT INTO ponude (broj,kupac_ime,kupac_telefon,stavke,napomena,kreirao) VALUES (?,?,?,?,?,?)',
+      [broj,kupac_ime,kupac_telefon||'',JSON.stringify(stavke||[]),napomena||'',req.user.username]);
+    const p = await dbGet('SELECT * FROM ponude WHERE id=?',[r.lastID]);
+    res.json({...p, stavke:JSON.parse(p.stavke||'[]')});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/ponude/:id', requireAdmin, async (req,res) => {
+  try { await dbRun('DELETE FROM ponude WHERE id=?',[req.params.id]); res.json({ok:true}); }
   catch(e) { res.status(500).json({error:e.message}); }
 });
 
