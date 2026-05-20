@@ -2,7 +2,7 @@
 <html lang="sr">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#0d1117"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -176,11 +176,14 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .dio-check.done{background:var(--green);border-color:var(--green)}
 
 /* MODAL */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;display:flex;align-items:flex-start;justify-content:center;padding:14px;overflow-y:auto}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.overlay-inner{min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding:14px;}
 .modal{background:var(--surf);border:1.5px solid var(--border);border-radius:14px;padding:20px;width:100%;max-width:480px;margin:auto;}
 .modal-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
 .btn-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1}
 .fg2{margin-bottom:12px}
+.fg2 input:focus,.fg2 select:focus,.fg2 textarea:focus{scroll-margin-bottom:200px}
+.modal input:focus,.modal select:focus,.modal textarea:focus{scroll-margin-bottom:300px}
 .fg2 label{display:block;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .fg2 input,.fg2 select,.fg2 textarea{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:5px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;padding:8px 10px;outline:none}
 .fg2 select option{background:var(--card)}
@@ -2554,6 +2557,24 @@ function App(){
     {!isOnline&&<div className="offline-bar">⚡ Nema interneta — podaci se ne mogu osvježiti</div>}
     {toast&&<div className={'toast'+(toast.type==='err'?' err':'')}>{toast.msg}</div>}
   </div>);
+}
+
+// Fix modal position when keyboard opens on mobile
+if('visualViewport' in window) {
+  window.visualViewport.addEventListener('resize', () => {
+    const modals = document.querySelectorAll('.modal');
+    const overlays = document.querySelectorAll('.overlay');
+    const keyboardHeight = window.innerHeight - window.visualViewport.height;
+    overlays.forEach(o => {
+      if(keyboardHeight > 100) {
+        o.style.alignItems = 'flex-start';
+        o.style.paddingTop = '10px';
+      } else {
+        o.style.alignItems = '';
+        o.style.paddingTop = '';
+      }
+    });
+  });
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><App/></ErrorBoundary>);
