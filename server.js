@@ -1,5 +1,5 @@
 const express = require('express');
-const { createClient } = require('@libsql/client');
+const Database = require('better-sqlite3');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
@@ -17,37 +17,31 @@ if (!fs.existsSync(publicPath)) publicPath = path.join(process.cwd(), 'public');
 if (!fs.existsSync(publicPath)) publicPath = path.join(process.cwd(), 'Public');
 app.use(express.static(publicPath));
 
-// Turso client
-if (!process.env.TURSO_URL || !process.env.TURSO_TOKEN) {
-  console.error('❌ TURSO_URL i TURSO_TOKEN moraju biti postavljeni kao environment varijable!');
-  console.error('   Idi na Render → Environment i dodaj:');
-  console.error('   TURSO_URL = libsql://ime-baze.turso.io');
-  console.error('   TURSO_TOKEN = tvoj-token');
-  process.exit(1);
-}
+// Local SQLite via better-sqlite3
+const dbPath = process.env.DB_PATH || path.join(__dirname, 'data', 'gume.db');
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
-const db = createClient({
-  url: process.env.TURSO_URL,
-  authToken: process.env.TURSO_TOKEN,
-});
+const db = new Database(dbPath);
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
 
-// Turso returns rows as objects — wrap to match old sqlite3 interface
+// Wrap better-sqlite3 (sync) in async interface to match existing code
 async function dbRun(sql, p=[]) {
-  const r = await db.execute({sql, args:p});
-  return { lastID: Number(r.lastInsertRowid), changes: r.rowsAffected };
+  const stmt = db.prepare(sql);
+  const r = stmt.run(...p);
+  return { lastID: r.lastInsertRowid, changes: r.changes };
 }
 async function dbGet(sql, p=[]) {
-  const r = await db.execute({sql, args:p});
-  return r.rows[0] || null;
+  const stmt = db.prepare(sql);
+  return stmt.get(...p) || null;
 }
 async function dbAll(sql, p=[]) {
-  const r = await db.execute({sql, args:p});
-  return r.rows;
+  const stmt = db.prepare(sql);
+  return stmt.all(...p);
 }
 async function dbExec(sql) {
-  // Execute multiple statements split by semicolon
-  const stmts = sql.split(';').map(s=>s.trim()).filter(s=>s.length>0);
-  for (const s of stmts) await db.execute(s);
+  db.exec(sql);
 }
 
 function hash(pw) { return crypto.createHash('sha256').update(pw+'autodelic_salt_2024').digest('hex'); }
