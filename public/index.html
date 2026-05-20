@@ -176,8 +176,8 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .dio-check.done{background:var(--green);border-color:var(--green)}
 
 /* MODAL */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;display:flex;align-items:center;justify-content:center;padding:14px}
-.modal{background:var(--surf);border:1.5px solid var(--border);border-radius:14px;padding:20px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;display:flex;align-items:flex-start;justify-content:center;padding:14px;overflow-y:auto}
+.modal{background:var(--surf);border:1.5px solid var(--border);border-radius:14px;padding:20px;width:100%;max-width:480px;margin:auto;}
 .modal-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
 .btn-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1}
 .fg2{margin-bottom:12px}
@@ -1527,6 +1527,7 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
   return(<div className="page">
     <div className="set-tabs">
       <button className={'set-tab'+(setTab==='magacin'?' on':'')} onClick={()=>setSetTab('magacin')}>🏠 Magacin</button>
+      <button className={'set-tab'+(setTab==='karta'?' on':'')} onClick={()=>setSetTab('karta')}>🗺 Karta</button>
       <button className={'set-tab'+(setTab==='korisnici'?' on':'')} onClick={()=>setSetTab('korisnici')}>👥 Korisnici</button>
       <button className={'set-tab'+(setTab==='dimenzije'?' on':'')} onClick={()=>setSetTab('dimenzije')}>📐 Dimenzije</button>
       <button className={'set-tab'+(setTab==='cjenovnik'?' on':'')} onClick={()=>setSetTab('cjenovnik')}>💰 Cjenovnik</button>
@@ -1599,6 +1600,7 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
       </div>
     </>}
 
+    {setTab==='karta'&&<KartaMagacinaInline showToast={showToast} magacini={magacini}/>}
     {setTab==='dimenzije'&&<div>{[{label:'Širina (mm)',type:'sirina',base:SIRINA_OPTIONS,custom:customSirina},{label:'Profil (%)',type:'visina',base:VISINA_OPTIONS,custom:customVisina},{label:'Prečnik',type:'promjer',base:PROMJER_OPTIONS,custom:customPromjer}].map(({label,type,base,custom})=>(
       <div key={type} style={{marginBottom:14,background:'var(--card)',border:'1px solid var(--border)',borderRadius:7,padding:'11px 13px'}}>
         <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)',marginBottom:8}}>{label}</div>
@@ -2316,22 +2318,25 @@ function PonudaModul({showToast}){
 }
 
 // ===== KARTA MAGACINA =====
-function KartaMagacinaModul({showToast}){
-  const [magacini,setMagacini]=useState([]);const [police,setPolice]=useState([]);
+const KartaMagacinaModul = KartaMagacinaInline;
+function KartaMagacinaInline({showToast,magacini:magaciniProp}){
+  const [police,setPolice]=useState([]);
+  const [magaciniData,setMagaciniData]=useState([]);
   const [gumeCount,setGumeCount]=useState({});const [selMag,setSelMag]=useState(null);
   const [selPolica,setSelPolica]=useState(null);const [policaGume,setPolicaGume]=useState([]);
   const [loading,setLoading]=useState(true);
 
   useEffect(()=>{
     Promise.all([api('/magacini-full'),api('/police'),api('/gume')]).then(([m,p,g])=>{
-      setMagacini(m);setPolice(p);
+      setMagaciniData(m);setPolice(p);
       const cnt={};g.filter(x=>!x.prodato).forEach(guma=>{cnt[guma.polica_kod]=(cnt[guma.polica_kod]||0)+1;});
       setGumeCount(cnt);setLoading(false);
       if(m.length>0)setSelMag(m[0].id);
+      setMagaciniData(m);
     }).catch(e=>{showToast(e.message,'err');setLoading(false);});
   },[]);
 
-  const selMagData=useMemo(()=>magacini.find(m=>m.id===selMag),[magacini,selMag]);
+  const selMagData=useMemo(()=>magaciniData.find(m=>m.id===selMag),[magaciniData,selMag]);
 
   const loadPolicaGume=async(naziv)=>{
     setSelPolica(naziv);
@@ -2363,8 +2368,8 @@ function KartaMagacinaModul({showToast}){
     </div>
 
     {/* Magacin tabs */}
-    {magacini.length>1&&<div className="status-tabs" style={{marginBottom:14}}>
-      {magacini.map(m=><button key={m.id} className={"stab"+(selMag===m.id?' as':'')} onClick={()=>setSelMag(m.id)}>{m.naziv}</button>)}
+    {magaciniData.length>1&&<div className="status-tabs" style={{marginBottom:14}}>
+      {magaciniData.map(m=><button key={m.id} className={"stab"+(selMag===m.id?' as':'')} onClick={()=>setSelMag(m.id)}>{m.naziv}</button>)}
     </div>}
 
     {selMagData&&selMagData.prolazi.map(pr=><div key={pr.id} style={{marginBottom:16}}>
@@ -2468,7 +2473,6 @@ function App(){
     {id:'auta',label:'Auta',icon:<Icons.Car size={18}/>,adminOnly:true},
     {id:'kupci',label:'Kupci',icon:<Icons.Task size={18}/>,adminOnly:true},
     {id:'ponude',label:'Ponude',icon:<Icons.Money size={18}/>,adminOnly:true},
-    {id:'karta',label:'Karta',icon:<Icons.Chart size={18}/>,adminOnly:true},
     {id:'zadaci',label:'Zadaci',icon:<Icons.Task size={18}/>,adminOnly:true},
     {id:'finansije',label:'Finansije',icon:<Icons.Money size={18}/>,adminOnly:true},
     {id:'log',label:'Dnevnik',icon:<Icons.Log size={18}/>,adminOnly:true},
@@ -2476,7 +2480,7 @@ function App(){
     {id:'podesavanja',label:'Podešavanja',icon:<Icons.Gear size={18}/>,adminOnly:true},
   ].filter(i=>i.always||(i.adminOnly&&isAdmin));
 
-  const pageTitles={dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansijski izvještaj',kupci:'Kupci',ponude:'Ponude / Računi',karta:'Karta magacina',analitika:'Analitika',log:'Dnevnik aktivnosti',podesavanja:'Podešavanja'};
+  const pageTitles={dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansijski izvještaj',kupci:'Kupci',ponude:'Ponude / Računi',analitika:'Analitika',log:'Dnevnik aktivnosti',podesavanja:'Podešavanja'};
 
   return(<div className="layout">
     {/* SIDEBAR OVERLAY on mobile */}
@@ -2525,7 +2529,6 @@ function App(){
       {page==='zadaci'&&isAdmin&&<ZadaciModul user={user} showToast={showToast}/>}
       {page==='kupci'&&isAdmin&&<ErrorBoundary><KupciModul showToast={showToast}/></ErrorBoundary>}
       {page==='ponude'&&isAdmin&&<ErrorBoundary><PonudaModul showToast={showToast}/></ErrorBoundary>}
-      {page==='karta'&&isAdmin&&<ErrorBoundary><KartaMagacinaModul showToast={showToast}/></ErrorBoundary>}
       {page==='analitika'&&isAdmin&&<AnalitikaModul showToast={showToast}/>}
       {page==='log'&&isAdmin&&<LogModul showToast={showToast}/>}
       {page==='finansije'&&isAdmin&&<ErrorBoundary><FinansijeModul showToast={showToast}/></ErrorBoundary>}
