@@ -590,7 +590,7 @@ function AutaModul({user,showToast,quickAdd,onQuickAddDone}){
   const [cijenaHistorija,setCijenaHistorija]=useState(null);
   const [sellAutoModal,setSellAutoModal]=useState(false);
   const [sellAutoPrice,setSellAutoPrice]=useState('');
-  const [form,setForm]=useState({marka:'',model:'',godiste:'',boja:'',km:'',motor:'',vin:'',napomena:'',olx_link:'',nabavna_cijena:'',prodajna_cijena:'',status:'na_stanju'});
+  const [form,setForm]=useState({marka:'',model:'',godiste:'',boja:'',km:'',motor:'',vin:'',napomena:'',olx_link:'',nabavna_cijena:'',prodajna_cijena:'',status:'na_stanju',datum_registracije:''});
   const [editId,setEditId]=useState(null);const [saving,setSaving]=useState(false);
   const imgHook=useImageUpload([]);
 
@@ -637,7 +637,7 @@ function AutaModul({user,showToast,quickAdd,onQuickAddDone}){
   const mrtavK=naStanju.filter(a=>jeMrtavKapital(a)).length;
 
   const openAdd=()=>{setForm({marka:'',model:'',godiste:'',boja:'',km:'',motor:'',vin:'',napomena:'',olx_link:'',nabavna_cijena:'',prodajna_cijena:'',status:'na_stanju'});imgHook.setSlike([]);setEditId(null);setModal('form');};
-  const openEdit=(a)=>{setForm({marka:a.marka,model:a.model,godiste:a.godiste||'',boja:a.boja||'',km:a.km||'',motor:a.motor||'',vin:a.vin||'',napomena:a.napomena||'',olx_link:a.olx_link||'',nabavna_cijena:a.nabavna_cijena||'',prodajna_cijena:a.prodajna_cijena||'',status:a.status||'na_stanju'});imgHook.setSlike(a.slike?[...a.slike]:[]);setEditId(a.id);setDetail(null);setModal('form');};
+  const openEdit=(a)=>{setForm({marka:a.marka,model:a.model,godiste:a.godiste||'',boja:a.boja||'',km:a.km||'',motor:a.motor||'',vin:a.vin||'',napomena:a.napomena||'',olx_link:a.olx_link||'',nabavna_cijena:a.nabavna_cijena||'',prodajna_cijena:a.prodajna_cijena||'',status:a.status||'na_stanju',datum_registracije:a.datum_registracije||''});imgHook.setSlike(a.slike?[...a.slike]:[]);setEditId(a.id);setDetail(null);setModal('form');};
 
   const doSave=async()=>{
     if(!form.marka||!form.model){showToast('Marka i model su obavezni','err');return;}
@@ -717,7 +717,7 @@ function AutaModul({user,showToast,quickAdd,onQuickAddDone}){
         const ulozeno=ukupnoUlozeno(a.id,a.nabavna_cijena);
         return(<div key={a.id} className="auto-card" onClick={()=>setDetail(a)} style={{borderColor:a.status==='na_popravci'?'rgba(240,180,41,.4)':a.status==='prodat'?'rgba(188,140,255,.3)':'var(--border)'}}>
           <div className="auto-img">{a.slike&&a.slike.length>0?<img src={a.slike[0]} alt="" loading="lazy"/>:<Icons.Car size={40}/>}</div>
-          <span className="auto-status" style={{position:'absolute',top:7,right:7,background:statusColor[a.status]+'33',color:statusColor[a.status],border:'1px solid '+statusColor[a.status],borderRadius:4,fontFamily:'Barlow Condensed,sans-serif',fontSize:9,fontWeight:800,padding:'2px 6px',textTransform:'uppercase',letterSpacing:'1px'}}>{statusLblLocal[a.status]}</span>
+          <span style={{position:'absolute',bottom:68,right:0,background:statusColor[a.status],color:'#000',borderRadius:'4px 0 0 4px',fontFamily:'Barlow Condensed,sans-serif',fontSize:9,fontWeight:900,padding:'3px 7px',textTransform:'uppercase',letterSpacing:'1px',opacity:.95}}>{statusLblLocal[a.status]}</span>
           {jeMrtavKapital(a)&&<span className="dead-capital">🔴 {daniNaSkladistu(a.created_at)}d</span>}
           <div className="auto-info">
             <div className="auto-name">{a.marka} {a.model}</div>
@@ -815,6 +815,13 @@ function AutaModul({user,showToast,quickAdd,onQuickAddDone}){
       })()}
 
       {detail.vin&&<div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:5,padding:'6px 10px',fontSize:11,marginBottom:8}}>VIN: <b>{detail.vin}</b></div>}
+      {detail.datum_registracije&&(()=>{
+        const d=new Date(detail.datum_registracije);const dani=Math.round((d-new Date())/(1000*60*60*24));
+        const boja=dani<0?'var(--red)':dani<=30?'var(--accent)':dani<=90?'var(--blue)':'var(--green)';
+        return(<div style={{background:boja+'18',border:'1px solid '+boja+'44',borderRadius:5,padding:'6px 10px',fontSize:11,marginBottom:8,color:boja}}>
+          🔔 Registracija: <b>{detail.datum_registracije}</b> — {dani<0?'istekla '+Math.abs(dani)+' dana':dani===0?'ističe danas!':'ističe za '+dani+' dana'}
+        </div>);
+      })()}
       {detail.napomena&&<><div className="sec-lbl">Napomena</div><p style={{fontSize:12,color:'var(--muted)',lineHeight:1.6,marginBottom:8}}>{detail.napomena}</p></>}
       <div className="modal-foot">
         {isAdmin&&<div className="foot-left"><button className="btn-sm red" onClick={()=>doDel(detail.id)}><Icons.Trash/> Obriši</button></div>}
@@ -890,6 +897,7 @@ function AutaModul({user,showToast,quickAdd,onQuickAddDone}){
         <div className="fg2"><label>Prodajna (KM)</label><input type="number" placeholder="0" value={form.prodajna_cijena} onChange={e=>setForm(f=>({...f,prodajna_cijena:e.target.value}))}/></div>
       </div>}
       <div className="fg2"><label>OLX link</label><input placeholder="https://olx.ba/..." value={form.olx_link} onChange={e=>setForm(f=>({...f,olx_link:e.target.value}))}/></div>
+      <div className="fg2"><label>Datum registracije</label><input type="date" value={form.datum_registracije} onChange={e=>setForm(f=>({...f,datum_registracije:e.target.value}))}/></div>
       <div className="fg2"><label>Napomena</label><textarea placeholder="Stanje..." value={form.napomena} onChange={e=>setForm(f=>({...f,napomena:e.target.value}))}/></div>
       <ImgUploadUI {...imgHook} onThumbClick={i=>setLightbox({images:imgHook.slike,index:i})}/>
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(null)}>Odustani</button><button className="btn-save" onClick={doSave} disabled={saving||imgHook.uploadState.uploading}>{saving?'Čuvanje...':'Sačuvaj'}</button></div>
@@ -1824,6 +1832,224 @@ function FinansijeModul({showToast}){
   </div>);
 }
 
+
+// ===== KUPCI MODULE =====
+function KupciModul({showToast}){
+  const [kupci,setKupci]=useState([]);const [search,setSearch]=useState('');
+  const [modal,setModal]=useState(false);const [detail,setDetail]=useState(null);
+  const [editKupac,setEditKupac]=useState(null);
+  const [form,setForm]=useState({ime:'',telefon:'',napomena:''});
+  const [kupForm,setKupForm]=useState({opis:'',iznos:'',datum:new Date().toISOString().slice(0,10)});
+  const [modalKup,setModalKup]=useState(false);
+
+  const load=async()=>{try{const d=await api('/kupci');setKupci(d);}catch(e){showToast(e.message,'err');}};
+  useEffect(()=>{load();},[]);
+
+  const filtered=useMemo(()=>kupci.filter(k=>
+    !search||k.ime.toLowerCase().includes(search.toLowerCase())||
+    (k.telefon&&k.telefon.includes(search))
+  ),[kupci,search]);
+
+  const doSave=async()=>{
+    if(!form.ime.trim()){showToast('Ime je obavezno','err');return;}
+    try{
+      if(editKupac){const k=await api('/kupci/'+editKupac.id,{method:'PUT',body:form});setKupci(p=>p.map(x=>x.id===k.id?{...x,...k}:x));setDetail(d=>d?{...d,...k}:d);}
+      else{const k=await api('/kupci',{method:'POST',body:form});setKupci(p=>[...p,k]);}
+      setModal(false);setEditKupac(null);setForm({ime:'',telefon:'',napomena:''});showToast('Sačuvano');
+    }catch(e){showToast(e.message,'err');}
+  };
+  const doDel=async(id)=>{if(!window.confirm('Obrisati kupca?'))return;await api('/kupci/'+id,{method:'DELETE'});setKupci(p=>p.filter(k=>k.id!=id));setDetail(null);};
+  const doAddKupovina=async()=>{
+    if(!kupForm.opis.trim()){showToast('Opis je obavezan','err');return;}
+    try{const k=await api('/kupci/'+detail.id+'/kupovina',{method:'POST',body:kupForm});setKupci(p=>p.map(x=>x.id!=detail.id?x:{...x,kupovine:[k,...(x.kupovine||[])]}));setDetail(d=>({...d,kupovine:[k,...(d.kupovine||[])]}));setModalKup(false);setKupForm({opis:'',iznos:'',datum:new Date().toISOString().slice(0,10)});showToast('Kupovina dodana');}
+    catch(e){showToast(e.message,'err');}
+  };
+  const doDelKupovina=async(kid)=>{await api('/kupci/'+detail.id+'/kupovina/'+kid,{method:'DELETE'});setKupci(p=>p.map(x=>x.id!=detail.id?x:{...x,kupovine:(x.kupovine||[]).filter(k=>k.id!=kid)}));setDetail(d=>({...d,kupovine:(d.kupovine||[]).filter(k=>k.id!=kid)}));};
+
+  const ukupnoKupao=(k)=>(k.kupovine||[]).reduce((s,x)=>s+(parseFloat(x.iznos)||0),0);
+
+  return(<div className="page">
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,flexWrap:'wrap',gap:8}}>
+      <div><div className="page-title">Kupci</div><div className="page-sub">Baza kupaca i historija kupovine</div></div>
+      <button className="btn-add-main" onClick={()=>{setForm({ime:'',telefon:'',napomena:''});setEditKupac(null);setModal(true);}}><Icons.Plus size={13}/> Novi kupac</button>
+    </div>
+
+    <div className="sf-wrap" style={{marginBottom:12}}>
+      <div className="fg"><label>Pretraga</label><input placeholder="Ime ili telefon..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
+    </div>
+
+    <div style={{marginBottom:8,fontSize:11,color:'var(--muted)',fontFamily:'Barlow Condensed,sans-serif',letterSpacing:'1px',textTransform:'uppercase'}}>{filtered.length} kupaca</div>
+
+    {filtered.length===0?<div className="empty"><Icons.Task size={36}/><p>Nema kupaca.</p></div>:
+    <div style={{display:'flex',flexDirection:'column',gap:6}}>
+      {filtered.map(k=><div key={k.id} style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:12}} onClick={()=>setDetail(k)}>
+        <div style={{width:36,height:36,borderRadius:'50%',background:'var(--accent)',color:'#000',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:16,flexShrink:0}}>
+          {k.ime.charAt(0).toUpperCase()}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:15}}>{k.ime}</div>
+          <div style={{fontSize:11,color:'var(--muted)'}}>{k.telefon||'Nema broja'} · {(k.kupovine||[]).length} kupovina</div>
+        </div>
+        {ukupnoKupao(k)>0&&<div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:14,color:'var(--green)',flexShrink:0}}>{ukupnoKupao(k).toLocaleString('sr-Latn-RS')} KM</div>}
+        {k.telefon&&<a href={"https://wa.me/387"+k.telefon.replace(/^0/,'').replace(/\D/g,'')} target="_blank" onClick={e=>e.stopPropagation()} style={{background:'#25d366',color:'#fff',borderRadius:'50%',width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:14}}>📱</a>}
+      </div>)}
+    </div>}
+
+    {/* DETAIL */}
+    {detail&&<div className="overlay" onClick={()=>setDetail(null)}><div className="modal" style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">{detail.ime} <button className="btn-close" onClick={()=>setDetail(null)}>x</button></div>
+      {detail.telefon&&<div style={{display:'flex',gap:8,marginBottom:12}}>
+        <a href={"tel:"+detail.telefon} style={{flex:1,background:'var(--card)',border:'1px solid var(--border)',borderRadius:6,padding:'7px 12px',textAlign:'center',color:'var(--blue)',fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,fontSize:12,textDecoration:'none'}}>📞 {detail.telefon}</a>
+        <a href={"https://wa.me/387"+detail.telefon.replace(/^0/,'').replace(/\D/g,'')} target="_blank" style={{flex:1,background:'#25d366',border:'none',borderRadius:6,padding:'7px 12px',textAlign:'center',color:'#fff',fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,fontSize:12,textDecoration:'none'}}>💬 WhatsApp</a>
+      </div>}
+      {detail.napomena&&<div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 12px',marginBottom:12,fontSize:12,color:'var(--muted)'}}>{detail.napomena}</div>}
+
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+        <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:800,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)'}}>Historija kupovine ({(detail.kupovine||[]).length})</div>
+        <button className="btn-sm" onClick={()=>setModalKup(true)}><Icons.Plus size={10}/> Dodaj</button>
+      </div>
+      {(detail.kupovine||[]).length===0?<div style={{fontSize:12,color:'var(--muted)',marginBottom:12}}>Nema evidentiranih kupovina.</div>:
+      <div style={{maxHeight:200,overflowY:'auto',marginBottom:12}}>
+        {(detail.kupovine||[]).map(k=><div key={k.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid var(--border)',fontSize:12}}>
+          <div style={{flex:1}}>{k.opis}</div>
+          {k.iznos>0&&<span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,color:'var(--green)'}}>{k.iznos} KM</span>}
+          <span style={{fontSize:10,color:'var(--muted)'}}>{k.datum}</span>
+          <button className="del-btn" onClick={()=>doDelKupovina(k.id)}><Icons.Trash/></button>
+        </div>)}
+        <div style={{paddingTop:6,fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:13,textAlign:'right'}}>Ukupno: <span style={{color:'var(--green)'}}>{ukupnoKupao(detail).toLocaleString('sr-Latn-RS')} KM</span></div>
+      </div>}
+
+      <div className="modal-foot">
+        <div className="foot-left"><button className="btn-sm red" onClick={()=>doDel(detail.id)}><Icons.Trash/> Obriši</button></div>
+        <button className="btn-cancel" onClick={()=>{setEditKupac(detail);setForm({ime:detail.ime,telefon:detail.telefon||'',napomena:detail.napomena||''});setDetail(null);setModal(true);}}>Uredi</button>
+      </div>
+    </div></div>}
+
+    {/* ADD KUPOVINA */}
+    {modalKup&&detail&&<div className="overlay" onClick={()=>setModalKup(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">Dodaj kupovinu <button className="btn-close" onClick={()=>setModalKup(false)}>x</button></div>
+      <div className="fg2"><label>Opis *</label><input autoFocus value={kupForm.opis} onChange={e=>setKupForm(f=>({...f,opis:e.target.value}))} placeholder="npr. 4x zimske 205/55 R16"/></div>
+      <div className="two-col">
+        <div className="fg2"><label>Iznos (KM)</label><div className="price-row"><input className="price-inp" type="number" placeholder="0" value={kupForm.iznos} onChange={e=>setKupForm(f=>({...f,iznos:e.target.value}))}/><span className="price-curr">KM</span></div></div>
+        <div className="fg2"><label>Datum</label><input type="date" value={kupForm.datum} onChange={e=>setKupForm(f=>({...f,datum:e.target.value}))}/></div>
+      </div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModalKup(false)}>Odustani</button><button className="btn-save" onClick={doAddKupovina}>Dodaj</button></div>
+    </div></div>}
+
+    {/* FORM */}
+    {modal&&<div className="overlay" onClick={()=>setModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">{editKupac?'Uredi kupca':'Novi kupac'} <button className="btn-close" onClick={()=>setModal(false)}>x</button></div>
+      <div className="fg2"><label>Ime i prezime *</label><input autoFocus value={form.ime} onChange={e=>setForm(f=>({...f,ime:e.target.value}))} placeholder="Marko Marković"/></div>
+      <div className="fg2"><label>Telefon</label><input value={form.telefon} onChange={e=>setForm(f=>({...f,telefon:e.target.value}))} placeholder="061 234 567"/></div>
+      <div className="fg2"><label>Napomena</label><textarea value={form.napomena} onChange={e=>setForm(f=>({...f,napomena:e.target.value}))} placeholder="Posebne napomene..."/></div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button><button className="btn-save" onClick={doSave}>Sačuvaj</button></div>
+    </div></div>}
+    <div className="site-footer">© 2026 <span>Delite Solutions</span></div>
+  </div>);
+}
+
+// ===== CJENOVNIK MODULE =====
+function CjenovnikModul({showToast}){
+  const [lista,setLista]=useState([]);const [modal,setModal]=useState(false);
+  const [editItem,setEditItem]=useState(null);
+  const [form,setForm]=useState({dimenzija:'',sezona:'',cijena_min:'',cijena_max:'',napomena:''});
+  const [search,setSearch]=useState('');
+  const [podsjetnici,setPodsjetnici]=useState([]);const [tabP,setTabP]=useState('cjenovnik');
+
+  const load=async()=>{
+    try{const d=await api('/cjenovnik');setLista(d);}catch(e){showToast(e.message,'err');}
+    try{const p=await api('/podsjetnici/registracija');setPodsjetnici(p);}catch(e){}
+  };
+  useEffect(()=>{load();},[]);
+
+  const filtered=useMemo(()=>lista.filter(c=>!search||c.dimenzija.toLowerCase().includes(search.toLowerCase())),[lista,search]);
+
+  const doSave=async()=>{
+    if(!form.dimenzija.trim()){showToast('Dimenzija je obavezna','err');return;}
+    try{
+      if(editItem){const c=await api('/cjenovnik/'+editItem.id,{method:'PUT',body:form});setLista(p=>p.map(x=>x.id===c.id?c:x));}
+      else{const c=await api('/cjenovnik',{method:'POST',body:form});setLista(p=>[...p,c]);}
+      setModal(false);setEditItem(null);setForm({dimenzija:'',sezona:'',cijena_min:'',cijena_max:'',napomena:''});showToast('Sačuvano');
+    }catch(e){showToast(e.message,'err');}
+  };
+  const doDel=async(id)=>{if(!window.confirm('Obrisati?'))return;await api('/cjenovnik/'+id,{method:'DELETE'});setLista(p=>p.filter(c=>c.id!=id));};
+
+  const danas=new Date();
+  const kriticni=podsjetnici.filter(a=>a.dani_do_registracije<=30);
+
+  return(<div className="page">
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,flexWrap:'wrap',gap:8}}>
+      <div><div className="page-title">Cjenovnik & Podsjetnici</div><div className="page-sub">Standardne cijene i registracije</div></div>
+      {tabP==='cjenovnik'&&<button className="btn-add-main" onClick={()=>{setForm({dimenzija:'',sezona:'',cijena_min:'',cijena_max:'',napomena:''});setEditItem(null);setModal(true);}}><Icons.Plus size={13}/> Dodaj cijenu</button>}
+    </div>
+
+    <div className="status-tabs" style={{marginBottom:12}}>
+      <button className={"stab"+(tabP==='cjenovnik'?' as':'')} onClick={()=>setTabP('cjenovnik')}>💰 Cjenovnik</button>
+      <button className={"stab"+(tabP==='podsjetnici'?' as':'')} onClick={()=>setTabP('podsjetnici')}>
+        🔔 Registracije
+        {kriticni.length>0&&<span style={{marginLeft:5,background:'var(--red)',color:'#fff',borderRadius:10,fontSize:9,padding:'1px 5px',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900}}>{kriticni.length}</span>}
+      </button>
+    </div>
+
+    {tabP==='cjenovnik'&&<>
+      <div className="sf-wrap" style={{marginBottom:12}}>
+        <div className="fg"><label>Pretraga</label><input placeholder="npr. 205/55..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
+      </div>
+      {filtered.length===0?<div className="empty"><Icons.Money size={36}/><p>Nema unesenih cijena.</p></div>:
+      <div style={{display:'flex',flexDirection:'column',gap:5}}>
+        {filtered.map(c=><div key={c.id} style={{display:'flex',alignItems:'center',gap:10,background:'var(--card)',border:'1px solid var(--border)',borderRadius:7,padding:'9px 14px'}}>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:16,letterSpacing:'1px'}}>{c.dimenzija}</div>
+            <div style={{fontSize:10,color:'var(--muted)'}}>{c.sezona||'Sve sezone'}{c.napomena?' · '+c.napomena:''}</div>
+          </div>
+          <div style={{textAlign:'right',flexShrink:0}}>
+            {c.cijena_min===c.cijena_max
+              ?<div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18,color:'var(--accent)'}}>{c.cijena_min} KM</div>
+              :<div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:16,color:'var(--accent)'}}>{c.cijena_min}–{c.cijena_max} KM</div>}
+          </div>
+          <button className="del-btn" style={{color:'var(--blue)',opacity:1}} onClick={()=>{setEditItem(c);setForm({dimenzija:c.dimenzija,sezona:c.sezona||'',cijena_min:String(c.cijena_min),cijena_max:String(c.cijena_max),napomena:c.napomena||''});setModal(true);}}><Icons.Edit/></button>
+          <button className="del-btn" onClick={()=>doDel(c.id)}><Icons.Trash/></button>
+        </div>)}
+      </div>}
+    </>}
+
+    {tabP==='podsjetnici'&&<>
+      {podsjetnici.length===0?<div className="empty"><div style={{fontSize:32}}>🔔</div><p>Nema auta sa unesenim datumom registracije.<br/><span style={{fontSize:11}}>Dodaj datum registracije u detalju auta.</span></p></div>:
+      <div style={{display:'flex',flexDirection:'column',gap:6}}>
+        {podsjetnici.map(a=>{
+          const boja=a.istekla?'var(--red)':a.dani_do_registracije<=30?'var(--accent)':a.dani_do_registracije<=90?'var(--blue)':'var(--green)';
+          const poruka=a.istekla?'Istekla '+Math.abs(a.dani_do_registracije)+' dana':a.dani_do_registracije===0?'Ističe danas!':'Ističe za '+a.dani_do_registracije+' dana';
+          return(<div key={a.id} style={{display:'flex',alignItems:'center',gap:12,background:'var(--card)',border:'1.5px solid '+boja+'44',borderRadius:8,padding:'10px 14px'}}>
+            <div style={{width:10,height:10,borderRadius:'50%',background:boja,flexShrink:0}}/>
+            <div style={{flex:1}}>
+              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:15}}>{a.marka} {a.model} {a.godiste&&'('+a.godiste+')'}</div>
+              <div style={{fontSize:10,color:'var(--muted)'}}>{a.sifra}</div>
+            </div>
+            <div style={{textAlign:'right',flexShrink:0}}>
+              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:12,color:boja}}>{poruka}</div>
+              <div style={{fontSize:10,color:'var(--muted)'}}>{a.datum_registracije}</div>
+            </div>
+          </div>);
+        })}
+      </div>}
+    </>}
+
+    {modal&&<div className="overlay" onClick={()=>setModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">{editItem?'Uredi cijenu':'Nova cijena'} <button className="btn-close" onClick={()=>setModal(false)}>x</button></div>
+      <div className="fg2"><label>Dimenzija *</label><input autoFocus value={form.dimenzija} onChange={e=>setForm(f=>({...f,dimenzija:e.target.value}))} placeholder="205/55 R16"/></div>
+      <div className="fg2"><label>Sezona</label><select value={form.sezona} onChange={e=>setForm(f=>({...f,sezona:e.target.value}))}><option value="">Sve sezone</option><option value="Zimska">Zimska</option><option value="Ljetna">Ljetna</option></select></div>
+      <div className="two-col">
+        <div className="fg2"><label>Cijena min (KM)</label><div className="price-row"><input className="price-inp" type="number" placeholder="0" value={form.cijena_min} onChange={e=>setForm(f=>({...f,cijena_min:e.target.value}))}/><span className="price-curr">KM</span></div></div>
+        <div className="fg2"><label>Cijena max (KM)</label><div className="price-row"><input className="price-inp" type="number" placeholder="0" value={form.cijena_max} onChange={e=>setForm(f=>({...f,cijena_max:e.target.value}))}/><span className="price-curr">KM</span></div></div>
+      </div>
+      <div className="fg2"><label>Napomena</label><input value={form.napomena} onChange={e=>setForm(f=>({...f,napomena:e.target.value}))} placeholder="Stanje, tip..."/></div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button><button className="btn-save" onClick={doSave}>Sačuvaj</button></div>
+    </div></div>}
+    <div className="site-footer">© 2026 <span>Delite Solutions</span></div>
+  </div>);
+}
+
+
 // ===== MAIN APP =====
 function App(){
   const [user,setUser]=useState(null);const [authChecked,setAuthChecked]=useState(false);
@@ -1884,14 +2110,16 @@ function App(){
     {id:'dashboard',label:'Pregled',icon:<Icons.Home size={18}/>,always:true},
     {id:'gume',label:'Gume',icon:<Icons.Tire size={18}/>,always:true},
     {id:'auta',label:'Auta',icon:<Icons.Car size={18}/>,adminOnly:true},
+    {id:'kupci',label:'Kupci',icon:<Icons.Task size={18}/>,adminOnly:true},
     {id:'zadaci',label:'Zadaci',icon:<Icons.Task size={18}/>,adminOnly:true},
-    {id:'analitika',label:'Analitika',icon:<Icons.Chart size={18}/>,adminOnly:true},
-    {id:'log',label:'Dnevnik',icon:<Icons.Log size={18}/>,adminOnly:true},
     {id:'finansije',label:'Finansije',icon:<Icons.Money size={18}/>,adminOnly:true},
+    {id:'log',label:'Dnevnik',icon:<Icons.Log size={18}/>,adminOnly:true},
+    {id:'cjenovnik',label:'Cjenovnik',icon:<Icons.Chart size={18}/>,adminOnly:true},
+    {id:'analitika',label:'Analitika',icon:<Icons.Chart size={18}/>,adminOnly:true},
     {id:'podesavanja',label:'Podešavanja',icon:<Icons.Gear size={18}/>,adminOnly:true},
   ].filter(i=>i.always||(i.adminOnly&&isAdmin));
 
-  const pageTitles={dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansijski izvještaj',analitika:'Analitika',log:'Dnevnik aktivnosti',podesavanja:'Podešavanja'};
+  const pageTitles={dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansijski izvještaj',kupci:'Kupci',cjenovnik:'Cjenovnik',analitika:'Analitika',log:'Dnevnik aktivnosti',podesavanja:'Podešavanja'};
 
   return(<div className="layout">
     {/* SIDEBAR OVERLAY on mobile */}
@@ -1938,6 +2166,8 @@ function App(){
       {page==='gume'&&<ErrorBoundary><GumeModul user={user} showToast={showToast} gume={gume} setGume={setGume} police={police} magacini={magacini} loadPolice={loadPoliceAndMag} lightbox={lightbox} setLightbox={setLightbox} quickAdd={quickAddModal==='guma'} onQuickAddDone={()=>setQuickAddModal(null)}/></ErrorBoundary>}
       {page==='auta'&&isAdmin&&<ErrorBoundary><AutaModul user={user} showToast={showToast} quickAdd={quickAddModal==='auto'} onQuickAddDone={()=>setQuickAddModal(null)}/></ErrorBoundary>}
       {page==='zadaci'&&isAdmin&&<ZadaciModul user={user} showToast={showToast}/>}
+      {page==='kupci'&&isAdmin&&<ErrorBoundary><KupciModul showToast={showToast}/></ErrorBoundary>}
+      {page==='cjenovnik'&&isAdmin&&<ErrorBoundary><CjenovnikModul showToast={showToast}/></ErrorBoundary>}
       {page==='analitika'&&isAdmin&&<AnalitikaModul showToast={showToast}/>}
       {page==='log'&&isAdmin&&<LogModul showToast={showToast}/>}
       {page==='finansije'&&isAdmin&&<ErrorBoundary><FinansijeModul showToast={showToast}/></ErrorBoundary>}
