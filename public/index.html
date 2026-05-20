@@ -609,13 +609,6 @@ function AutaModul({user,showToast,quickAdd,onQuickAddDone}){
     return (parseFloat(nabavna)||0)+dijeloviSum;
   };
 
-
-  // Back button closes modal
-  useEffect(()=>{
-    const h=()=>{if(cijenaHistorija!==null){setCijenaHistorija(null);}else if(sellAutoModal){setSellAutoModal(false);}else if(dioModal!==null){setDioModal(null);setEditDio(null);}else if(modal){setModal(null);}else if(detail){setDetail(null);}};
-    window.addEventListener('closeTopModal',h);
-    return()=>window.removeEventListener('closeTopModal',h);
-  },[]);
   useEffect(()=>{if(quickAdd){openAdd();onQuickAddDone&&onQuickAddDone();}},[quickAdd]);
   useEffect(()=>{loadRegistracije();},[]);
 
@@ -957,7 +950,7 @@ function AutaModul({user,showToast,quickAdd,onQuickAddDone}){
     </div></div>}
 
     {lightbox&&<Lightbox images={lightbox.images} startIndex={lightbox.index} onClose={()=>setLightbox(null)}/>}
-    <div className="site-footer">© 2026 <span>Delite Solutions</span></div>
+    <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
 }
 
@@ -968,12 +961,6 @@ function ZadaciModul({user,showToast}){
   const [filterStatus,setFilterStatus]=useState('otvoreno');
   const [sortPrioritet,setSortPrioritet]=useState('sve'); // sve | visok | srednji | nizak
 
-  // Back button closes modal
-  useEffect(()=>{
-    const h=()=>{setModal(false);};
-    window.addEventListener('closeTopModal',h);
-    return()=>window.removeEventListener('closeTopModal',h);
-  },[]);
   const load=async()=>{try{const d=await api('/zadaci');setZadaci(d);}catch(e){showToast(e.message,'err');}};
   useEffect(()=>{load();},[]);
   const toggle=async(z)=>{
@@ -1033,7 +1020,7 @@ function ZadaciModul({user,showToast}){
       <div className="fg2"><label>Prioritet</label><select value={form.prioritet} onChange={e=>setForm(f=>({...f,prioritet:e.target.value}))}><option value="visok">Visok</option><option value="srednji">Srednji</option><option value="nizak">Nizak</option></select></div>
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button><button className="btn-save" onClick={doAdd}>Dodaj zadatak</button></div>
     </div></div>}
-  <div className="site-footer">© 2026 <span>Delite Solutions</span></div>
+  <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
 }
 
@@ -1199,7 +1186,7 @@ function AnalitikaModul({showToast}){
       </div>}
     </>}
 
-    <div className="site-footer">© 2026 <span>Delite Solutions</span></div>
+    <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
 }
 
@@ -1226,7 +1213,7 @@ function LogModul({showToast}){
         </div>);
       })}
     </div>
-  <div className="site-footer">© 2026 <span>Delite Solutions</span></div>
+  <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
 }
 
@@ -1252,13 +1239,6 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
   const [policaGume,setPolicaGume]=useState(null);
   const imgHook=useImageUpload([]);
 
-
-  // Back button closes modal
-  useEffect(()=>{
-    const h=()=>{if(sellModal){setSellModal(false);}else if(moveModal){setMoveModal(null);}else if(showHistorija){setShowHistorija(false);}else if(modal){setModal(null);}else if(detailG){setDetailG(null);}};
-    window.addEventListener('closeTopModal',h);
-    return()=>window.removeEventListener('closeTopModal',h);
-  },[]);
   useEffect(()=>{if(quickAdd){openAdd();onQuickAddDone&&onQuickAddDone();}},[ quickAdd]);
 
   const sirina_opts=useMemo(()=>[...SIRINA_OPTIONS,...customSirina].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>parseInt(a)-parseInt(b)),[customSirina]);
@@ -1503,7 +1483,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
         <button className="btn-save" onClick={doSave} disabled={!canSave}>{imgHook.uploadState.uploading?'Čekaj slanje...':editingId?'Sačuvaj izmjene':'Sačuvaj gumu'}</button>
       </div>
     </div></div>}
-  <div className="site-footer">© 2026 <span>Delite Solutions</span></div>
+  <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
 }
 
@@ -1943,7 +1923,7 @@ function FinansijeModul({showToast}){
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>{setModalRedovni(false);setEditRedovni(null);}}>Odustani</button><button className="btn-save" onClick={doSaveRedovni}>{editRedovni?'Sačuvaj':'Dodaj'}</button></div>
     </div></div>}
 
-    <div className="site-footer">© 2026 Delite Solutions</div>
+    <div className="site-footer">© 2026 DelicNode</div>
   </div>);
 }
 
@@ -1960,13 +1940,6 @@ function KupciModul({showToast}){
   const [novoPlacanje,setNovoPlacanje]=useState('');
   const [filterDug,setFilterDug]=useState(false);
 
-
-  // Back button closes modal
-  useEffect(()=>{
-    const h=()=>{if(placanjModal!==null){setPlacanjModal(null);}else if(modalKup){setModalKup(false);}else if(detail){setDetail(null);}else{setModal(false);}};
-    window.addEventListener('closeTopModal',h);
-    return()=>window.removeEventListener('closeTopModal',h);
-  },[]);
   const load=async()=>{try{const d=await api('/kupci');setKupci(d);}catch(e){showToast(e.message,'err');}};
   useEffect(()=>{load();},[]);
 
@@ -2125,7 +2098,7 @@ function KupciModul({showToast}){
       <div className="fg2"><label>Napomena</label><textarea value={form.napomena} onChange={e=>setForm(f=>({...f,napomena:e.target.value}))} placeholder="Posebne napomene..."/></div>
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button><button className="btn-save" onClick={doSave}>Sačuvaj</button></div>
     </div></div>}
-    <div className="site-footer">© 2026 <span>Delite Solutions</span></div>
+    <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
 }
 
@@ -2226,7 +2199,7 @@ function CjenovnikModul({showToast}){
       <div className="fg2"><label>Napomena</label><input value={form.napomena} onChange={e=>setForm(f=>({...f,napomena:e.target.value}))} placeholder="Stanje, tip..."/></div>
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button><button className="btn-save" onClick={doSave}>Sačuvaj</button></div>
     </div></div>}
-    <div className="site-footer">© 2026 <span>Delite Solutions</span></div>
+    <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
 }
 
@@ -2239,13 +2212,6 @@ function PonudaModul({showToast}){
   const [form,setForm]=useState({kupac_ime:'',kupac_telefon:'',napomena:''});
   const [stavke,setStavke]=useState([{opis:'',kolicina:1,cijena:''}]);
 
-
-  // Back button closes modal
-  useEffect(()=>{
-    const h=()=>{if(previewModal){setPreviewModal(null);}else{setModal(false);}};
-    window.addEventListener('closeTopModal',h);
-    return()=>window.removeEventListener('closeTopModal',h);
-  },[]);
   const load=async()=>{try{const d=await api('/ponude');setPonude(d);}catch(e){showToast(e.message,'err');}};
   useEffect(()=>{load();},[]);
 
@@ -2351,7 +2317,7 @@ function PonudaModul({showToast}){
       <div className="fg2"><label>Napomena</label><textarea value={form.napomena} onChange={e=>setForm(f=>({...f,napomena:e.target.value}))} placeholder="Rok važenja, uvjeti..."/></div>
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button><button className="btn-save" onClick={doSave}>Kreiraj ponudu</button></div>
     </div></div>}
-    <div className="site-footer">© 2026 <span>Delite Solutions</span></div>
+    <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
 }
 
@@ -2444,7 +2410,7 @@ function KartaMagacinaInline({showToast,magacini:magaciniProp}){
         </div>)}
       </div>}
     </div>}
-    <div className="site-footer">© 2026 <span>Delite Solutions</span></div>
+    <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
 }
 
@@ -2486,6 +2452,7 @@ function App(){
 
   const [isOnline,setIsOnline]=useState(navigator.onLine);
   const [fabOpen,setFabOpen]=useState(false);
+  const overlayCountRef = React.useRef(0);
   const [quickAddModal,setQuickAddModal]=useState(null); // 'guma' | 'auto'
   const [offlineQueue] = useState([]);
 
@@ -2497,15 +2464,17 @@ function App(){
     return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off);};
   },[]);
 
-  // Back button = close modal (Escape behaviour)
   useEffect(()=>{
-    // Keep a dummy history entry so back doesn't exit app
     window.history.pushState(null,'','/');
     const onPop=()=>{
-      window.history.pushState(null,'','/'); // put it back immediately
-      // Dispatch custom event — each module listens and closes its modal
-      window.dispatchEvent(new CustomEvent('closeTopModal'));
-      setSidebarOpen(false);
+      window.history.pushState(null,'','/');
+      // Click the topmost visible overlay to close it
+      const overlays=document.querySelectorAll('.overlay');
+      if(overlays.length>0){
+        overlays[overlays.length-1].click();
+      } else {
+        setSidebarOpen(false);
+      }
     };
     window.addEventListener('popstate',onPop);
     return()=>window.removeEventListener('popstate',onPop);
