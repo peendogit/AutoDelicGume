@@ -209,14 +209,22 @@ async function initDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       broj TEXT NOT NULL UNIQUE,
       kupac_ime TEXT NOT NULL,
+      kupac_adresa TEXT DEFAULT '',
       kupac_telefon TEXT,
       stavke TEXT DEFAULT '[]',
       napomena TEXT DEFAULT '',
+      pdv INTEGER DEFAULT 1,
+      rok_placanja TEXT DEFAULT 'Avansno plaćanje',
+      mjesto TEXT DEFAULT 'Bijeljina',
       status TEXT DEFAULT 'nacrt',
       kreirao TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  try { await dbExec(`ALTER TABLE ponude ADD COLUMN kupac_adresa TEXT DEFAULT ''`); } catch(e) {}
+  try { await dbExec(`ALTER TABLE ponude ADD COLUMN pdv INTEGER DEFAULT 1`); } catch(e) {}
+  try { await dbExec(`ALTER TABLE ponude ADD COLUMN rok_placanja TEXT DEFAULT 'Avansno plaćanje'`); } catch(e) {}
+  try { await dbExec(`ALTER TABLE ponude ADD COLUMN mjesto TEXT DEFAULT 'Bijeljina'`); } catch(e) {}
 
   // CJENOVNIK
   await dbExec(`
@@ -1178,12 +1186,13 @@ app.get('/api/ponude', requireAdmin, async (req,res) => {
 
 app.post('/api/ponude', requireAdmin, async (req,res) => {
   try {
-    const {kupac_ime,kupac_telefon,stavke,napomena} = req.body;
+    const {kupac_ime,kupac_adresa,kupac_telefon,stavke,napomena,pdv,rok_placanja,mjesto} = req.body;
     const year = new Date().getFullYear();
     const count = await dbGet('SELECT COUNT(*) as c FROM ponude WHERE broj LIKE ?',[year+'-%']);
     const broj = year+'-'+(String((count?.c||0)+1).padStart(3,'0'));
-    const r = await dbRun('INSERT INTO ponude (broj,kupac_ime,kupac_telefon,stavke,napomena,kreirao) VALUES (?,?,?,?,?,?)',
-      [broj,kupac_ime,kupac_telefon||'',JSON.stringify(stavke||[]),napomena||'',req.user.username]);
+    const r = await dbRun(
+      'INSERT INTO ponude (broj,kupac_ime,kupac_adresa,kupac_telefon,stavke,napomena,pdv,rok_placanja,mjesto,kreirao) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      [broj,kupac_ime,kupac_adresa||'',kupac_telefon||'',JSON.stringify(stavke||[]),napomena||'',pdv?1:0,rok_placanja||'Avansno plaćanje',mjesto||'Bijeljina',req.user.username]);
     const p = await dbGet('SELECT * FROM ponude WHERE id=?',[r.lastID]);
     res.json({...p, stavke:JSON.parse(p.stavke||'[]')});
   } catch(e) { res.status(500).json({error:e.message}); }
