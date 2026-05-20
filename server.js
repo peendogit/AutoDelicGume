@@ -179,6 +179,9 @@ async function initDB() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  // Add na_popravci status support (already text field, no migration needed)
+  // Add auto_id link to troskovi_auta if missing
+  try { await dbExec(`ALTER TABLE troskovi_auta ADD COLUMN auto_id INTEGER`); } catch(e) {}
 
   // REDOVNI (RECURRING) TROŠKOVI
   await dbExec(`
@@ -859,6 +862,50 @@ app.delete('/api/zadaci/:id', requireAdmin, async (req,res) => {
     await dbRun('DELETE FROM zadaci WHERE id=?',[req.params.id]);
     res.json({ok:true});
   } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== TROŠKOVI PO AUTU =====
+app.get('/api/auta/:id/troskovi', requireAuth, async (req,res) => {
+  try {
+    const trosak = await dbGet('SELECT * FROM troskovi_auta WHERE auto_id=?',[req.params.id]);
+    if(!trosak) return res.json({dijelovi:[]});
+    trosak.dijelovi = await dbAll('SELECT * FROM troskovi_dijelovi WHERE trosak_id=? ORDER BY id',[trosak.id]);
+    res.json(trosak);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/auta/:id/troskovi/dio', requireAuth, async (req,res) => {
+  try {
+    const {naziv, planirana_cijena, stvarna_cijena, nabavljeno} = req.body;
+    if(!naziv) return res.status(400).json({error:'Naziv je obavezan'});
+    let trosak = await dbGet('SELECT * FROM troskovi_auta WHERE auto_id=?',[req.params.id]);
+    if(!trosak) {
+      const auto = await dbGet('SELECT * FROM auta WHERE id=?',[req.params.id]);
+      if(!auto) return res.status(404).json({error:'Auto nije pronađen'});
+      const r = await dbRun('INSERT INTO troskovi_auta (auto_id,naziv_auta,nabavna_cijena,dodao_korisnik) VALUES (?,?,?,?)',
+        [req.params.id, auto.marka+' '+auto.model, parseFloat(auto.nabavna_cijena)||0, req.user.username]);
+      trosak = await dbGet('SELECT * FROM troskovi_auta WHERE id=?',[r.lastID]);
+    }
+    const r = await dbRun('INSERT INTO troskovi_dijelovi (trosak_id,naziv,planirana_cijena,stvarna_cijena,nabavljeno) VALUES (?,?,?,?,?)',
+      [trosak.id, naziv, parseFloat(planirana_cijena)||0, nabavljeno?(parseFloat(stvarna_cijena)||0):null, nabavljeno?1:0]);
+    const dio = await dbGet('SELECT * FROM troskovi_dijelovi WHERE id=?',[r.lastID]);
+    await logActivity(req.user.username,'TROSAK_DODAN',`${trosak.naziv_auta}: ${naziv}`);
+    res.json(dio);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.put('/api/auta/:id/troskovi/dio/:dioId', requireAuth, async (req,res) => {
+  try {
+    const {naziv, planirana_cijena, stvarna_cijena, nabavljeno} = req.body;
+    await dbRun('UPDATE troskovi_dijelovi SET naziv=?,planirana_cijena=?,stvarna_cijena=?,nabavljeno=? WHERE id=?',
+      [naziv, parseFloat(planirana_cijena)||0, nabavljeno?(parseFloat(stvarna_cijena)||0):null, nabavljeno?1:0, req.params.dioId]);
+    res.json(await dbGet('SELECT * FROM troskovi_dijelovi WHERE id=?',[req.params.dioId]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/auta/:id/troskovi/dio/:dioId', requireAuth, async (req,res) => {
+  try { await dbRun('DELETE FROM troskovi_dijelovi WHERE id=?',[req.params.dioId]); res.json({ok:true}); }
+  catch(e) { res.status(500).json({error:e.message}); }
 });
 
 // ===== TROŠKOVI =====
