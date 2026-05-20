@@ -1198,6 +1198,16 @@ app.post('/api/ponude', requireAdmin, async (req,res) => {
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
+app.put('/api/ponude/:id', requireAdmin, async (req,res) => {
+  try {
+    const {kupac_ime,kupac_adresa,kupac_telefon,stavke,napomena,pdv,rok_placanja,mjesto} = req.body;
+    await dbRun('UPDATE ponude SET kupac_ime=?,kupac_adresa=?,kupac_telefon=?,stavke=?,napomena=?,pdv=?,rok_placanja=?,mjesto=? WHERE id=?',
+      [kupac_ime,kupac_adresa||'',kupac_telefon||'',JSON.stringify(stavke||[]),napomena||'',pdv?1:0,rok_placanja||'Avansno plaćanje',mjesto||'Bijeljina',req.params.id]);
+    const p = await dbGet('SELECT * FROM ponude WHERE id=?',[req.params.id]);
+    res.json({...p, stavke:JSON.parse(p.stavke||'[]')});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
 app.delete('/api/ponude/:id', requireAdmin, async (req,res) => {
   try { await dbRun('DELETE FROM ponude WHERE id=?',[req.params.id]); res.json({ok:true}); }
   catch(e) { res.status(500).json({error:e.message}); }
