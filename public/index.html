@@ -609,6 +609,13 @@ function AutaModul({user,showToast,quickAdd,onQuickAddDone}){
     return (parseFloat(nabavna)||0)+dijeloviSum;
   };
 
+
+  // Back button closes modal
+  useEffect(()=>{
+    const h=()=>{if(cijenaHistorija!==null){setCijenaHistorija(null);}else if(sellAutoModal){setSellAutoModal(false);}else if(dioModal!==null){setDioModal(null);setEditDio(null);}else if(modal){setModal(null);}else if(detail){setDetail(null);}};
+    window.addEventListener('closeTopModal',h);
+    return()=>window.removeEventListener('closeTopModal',h);
+  },[]);
   useEffect(()=>{if(quickAdd){openAdd();onQuickAddDone&&onQuickAddDone();}},[quickAdd]);
   useEffect(()=>{loadRegistracije();},[]);
 
@@ -960,6 +967,13 @@ function ZadaciModul({user,showToast}){
   const [form,setForm]=useState({naslov:'',opis:'',prioritet:'srednji'});
   const [filterStatus,setFilterStatus]=useState('otvoreno');
   const [sortPrioritet,setSortPrioritet]=useState('sve'); // sve | visok | srednji | nizak
+
+  // Back button closes modal
+  useEffect(()=>{
+    const h=()=>{setModal(false);};
+    window.addEventListener('closeTopModal',h);
+    return()=>window.removeEventListener('closeTopModal',h);
+  },[]);
   const load=async()=>{try{const d=await api('/zadaci');setZadaci(d);}catch(e){showToast(e.message,'err');}};
   useEffect(()=>{load();},[]);
   const toggle=async(z)=>{
@@ -1238,6 +1252,13 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
   const [policaGume,setPolicaGume]=useState(null);
   const imgHook=useImageUpload([]);
 
+
+  // Back button closes modal
+  useEffect(()=>{
+    const h=()=>{if(sellModal){setSellModal(false);}else if(moveModal){setMoveModal(null);}else if(showHistorija){setShowHistorija(false);}else if(modal){setModal(null);}else if(detailG){setDetailG(null);}};
+    window.addEventListener('closeTopModal',h);
+    return()=>window.removeEventListener('closeTopModal',h);
+  },[]);
   useEffect(()=>{if(quickAdd){openAdd();onQuickAddDone&&onQuickAddDone();}},[ quickAdd]);
 
   const sirina_opts=useMemo(()=>[...SIRINA_OPTIONS,...customSirina].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>parseInt(a)-parseInt(b)),[customSirina]);
@@ -1939,6 +1960,13 @@ function KupciModul({showToast}){
   const [novoPlacanje,setNovoPlacanje]=useState('');
   const [filterDug,setFilterDug]=useState(false);
 
+
+  // Back button closes modal
+  useEffect(()=>{
+    const h=()=>{if(placanjModal!==null){setPlacanjModal(null);}else if(modalKup){setModalKup(false);}else if(detail){setDetail(null);}else{setModal(false);}};
+    window.addEventListener('closeTopModal',h);
+    return()=>window.removeEventListener('closeTopModal',h);
+  },[]);
   const load=async()=>{try{const d=await api('/kupci');setKupci(d);}catch(e){showToast(e.message,'err');}};
   useEffect(()=>{load();},[]);
 
@@ -2211,6 +2239,13 @@ function PonudaModul({showToast}){
   const [form,setForm]=useState({kupac_ime:'',kupac_telefon:'',napomena:''});
   const [stavke,setStavke]=useState([{opis:'',kolicina:1,cijena:''}]);
 
+
+  // Back button closes modal
+  useEffect(()=>{
+    const h=()=>{if(previewModal){setPreviewModal(null);}else{setModal(false);}};
+    window.addEventListener('closeTopModal',h);
+    return()=>window.removeEventListener('closeTopModal',h);
+  },[]);
   const load=async()=>{try{const d=await api('/ponude');setPonude(d);}catch(e){showToast(e.message,'err');}};
   useEffect(()=>{load();},[]);
 
@@ -2454,24 +2489,6 @@ function App(){
   const [quickAddModal,setQuickAddModal]=useState(null); // 'guma' | 'auto'
   const [offlineQueue] = useState([]);
 
-  // Handle browser back button
-  useEffect(()=>{
-    // Push initial state
-    window.history.replaceState({page:page},'','/');
-    const onPop=(e)=>{
-      if(e.state&&e.state.page){
-        setPage(e.state.page);
-        localStorage.setItem('adg_last_page',e.state.page);
-        setSidebarOpen(false);
-      } else {
-        // No previous state — push current page again to prevent exit
-        window.history.pushState({page:page},'','/');
-      }
-    };
-    window.addEventListener('popstate',onPop);
-    return()=>window.removeEventListener('popstate',onPop);
-  },[]);
-
   useEffect(()=>{
     const on=()=>{ setIsOnline(true); showToast('Konekcija vraćena ✓'); };
     const off=()=>setIsOnline(false);
@@ -2480,13 +2497,22 @@ function App(){
     return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off);};
   },[]);
 
+  // Back button = close modal (Escape behaviour)
+  useEffect(()=>{
+    // Keep a dummy history entry so back doesn't exit app
+    window.history.pushState(null,'','/');
+    const onPop=()=>{
+      window.history.pushState(null,'','/'); // put it back immediately
+      // Dispatch custom event — each module listens and closes its modal
+      window.dispatchEvent(new CustomEvent('closeTopModal'));
+      setSidebarOpen(false);
+    };
+    window.addEventListener('popstate',onPop);
+    return()=>window.removeEventListener('popstate',onPop);
+  },[]);
+
   const doLogout=async()=>{try{await api('/auth/logout',{method:'POST'});}catch(e){}localStorage.removeItem('adg_token');setUser(null);setGume([]);setGumeLoaded(false);};
-  const nav=(p)=>{
-    if(p!==page){
-      window.history.pushState({page:p},'','/');
-    }
-    setPage(p);localStorage.setItem('adg_last_page',p);setSidebarOpen(false);
-  };
+  const nav=(p)=>{setPage(p);localStorage.setItem('adg_last_page',p);setSidebarOpen(false);};
   // Radnici uvijek idu na gume
   useEffect(()=>{if(user&&user.role!=='admin'&&(page==='dashboard'||page==='auta'))setPage('gume');},[user]);
 
