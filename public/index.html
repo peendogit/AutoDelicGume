@@ -1018,7 +1018,7 @@ function ZadaciModul({user,showToast}){
       <div className="fg2"><label>Naslov *</label><input autoFocus value={form.naslov} onChange={e=>setForm(f=>({...f,naslov:e.target.value}))} placeholder="Šta treba uraditi?"/></div>
       <div className="fg2"><label>Opis</label><textarea value={form.opis} onChange={e=>setForm(f=>({...f,opis:e.target.value}))} placeholder="Detalji..."/></div>
       <div className="fg2"><label>Prioritet</label><select value={form.prioritet} onChange={e=>setForm(f=>({...f,prioritet:e.target.value}))}><option value="visok">Visok</option><option value="srednji">Srednji</option><option value="nizak">Nizak</option></select></div>
-      <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button><button className="btn-save" onClick={doAdd}>Dodaj zadatak</button></div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>{setModal(false);setEditPonuda(null);}}>Odustani</button><button className="btn-save" onClick={doAdd}>Dodaj zadatak</button></div>
     </div></div>}
   <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
@@ -1514,6 +1514,7 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
 
   const doDelMag=async(id)=>{if(!window.confirm('Brisanje magacina će obrisati i sve prolaze, regale i police unutar njega.\nDa li ste sigurni?'))return;await api('/magacini/'+id,{method:'DELETE'});setMagacini(p=>p.filter(m=>m.id!=id));await loadPolice();showToast('Magacin obrisan');};
   const doAddMag=async()=>{if(!newMagName.trim())return;try{const m=await api('/magacini',{method:'POST',body:{naziv:newMagName.trim()}});m.prolazi=[];setMagacini(p=>[...p,m]);setOpenMag(p=>({...p,[m.id]:true}));setNewMagName('');showToast('Magacin "'+newMagName.trim()+'" kreiran');}catch(e){showToast(e.message,'err');}};
+  const doAddMagDirect=async(naziv)=>{try{const m=await api('/magacini',{method:'POST',body:{naziv}});m.prolazi=[];setMagacini(p=>[...p,m]);setOpenMag(p=>({...p,[m.id]:true}));showToast('Magacin "'+naziv+'" kreiran');}catch(e){showToast(e.message,'err');}};
   const doAddProlaz=async(mid)=>{const pr=await api('/prolazi',{method:'POST',body:{magacin_id:mid}});pr.regali=[];setMagacini(p=>p.map(m=>m.id!=mid?m:{...m,prolazi:[...m.prolazi,pr]}));setOpenProlaz(p=>({...p,[pr.id]:true}));};
   const doDelProlaz=async(mid,pid)=>{if(!window.confirm('Obrisati prolaz i sve u njemu?'))return;await api('/prolazi/'+pid,{method:'DELETE'});setMagacini(p=>p.map(m=>m.id!=mid?m:{...m,prolazi:m.prolazi.filter(pr=>pr.id!=pid)}));await loadPolice();};
   const doAddRegal=async(mid,pid)=>{const r=await api('/regali',{method:'POST',body:{prolaz_id:pid}});r.police=[];setMagacini(p=>p.map(m=>m.id!=mid?m:{...m,prolazi:m.prolazi.map(pr=>pr.id!=pid?pr:{...pr,regali:[...pr.regali,r]})}));setOpenRegal(p=>({...p,[r.id]:true}));};
@@ -1539,10 +1540,7 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
 
     {setTab==='magacin'&&<>
       <div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
-        <div style={{display:'flex',gap:6}}>
-          <input className="cust-inp" style={{width:160,fontSize:12,padding:'4px 9px'}} placeholder="Naziv magacina" value={newMagName} onChange={e=>setNewMagName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doAddMag()}/>
-          <button className="btn-new" onClick={doAddMag}><Icons.Plus size={11}/> Dodaj</button>
-        </div>
+        <button className="btn-new" onClick={()=>{const n=prompt('Naziv novog magacina:');if(n&&n.trim())doAddMagDirect(n.trim());}}><Icons.Plus size={11}/> Novi magacin</button>
       </div>
       {magacini.map(m=><div key={m.id} className="mag-card">
         <div className="tree-row" onClick={()=>setOpenMag(p=>({...p,[m.id]:!p[m.id]}))}>
@@ -1935,6 +1933,7 @@ function KupciModul({showToast}){
   const [editKupac,setEditKupac]=useState(null);
   const [form,setForm]=useState({ime:'',telefon:'',napomena:''});
   const [kupForm,setKupForm]=useState({opis:'',iznos:'',placeno:'',datum:new Date().toISOString().slice(0,10)});
+  const [editKupovina,setEditKupovina]=useState(null);
   const [modalKup,setModalKup]=useState(false);
   const [placanjModal,setPlacanjModal]=useState(null); // kupovina id
   const [novoPlacanje,setNovoPlacanje]=useState('');
@@ -1967,10 +1966,18 @@ function KupciModul({showToast}){
   const doAddKupovina=async()=>{
     if(!kupForm.opis.trim()){showToast('Opis je obavezan','err');return;}
     try{
-      const k=await api('/kupci/'+detail.id+'/kupovina',{method:'POST',body:kupForm});
-      const updateKupci=p=>p.map(x=>x.id!=detail.id?x:{...x,kupovine:[k,...(x.kupovine||[])]});
-      setKupci(updateKupci);setDetail(d=>({...d,kupovine:[k,...(d.kupovine||[])]}));
-      setModalKup(false);setKupForm({opis:'',iznos:'',placeno:'',datum:new Date().toISOString().slice(0,10)});showToast('Dodano');
+      if(editKupovina){
+        const k=await api('/kupci/'+detail.id+'/kupovina/'+editKupovina.id,{method:'PUT',body:{...kupForm,iznos:kupForm.iznos,placeno:kupForm.placeno}});
+        setKupci(p=>p.map(x=>x.id!=detail.id?x:{...x,kupovine:(x.kupovine||[]).map(kup=>kup.id===k.id?k:kup)}));
+        setDetail(d=>({...d,kupovine:(d.kupovine||[]).map(kup=>kup.id===k.id?k:kup)}));
+        showToast('Ažurirano');
+      } else {
+        const k=await api('/kupci/'+detail.id+'/kupovina',{method:'POST',body:kupForm});
+        const updateKupci=p=>p.map(x=>x.id!=detail.id?x:{...x,kupovine:[k,...(x.kupovine||[])]});
+        setKupci(updateKupci);setDetail(d=>({...d,kupovine:[k,...(d.kupovine||[])]}));
+        showToast('Dodano');
+      }
+      setModalKup(false);setEditKupovina(null);setKupForm({opis:'',iznos:'',placeno:'',datum:new Date().toISOString().slice(0,10)});
     }catch(e){showToast(e.message,'err');}
   };
 
@@ -2054,6 +2061,7 @@ function KupciModul({showToast}){
                 <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{(parseFloat(k.iznos)||0).toLocaleString('sr-Latn-RS')} KM</div>
                 {parseFloat(k.placeno)>0&&<div style={{fontSize:10,color:'var(--green)'}}>Plaćeno: {parseFloat(k.placeno).toLocaleString('sr-Latn-RS')} KM</div>}
               </div>
+              <button className="del-btn" style={{color:'var(--blue)',opacity:1}} onClick={()=>{setEditKupovina(k);setKupForm({opis:k.opis,iznos:String(k.iznos||''),placeno:String(k.placeno||''),datum:k.datum||new Date().toISOString().slice(0,10)});setModalKup(true);}}><Icons.Edit/></button>
               <button className="del-btn" onClick={()=>doDelKupovina(k.id)}><Icons.Trash/></button>
             </div>
             {dug>0&&<div style={{display:'flex',alignItems:'center',gap:6,marginTop:4}}>
@@ -2081,14 +2089,14 @@ function KupciModul({showToast}){
 
     {/* ADD KUPOVINA */}
     {modalKup&&detail&&<div className="overlay" onClick={()=>setModalKup(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
-      <div className="modal-title">Nova transakcija <button className="btn-close" onClick={()=>setModalKup(false)}>x</button></div>
+      <div className="modal-title">{editKupovina?"Uredi transakciju":"Nova transakcija"} <button className="btn-close" onClick={()=>{setModalKup(false);setEditKupovina(null);}}>x</button></div>
       <div className="fg2"><label>Opis *</label><input autoFocus value={kupForm.opis} onChange={e=>setKupForm(f=>({...f,opis:e.target.value}))} placeholder="npr. 4x zimske 205/55 R16"/></div>
       <div className="two-col">
         <div className="fg2"><label>Ukupan iznos (KM)</label><div className="price-row"><input className="price-inp" type="number" placeholder="0" value={kupForm.iznos} onChange={e=>setKupForm(f=>({...f,iznos:e.target.value}))}/><span className="price-curr">KM</span></div></div>
         <div className="fg2"><label>Plaćeno odmah (KM)</label><div className="price-row"><input className="price-inp" type="number" placeholder="0" value={kupForm.placeno} onChange={e=>setKupForm(f=>({...f,placeno:e.target.value}))}/><span className="price-curr">KM</span></div></div>
       </div>
       <div className="fg2"><label>Datum</label><input type="date" value={kupForm.datum} onChange={e=>setKupForm(f=>({...f,datum:e.target.value}))}/></div>
-      <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModalKup(false)}>Odustani</button><button className="btn-save" onClick={doAddKupovina}>Dodaj</button></div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>{setModalKup(false);setEditKupovina(null);}}>Odustani</button><button className="btn-save" onClick={doAddKupovina}>{editKupovina?"Sačuvaj":"Dodaj"}</button></div>
     </div></div>}
 
     {modal&&<div className="overlay" onClick={()=>setModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
@@ -2096,7 +2104,7 @@ function KupciModul({showToast}){
       <div className="fg2"><label>Ime i prezime *</label><input autoFocus value={form.ime} onChange={e=>setForm(f=>({...f,ime:e.target.value}))} placeholder="Marko Marković"/></div>
       <div className="fg2"><label>Telefon</label><input value={form.telefon} onChange={e=>setForm(f=>({...f,telefon:e.target.value}))} placeholder="061 234 567"/></div>
       <div className="fg2"><label>Napomena</label><textarea value={form.napomena} onChange={e=>setForm(f=>({...f,napomena:e.target.value}))} placeholder="Posebne napomene..."/></div>
-      <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button><button className="btn-save" onClick={doSave}>Sačuvaj</button></div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>{setModal(false);setEditPonuda(null);}}>Odustani</button><button className="btn-save" onClick={doSave}>Sačuvaj</button></div>
     </div></div>}
     <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
@@ -2197,7 +2205,7 @@ function CjenovnikModul({showToast}){
         <div className="fg2"><label>Cijena max (KM)</label><div className="price-row"><input className="price-inp" type="number" placeholder="0" value={form.cijena_max} onChange={e=>setForm(f=>({...f,cijena_max:e.target.value}))}/><span className="price-curr">KM</span></div></div>
       </div>
       <div className="fg2"><label>Napomena</label><input value={form.napomena} onChange={e=>setForm(f=>({...f,napomena:e.target.value}))} placeholder="Stanje, tip..."/></div>
-      <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button><button className="btn-save" onClick={doSave}>Sačuvaj</button></div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>{setModal(false);setEditPonuda(null);}}>Odustani</button><button className="btn-save" onClick={doSave}>Sačuvaj</button></div>
     </div></div>}
     <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
@@ -2209,6 +2217,7 @@ function CjenovnikModul({showToast}){
 function PonudaModul({showToast}){
   const [ponude,setPonude]=useState([]);const [modal,setModal]=useState(false);
   const [printModal,setPrintModal]=useState(null);
+  const [editPonuda,setEditPonuda]=useState(null);
   const [form,setForm]=useState({kupac_ime:'',kupac_adresa:'',kupac_telefon:'',napomena:'',pdv:true,rok_placanja:'Avansno plaćanje',mjesto:'Bijeljina'});
   const [stavke,setStavke]=useState([{opis:'',kolicina:1,cijena:'',jm:'KOM'}]);
 
@@ -2230,11 +2239,17 @@ function PonudaModul({showToast}){
     const valid=stavke.filter(s=>s.opis.trim());
     if(!valid.length){showToast('Dodaj barem jednu stavku','err');return;}
     try{
-      const p=await api('/ponude',{method:'POST',body:{...form,stavke:valid}});
-      setPonude(prev=>[p,...prev]);setModal(false);
+      let p;
+      if(editPonuda){
+        p=await api('/ponude/'+editPonuda.id,{method:'PUT',body:{...form,stavke:valid}});
+        setPonude(prev=>prev.map(x=>x.id===p.id?p:x));showToast('Ponuda ažurirana');
+      } else {
+        p=await api('/ponude',{method:'POST',body:{...form,stavke:valid}});
+        setPonude(prev=>[p,...prev]);setPrintModal(p);showToast('Ponuda '+p.broj+' kreirana');
+      }
+      setModal(false);setEditPonuda(null);
       setForm({kupac_ime:'',kupac_adresa:'',kupac_telefon:'',napomena:'',pdv:true,rok_placanja:'Avansno plaćanje',mjesto:'Bijeljina'});
       setStavke([{opis:'',kolicina:1,cijena:'',jm:'KOM'}]);
-      setPrintModal(p);showToast('Ponuda '+p.broj+' kreirana');
     }catch(e){showToast(e.message,'err');}
   };
   const doDel=async(id)=>{if(!window.confirm('Obrisati ponudu?'))return;await api('/ponude/'+id,{method:'DELETE'});setPonude(p=>p.filter(x=>x.id!=id));};
@@ -2352,6 +2367,7 @@ function PonudaModul({showToast}){
             {p.kupac_telefon&&<button className="btn-sm" style={{background:'#25d366',color:'#fff',borderColor:'#25d366'}} onClick={()=>window.open('https://wa.me/387'+p.kupac_telefon.replace(/^0/,'').replace(/\D/g,'')+'?text='+encodeURIComponent(genWAText(p)),'_blank')}>💬 WA</button>}
             {p.kupac_telefon&&<button className="btn-sm" style={{background:'#7360f2',color:'#fff',borderColor:'#7360f2'}} onClick={()=>window.open('viber://forward?text='+encodeURIComponent(genWAText(p)),'_blank')}>📲 Viber</button>}
             <button className="btn-sm" onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(genWAText(p)).then(()=>showToast('Kopirano ✓'))}>📋 Kopiraj</button>
+            <button className="btn-sm" onClick={()=>{setEditPonuda(p);setForm({kupac_ime:p.kupac_ime,kupac_adresa:p.kupac_adresa||'',kupac_telefon:p.kupac_telefon||'',napomena:p.napomena||'',pdv:p.pdv!==0,rok_placanja:p.rok_placanja||'Avansno plaćanje',mjesto:p.mjesto||'Bijeljina'});setStavke(p.stavke&&p.stavke.length?p.stavke:[{opis:'',kolicina:1,cijena:'',jm:'KOM'}]);setModal(true);}}><Icons.Edit size={10}/></button>
             <button className="btn-sm red" onClick={()=>doDel(p.id)}><Icons.Trash size={10}/></button>
           </div>
         </div>);
@@ -2360,7 +2376,7 @@ function PonudaModul({showToast}){
 
     {/* FORM */}
     {modal&&<div className="overlay" onClick={()=>setModal(false)}><div className="modal" style={{maxWidth:540}} onClick={e=>e.stopPropagation()}>
-      <div className="modal-title">Nova ponuda <button className="btn-close" onClick={()=>setModal(false)}>x</button></div>
+      <div className="modal-title">{editPonuda?"Uredi ponudu":"Nova ponuda"} <button className="btn-close" onClick={()=>{setModal(false);setEditPonuda(null);}}>x</button></div>
       <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--accent)',marginBottom:8}}>Podaci o kupcu</div>
       <div className="two-col">
         <div className="fg2"><label>Ime kupca *</label><input autoFocus value={form.kupac_ime} onChange={e=>setForm(f=>({...f,kupac_ime:e.target.value}))} placeholder="Marko Marković"/></div>
@@ -2393,7 +2409,7 @@ function PonudaModul({showToast}){
         <div style={{display:'flex',justifyContent:'space-between',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18}}><span>UKUPNO:</span><span style={{color:'var(--green)'}}>{ukupnoSaPdv(stavke,form.pdv).toFixed(2)} KM</span></div>
       </div>}
       <div className="fg2"><label>Napomena</label><textarea value={form.napomena} onChange={e=>setForm(f=>({...f,napomena:e.target.value}))} placeholder="Rok važenja, uvjeti..."/></div>
-      <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button><button className="btn-save" onClick={doSave}>Kreiraj ponudu</button></div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>{setModal(false);setEditPonuda(null);}}>Odustani</button><button className="btn-save" onClick={doSave}>Kreiraj ponudu</button></div>
     </div></div>}
     <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
