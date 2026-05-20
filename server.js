@@ -650,49 +650,51 @@ app.get('/api/analitika', requireAdmin, async (req,res) => {
 
     // ===== PROGNOZA =====
     // Uzmi prodaju po mjesecima za prošlu godinu i napravi prognozu
-    const godinuDana = new Date();
-    godinuDana.setFullYear(godinuDana.getFullYear()-1);
-    const odDatum = godinuDana.toISOString().slice(0,7);
-
+    // Prognoza za sljedećih 6 mjeseci
+    // datum_prodaje je u formatu DD.MM.YYYY - parsiramo ga ispravno
     const prodajaMjesecno = await dbAll(
       `SELECT substr(datum_prodaje,7,4)||'-'||substr(datum_prodaje,4,2) as mj,
         COUNT(*) as prodano
        FROM gume WHERE prodato=1 AND datum_prodaje IS NOT NULL
-       AND datum_prodaje >= ?
-       GROUP BY mj ORDER BY mj`,
-      [odDatum.slice(0,4)+'-01-01']);
+       AND length(datum_prodaje)>=10
+       GROUP BY mj ORDER BY mj`);
 
     // Prosječna prodaja po mjesecu
-    const prosjecno = prodajaMjesecno.length>0
-      ? Math.round(prodajaMjesecno.reduce((s,m)=>s+Number(m.prodano),0)/prodajaMjesecno.length)
+    const prosjecno = prodajaMjesecno.length > 0
+      ? Math.round(prodajaMjesecno.reduce((s,m)=>s+Number(m.prodano),0) / prodajaMjesecno.length)
       : 0;
 
-    // Sezonski faktori — zimske vs ljetne
-    const zimskeProdaja = await dbAll(
-      `SELECT substr(datum_prodaje,4,7) as mj_god, COUNT(*) as kom
-       FROM gume WHERE prodato=1 AND sezona='Zimska' AND datum_prodaje IS NOT NULL
-       GROUP BY mj_god`);
-    const ljetneProdaja = await dbAll(
-      `SELECT substr(datum_prodaje,4,7) as mj_god, COUNT(*) as kom
-       FROM gume WHERE prodato=1 AND sezona='Ljetna' AND datum_prodaje IS NOT NULL
-       GROUP BY mj_god`);
+    // Sezonski faktori — prodaja po broju mjeseca (1-12)
+    const prodajaPoMjesecu = {};
+    for (const m of prodajaMjesecno) {
+      const mBroj = parseInt(m.mj.slice(5,7));
+      if(!prodajaPoMjesecu[mBroj]) prodajaPoMjesecu[mBroj] = {ukupno:0,godina:0};
+      prodajaPoMjesecu[mBroj].ukupno += Number(m.prodano);
+      prodajaPoMjesecu[mBroj].godina += 1;
+    }
 
-    // Prognoza za sljedećih 6 mjeseci
+    // Prognoza za specifične mjesece (proljeće i jesen — sezona guma)
     const prognoza = [];
     const sada = new Date();
-    for(let i=1; i<=6; i++){
+    const TARGET_MONTHS = [3,4,5,9,10,11]; // Mart, April, Maj, Septembar, Oktobar, Novembar
+    for(const mjes of TARGET_MONTHS){
       const d = new Date(sada);
-      d.setMonth(d.getMonth()+i);
+      d.setDate(1);
+      d.setMonth(mjes-1);
+      // Ako je taj mjesec već prošao ove godine, uzmi sljedeću godinu
+      if(d <= sada) d.setFullYear(d.getFullYear()+1);
       const mj = d.toISOString().slice(0,7);
-      const mjes = d.getMonth()+1;
-      // Sezonski faktor: oktobar-decembar-januar-mart = zimske, ostalo = ljetne
       const jeZimskiMjesec = [10,11,12,1,2,3].includes(mjes);
+      const histData = prodajaPoMjesecu[mjes];
+      const prognozaKom = histData
+        ? Math.round(histData.ukupno / histData.godina)
+        : prosjecno;
       prognoza.push({
         mj,
         naziv: d.toLocaleDateString('sr-Latn-RS',{month:'long',year:'numeric'}),
-        prognoza_kom: prosjecno,
+        prognoza_kom: prognozaKom,
         sezona: jeZimskiMjesec ? 'Zimska' : 'Ljetna',
-        napomena: prosjecno===0 ? 'Nema dovoljno podataka' : null,
+        ima_historiju: !!histData,
       });
     }
 
