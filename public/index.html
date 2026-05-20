@@ -2208,111 +2208,189 @@ function CjenovnikModul({showToast}){
 // ===== PONUDA / RAČUN MODULE =====
 function PonudaModul({showToast}){
   const [ponude,setPonude]=useState([]);const [modal,setModal]=useState(false);
-  const [previewModal,setPreviewModal]=useState(null);
-  const [form,setForm]=useState({kupac_ime:'',kupac_telefon:'',napomena:''});
-  const [stavke,setStavke]=useState([{opis:'',kolicina:1,cijena:''}]);
+  const [printModal,setPrintModal]=useState(null);
+  const [form,setForm]=useState({kupac_ime:'',kupac_adresa:'',kupac_telefon:'',napomena:'',pdv:true,rok_placanja:'Avansno plaćanje',mjesto:'Bijeljina'});
+  const [stavke,setStavke]=useState([{opis:'',kolicina:1,cijena:'',jm:'KOM'}]);
+
+  const FIRMA={naziv:'Auto Delić',adresa:'',tel:'+387 66 027 888',pdv_broj:'',jib:''};
 
   const load=async()=>{try{const d=await api('/ponude');setPonude(d);}catch(e){showToast(e.message,'err');}};
   useEffect(()=>{load();},[]);
 
-  const ukupno=(stavke)=>stavke.reduce((s,st)=>s+(parseFloat(st.cijena)||0)*(parseInt(st.kolicina)||1),0);
+  const ukupnoBezPdv=(st)=>st.reduce((s,x)=>s+(parseFloat(x.cijena)||0)*(parseInt(x.kolicina)||1),0);
+  const pdvIznos=(st)=>Math.round(ukupnoBezPdv(st)*0.17*100)/100;
+  const ukupnoSaPdv=(st,hasPdv)=>hasPdv?Math.round((ukupnoBezPdv(st)+pdvIznos(st))*100)/100:ukupnoBezPdv(st);
 
-  const addStavka=()=>setStavke(p=>[...p,{opis:'',kolicina:1,cijena:''}]);
-  const updateStavka=(i,field,val)=>setStavke(p=>p.map((s,j)=>j===i?{...s,[field]:val}:s));
+  const addStavka=()=>setStavke(p=>[...p,{opis:'',kolicina:1,cijena:'',jm:'KOM'}]);
+  const updateStavka=(i,f,v)=>setStavke(p=>p.map((s,j)=>j===i?{...s,[f]:v}:s));
   const removeStavka=(i)=>setStavke(p=>p.filter((_,j)=>j!==i));
 
   const doSave=async()=>{
     if(!form.kupac_ime.trim()){showToast('Ime kupca je obavezno','err');return;}
-    const validStavke=stavke.filter(s=>s.opis.trim());
-    if(!validStavke.length){showToast('Dodaj barem jednu stavku','err');return;}
+    const valid=stavke.filter(s=>s.opis.trim());
+    if(!valid.length){showToast('Dodaj barem jednu stavku','err');return;}
     try{
-      const p=await api('/ponude',{method:'POST',body:{...form,stavke:validStavke}});
+      const p=await api('/ponude',{method:'POST',body:{...form,stavke:valid}});
       setPonude(prev=>[p,...prev]);setModal(false);
-      setForm({kupac_ime:'',kupac_telefon:'',napomena:''});
-      setStavke([{opis:'',kolicina:1,cijena:''}]);
-      setPreviewModal(p);showToast('Ponuda '+p.broj+' kreirana');
+      setForm({kupac_ime:'',kupac_adresa:'',kupac_telefon:'',napomena:'',pdv:true,rok_placanja:'Avansno plaćanje',mjesto:'Bijeljina'});
+      setStavke([{opis:'',kolicina:1,cijena:'',jm:'KOM'}]);
+      setPrintModal(p);showToast('Ponuda '+p.broj+' kreirana');
     }catch(e){showToast(e.message,'err');}
   };
-
   const doDel=async(id)=>{if(!window.confirm('Obrisati ponudu?'))return;await api('/ponude/'+id,{method:'DELETE'});setPonude(p=>p.filter(x=>x.id!=id));};
 
-  const genText=(p)=>{
-    const datum=new Date(p.created_at).toLocaleDateString('sr-Latn-RS');
-    let txt=`AUTO DELIĆ — PONUDA BR. ${p.broj}\n`;
-    txt+=`Datum: ${datum}\n`;
-    txt+=`Kupac: ${p.kupac_ime}\n\n`;
-    txt+=`STAVKE:\n`;
-    (p.stavke||[]).forEach((s,i)=>{
-      const u=(parseFloat(s.cijena)||0)*(parseInt(s.kolicina)||1);
-      txt+=`${i+1}. ${s.opis} — ${s.kolicina}x ${s.cijena} KM = ${u} KM\n`;
-    });
-    txt+=`\nUKUPNO: ${ukupno(p.stavke||[]).toLocaleString('sr-Latn-RS')} KM`;
-    if(p.napomena) txt+=`\n\nNapomena: ${p.napomena}`;
-    txt+=`\n\nTel: +387 66 027 888`;
+  const genWAText=(p)=>{
+    const st=p.stavke||[];const hasPdv=p.pdv!==false;
+    let txt=`PONUDA - ${FIRMA.naziv}\nBroj: ${p.broj}\nDatum: ${new Date(p.created_at).toLocaleDateString('sr-Latn-RS')}\n`;
+    txt+=`\nKupac: ${p.kupac_ime}\n\nSTAVKE:\n`;
+    st.forEach((s,i)=>{const u=(parseFloat(s.cijena)||0)*(parseInt(s.kolicina)||1);txt+=`${i+1}. ${s.opis} — ${s.kolicina}x${s.cijena} KM = ${u.toFixed(2)} KM\n`;});
+    txt+=hasPdv?`\nBez PDV-a: ${ukupnoBezPdv(st).toFixed(2)} KM\nPDV (17%): ${pdvIznos(st).toFixed(2)} KM\nUKUPNO: ${ukupnoSaPdv(st,true).toFixed(2)} KM`:`\nUKUPNO: ${ukupnoBezPdv(st).toFixed(2)} KM`;
+    txt+=`\n\nTel: ${FIRMA.tel}`;
     return txt;
   };
 
-  const sendWA=(p)=>window.open('https://wa.me/387'+p.kupac_telefon.replace(/^0/,'').replace(/\D/g,'')+'?text='+encodeURIComponent(genText(p)),'_blank');
-  const sendViber=(p)=>window.open('viber://forward?text='+encodeURIComponent(genText(p)),'_blank');
+  const doPrint=(p)=>{
+    const st=p.stavke||[];const hasPdv=p.pdv!==false;
+    const datum=new Date(p.created_at).toLocaleDateString('sr-Latn-RS');
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ponuda ${p.broj}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:20px;max-width:800px;margin:0 auto}
+      h1{font-size:16px;font-weight:bold;text-align:center;margin-bottom:4px}
+      .subtitle{text-align:center;font-size:12px;color:#555;margin-bottom:20px}
+      .header{display:flex;justify-content:space-between;margin-bottom:20px;gap:20px}
+      .header-left{flex:1}.header-right{flex:1;font-size:11px}
+      .header-right table{width:100%;border-collapse:collapse}
+      .header-right td{padding:2px 4px;vertical-align:top}
+      .header-right td:first-child{font-weight:bold;white-space:nowrap;color:#555}
+      .firma-name{font-size:13px;font-weight:bold;margin-bottom:4px}
+      .kupac-label{font-size:10px;color:#888;text-transform:uppercase;margin-bottom:4px}
+      table.stavke{width:100%;border-collapse:collapse;margin:16px 0}
+      table.stavke th{background:#f0f0f0;border-bottom:2px solid #999;padding:5px 6px;text-align:left;font-size:10px;white-space:nowrap}
+      table.stavke td{border-bottom:1px solid #ddd;padding:4px 6px;vertical-align:top}
+      table.stavke .num{text-align:right}
+      .total-section{margin-left:auto;width:280px;margin-top:8px}
+      .total-row{display:flex;justify-content:space-between;padding:3px 0;font-size:12px}
+      .total-row.main{font-weight:bold;font-size:14px;border-top:2px solid #333;padding-top:5px;margin-top:3px}
+      .footer{margin-top:30px;font-size:10px;color:#888;text-align:center;border-top:1px solid #ddd;padding-top:8px}
+      @media print{body{padding:0}@page{margin:15mm}}
+    </style></head><body>
+    <h1>Ponuda - predračun ${p.broj}</h1>
+    <div class="subtitle">${datum}</div>
+    <div class="header">
+      <div class="header-left">
+        <div class="firma-name">${FIRMA.naziv}</div>
+        ${FIRMA.adresa?`<div>${FIRMA.adresa}</div>`:''}
+        ${FIRMA.tel?`<div>Tel: ${FIRMA.tel}</div>`:''}
+        ${FIRMA.pdv_broj?`<div>PDV: ${FIRMA.pdv_broj}</div>`:''}
+        <br>
+        <div class="kupac-label">Kupac:</div>
+        <div style="font-weight:bold">${p.kupac_ime||'—'}</div>
+        ${p.kupac_adresa?`<div>${p.kupac_adresa}</div>`:''}
+        ${p.kupac_telefon?`<div>Tel: ${p.kupac_telefon}</div>`:''}
+      </div>
+      <div class="header-right">
+        <table>
+          <tr><td>Mjesto i datum:</td><td>${p.mjesto||'Bijeljina'}, ${datum}</td></tr>
+          <tr><td>Rok plaćanja:</td><td>${p.rok_placanja||'Avansno plaćanje'}</td></tr>
+          ${p.napomena?`<tr><td>Napomena:</td><td>${p.napomena}</td></tr>`:''}
+        </table>
+      </div>
+    </div>
+    <table class="stavke">
+      <thead><tr>
+        <th>Br.</th><th>Opis</th><th>JM</th>
+        <th class="num">Količina</th><th class="num">Cijena</th><th class="num">Vrijednost</th>
+      </tr></thead>
+      <tbody>
+      ${st.map((s,i)=>{const v=(parseFloat(s.cijena)||0)*(parseInt(s.kolicina)||1);
+        return`<tr><td>${i+1}.</td><td>${s.opis}</td><td>${s.jm||'KOM'}</td>
+        <td class="num">${s.kolicina}</td><td class="num">${parseFloat(s.cijena||0).toFixed(2)}</td>
+        <td class="num"><b>${v.toFixed(2)}</b></td></tr>`;}).join('')}
+      </tbody>
+    </table>
+    <div class="total-section">
+      ${hasPdv?`
+      <div class="total-row"><span>Ukupno KM bez PDV-a:</span><span><b>${ukupnoBezPdv(st).toFixed(2)} KM</b></span></div>
+      <div class="total-row"><span>Iznos PDV-a (17%):</span><span>${pdvIznos(st).toFixed(2)} KM</span></div>
+      <div class="total-row main"><span>Ukupno KM sa PDV-om:</span><span>${ukupnoSaPdv(st,true).toFixed(2)} KM</span></div>
+      `:`<div class="total-row main"><span>Ukupno:</span><span>${ukupnoBezPdv(st).toFixed(2)} KM</span></div>`}
+    </div>
+    <div class="footer">${FIRMA.naziv} · ${FIRMA.tel}</div>
+    </body></html>`;
+    const w=window.open('','_blank');
+    w.document.write(html);w.document.close();
+    setTimeout(()=>{w.focus();w.print();},500);
+  };
 
   return(<div className="page">
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
-      <div><div className="page-title">Ponude / Računi</div><div className="page-sub">Kreiraj i pošalji na WhatsApp ili Viber</div></div>
+      <div><div className="page-title">Ponude / Predračuni</div><div className="page-sub">Kreiraj, štampaj, pošalji</div></div>
       <button className="btn-add-main" onClick={()=>setModal(true)}><Icons.Plus size={13}/> Nova ponuda</button>
     </div>
 
     {ponude.length===0?<div className="empty"><Icons.Money size={36}/><p>Nema kreiranih ponuda.</p></div>:
     <div style={{display:'flex',flexDirection:'column',gap:8}}>
-      {ponude.map(p=><div key={p.id} style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:8,padding:'12px 14px'}}>
-        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10,marginBottom:8}}>
-          <div>
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:16,color:'var(--accent)'}}>{p.broj}</span>
-              <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>{p.kupac_ime}</span>
+      {ponude.map(p=>{
+        const st=p.stavke||[];const hasPdv=p.pdv!==false;
+        return(<div key={p.id} style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:8,padding:'12px 14px'}}>
+          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10,marginBottom:8}}>
+            <div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:16,color:'var(--accent)'}}>{p.broj}</span>
+                <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>{p.kupac_ime}</span>
+              </div>
+              <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{st.length} stavki · {new Date(p.created_at).toLocaleDateString('sr-Latn-RS')}</div>
             </div>
-            <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{(p.stavke||[]).length} stavki · {new Date(p.created_at).toLocaleDateString('sr-Latn-RS')}</div>
+            <div style={{textAlign:'right',flexShrink:0}}>
+              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18,color:'var(--green)'}}>{ukupnoSaPdv(st,hasPdv).toFixed(2)} KM</div>
+              {hasPdv&&<div style={{fontSize:10,color:'var(--muted)'}}>sa PDV-om</div>}
+            </div>
           </div>
-          <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18,color:'var(--green)',flexShrink:0}}>{ukupno(p.stavke||[]).toLocaleString('sr-Latn-RS')} KM</div>
-        </div>
-        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-          <button className="btn-sm" onClick={()=>setPreviewModal(p)}>👁 Pregled</button>
-          {p.kupac_telefon&&<button className="btn-sm" style={{background:'#25d366',color:'#fff',borderColor:'#25d366'}} onClick={()=>sendWA(p)}>💬 WA</button>}
-          {p.kupac_telefon&&<button className="btn-sm" style={{background:'#7360f2',color:'#fff',borderColor:'#7360f2'}} onClick={()=>sendViber(p)}>📲 Viber</button>}
-          <button className="btn-sm" onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(genText(p)).then(()=>showToast('Kopirano ✓'))}>📋 Kopiraj</button>
-          <button className="btn-sm red" onClick={()=>doDel(p.id)}><Icons.Trash size={10}/></button>
-        </div>
-      </div>)}
+          <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+            <button className="btn-sm" onClick={()=>doPrint(p)}>🖨 Štampaj</button>
+            {p.kupac_telefon&&<button className="btn-sm" style={{background:'#25d366',color:'#fff',borderColor:'#25d366'}} onClick={()=>window.open('https://wa.me/387'+p.kupac_telefon.replace(/^0/,'').replace(/\D/g,'')+'?text='+encodeURIComponent(genWAText(p)),'_blank')}>💬 WA</button>}
+            {p.kupac_telefon&&<button className="btn-sm" style={{background:'#7360f2',color:'#fff',borderColor:'#7360f2'}} onClick={()=>window.open('viber://forward?text='+encodeURIComponent(genWAText(p)),'_blank')}>📲 Viber</button>}
+            <button className="btn-sm" onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(genWAText(p)).then(()=>showToast('Kopirano ✓'))}>📋 Kopiraj</button>
+            <button className="btn-sm red" onClick={()=>doDel(p.id)}><Icons.Trash size={10}/></button>
+          </div>
+        </div>);
+      })}
     </div>}
 
-    {/* PREVIEW */}
-    {previewModal&&<div className="overlay" onClick={()=>setPreviewModal(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
-      <div className="modal-title">Ponuda {previewModal.broj} <button className="btn-close" onClick={()=>setPreviewModal(null)}>x</button></div>
-      <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:7,padding:'14px',fontFamily:'monospace',fontSize:12,whiteSpace:'pre-wrap',lineHeight:1.6,marginBottom:12,maxHeight:'50vh',overflowY:'auto'}}>{genText(previewModal)}</div>
-      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-        {previewModal.kupac_telefon&&<button className="btn-save" style={{background:'#25d366',flex:1}} onClick={()=>sendWA(previewModal)}>💬 Pošalji WhatsApp</button>}
-        {previewModal.kupac_telefon&&<button className="btn-save" style={{background:'#7360f2',flex:1}} onClick={()=>sendViber(previewModal)}>📲 Pošalji Viber</button>}
-        <button className="btn-cancel" style={{flex:1}} onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(genText(previewModal)).then(()=>showToast('Kopirano ✓'))}>📋 Kopiraj tekst</button>
-      </div>
-    </div></div>}
-
     {/* FORM */}
-    {modal&&<div className="overlay" onClick={()=>setModal(false)}><div className="modal" style={{maxWidth:520}} onClick={e=>e.stopPropagation()}>
+    {modal&&<div className="overlay" onClick={()=>setModal(false)}><div className="modal" style={{maxWidth:540}} onClick={e=>e.stopPropagation()}>
       <div className="modal-title">Nova ponuda <button className="btn-close" onClick={()=>setModal(false)}>x</button></div>
+      <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--accent)',marginBottom:8}}>Podaci o kupcu</div>
       <div className="two-col">
         <div className="fg2"><label>Ime kupca *</label><input autoFocus value={form.kupac_ime} onChange={e=>setForm(f=>({...f,kupac_ime:e.target.value}))} placeholder="Marko Marković"/></div>
         <div className="fg2"><label>Telefon</label><input value={form.kupac_telefon} onChange={e=>setForm(f=>({...f,kupac_telefon:e.target.value}))} placeholder="061 234 567"/></div>
       </div>
-      <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)',marginBottom:8,marginTop:4}}>Stavke</div>
-      {stavke.map((s,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'1fr 50px 70px 20px',gap:5,marginBottom:5,alignItems:'center'}}>
-        <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow,sans-serif',fontSize:12,padding:'6px 8px',outline:'none'}} placeholder="Opis..." value={s.opis} onChange={e=>updateStavka(i,'opis',e.target.value)}/>
-        <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:13,fontWeight:700,padding:'6px 6px',outline:'none',textAlign:'center'}} type="number" min="1" placeholder="Kom" value={s.kolicina} onChange={e=>updateStavka(i,'kolicina',e.target.value)}/>
-        <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:13,fontWeight:700,padding:'6px 6px',outline:'none',textAlign:'right'}} type="number" placeholder="KM" value={s.cijena} onChange={e=>updateStavka(i,'cijena',e.target.value)}/>
-        <button onClick={()=>removeStavka(i)} style={{background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:16,padding:0}}>×</button>
+      <div className="fg2"><label>Adresa kupca</label><input value={form.kupac_adresa} onChange={e=>setForm(f=>({...f,kupac_adresa:e.target.value}))} placeholder="Ulica bb, Grad"/></div>
+      <div className="two-col">
+        <div className="fg2"><label>Mjesto izdavanja</label><input value={form.mjesto} onChange={e=>setForm(f=>({...f,mjesto:e.target.value}))}/></div>
+        <div className="fg2"><label>Rok plaćanja</label><input value={form.rok_placanja} onChange={e=>setForm(f=>({...f,rok_placanja:e.target.value}))}/></div>
+      </div>
+      <div className="fg2" style={{display:'flex',alignItems:'center',gap:10}}>
+        <input type="checkbox" id="pdv-chk" checked={!!form.pdv} onChange={e=>setForm(f=>({...f,pdv:e.target.checked}))} style={{width:16,height:16}}/>
+        <label htmlFor="pdv-chk" style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',cursor:'pointer'}}>Obračunaj PDV (17%)</label>
+      </div>
+      <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--accent)',marginBottom:8,marginTop:4}}>Stavke</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 45px 55px 55px 16px',gap:4,marginBottom:4}}>
+        {['Opis','Kom','JM','Cij.',''].map((h,i)=><div key={i} style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:9,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)'}}>{h}</div>)}
+      </div>
+      {stavke.map((s,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'1fr 45px 55px 55px 16px',gap:4,marginBottom:4,alignItems:'center'}}>
+        <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow,sans-serif',fontSize:12,padding:'5px 7px',outline:'none'}} placeholder="Opis..." value={s.opis} onChange={e=>updateStavka(i,'opis',e.target.value)}/>
+        <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,padding:'5px 4px',outline:'none',textAlign:'center'}} type="number" min="1" value={s.kolicina} onChange={e=>updateStavka(i,'kolicina',e.target.value)}/>
+        <select style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:11,padding:'5px 3px',outline:'none'}} value={s.jm||'KOM'} onChange={e=>updateStavka(i,'jm',e.target.value)}><option>KOM</option><option>PAR</option><option>SET</option><option>KG</option></select>
+        <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,padding:'5px 4px',outline:'none',textAlign:'right'}} type="number" placeholder="KM" value={s.cijena} onChange={e=>updateStavka(i,'cijena',e.target.value)}/>
+        <button onClick={()=>removeStavka(i)} style={{background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:14,padding:0}}>×</button>
       </div>)}
       <button className="btn-sm" style={{marginBottom:10}} onClick={addStavka}><Icons.Plus size={10}/> Dodaj stavku</button>
-      {stavke.some(s=>s.opis&&s.cijena)&&<div style={{background:'rgba(63,185,80,.08)',border:'1px solid rgba(63,185,80,.2)',borderRadius:6,padding:'8px 12px',marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)'}}>UKUPNO</span>
-        <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:20,fontWeight:900,color:'var(--green)'}}>{ukupno(stavke).toLocaleString('sr-Latn-RS')} KM</span>
+      {stavke.some(s=>s.opis&&s.cijena)&&<div style={{background:'rgba(63,185,80,.08)',border:'1px solid rgba(63,185,80,.2)',borderRadius:6,padding:'8px 12px',marginBottom:10}}>
+        {form.pdv&&<><div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}><span style={{color:'var(--muted)'}}>Bez PDV-a:</span><span>{ukupnoBezPdv(stavke).toFixed(2)} KM</span></div>
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}><span style={{color:'var(--muted)'}}>PDV (17%):</span><span>{pdvIznos(stavke).toFixed(2)} KM</span></div></>}
+        <div style={{display:'flex',justifyContent:'space-between',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18}}><span>UKUPNO:</span><span style={{color:'var(--green)'}}>{ukupnoSaPdv(stavke,form.pdv).toFixed(2)} KM</span></div>
       </div>}
       <div className="fg2"><label>Napomena</label><textarea value={form.napomena} onChange={e=>setForm(f=>({...f,napomena:e.target.value}))} placeholder="Rok važenja, uvjeti..."/></div>
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button><button className="btn-save" onClick={doSave}>Kreiraj ponudu</button></div>
@@ -2321,8 +2399,6 @@ function PonudaModul({showToast}){
   </div>);
 }
 
-// ===== KARTA MAGACINA =====
-const KartaMagacinaModul = KartaMagacinaInline;
 function KartaMagacinaInline({showToast,magacini:magaciniProp}){
   const [police,setPolice]=useState([]);
   const [magaciniData,setMagaciniData]=useState([]);
