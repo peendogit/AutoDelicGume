@@ -177,6 +177,47 @@ async function initDB() {
   // Add auto_id link to troskovi_auta if missing
   try { await dbExec(`ALTER TABLE troskovi_auta ADD COLUMN auto_id INTEGER`); } catch(e) {}
 
+  // KUPCI
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS kupci (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ime TEXT NOT NULL,
+      telefon TEXT,
+      napomena TEXT DEFAULT '',
+      dodao_korisnik TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // KUPOVINE (historija kupovine po kupcu)
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS kupovine (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kupac_id INTEGER NOT NULL,
+      opis TEXT NOT NULL,
+      iznos REAL,
+      datum TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // CJENOVNIK
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS cjenovnik (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      dimenzija TEXT NOT NULL,
+      sezona TEXT,
+      cijena_min REAL,
+      cijena_max REAL,
+      napomena TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // REGISTRACIJA AUTA (podsjetnici)
+  try { await dbExec(`ALTER TABLE auta ADD COLUMN datum_registracije TEXT`); } catch(e) {}
+  try { await dbExec(`ALTER TABLE auta ADD COLUMN podsjetnik_reg INTEGER DEFAULT 1`); } catch(e) {}
+
   // REDOVNI (RECURRING) TROŠKOVI
   await dbExec(`
     CREATE TABLE IF NOT EXISTS redovni_troskovi (
@@ -1001,6 +1042,102 @@ app.get('/api/police/:naziv/gume', requireAuth, async (req,res) => {
     const naziv = decodeURIComponent(req.params.naziv).toUpperCase();
     const gume = await dbAll(GUME_SELECT + ' WHERE g.polica_kod=? AND g.prodato=0 ORDER BY g.id',[naziv]);
     res.json(gume.map(formatGuma));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== KUPCI =====
+app.get('/api/kupci', requireAdmin, async (req,res) => {
+  try {
+    const kupci = await dbAll('SELECT * FROM kupci ORDER BY ime');
+    for(const k of kupci) k.kupovine = await dbAll('SELECT * FROM kupovine WHERE kupac_id=? ORDER BY datum DESC',[k.id]);
+    res.json(kupci);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/kupci', requireAdmin, async (req,res) => {
+  try {
+    const {ime,telefon,napomena} = req.body;
+    if(!ime) return res.status(400).json({error:'Ime je obavezno'});
+    const r = await dbRun('INSERT INTO kupci (ime,telefon,napomena,dodao_korisnik) VALUES (?,?,?,?)',
+      [ime,telefon||'',napomena||'',req.user.username]);
+    const k = await dbGet('SELECT * FROM kupci WHERE id=?',[r.lastID]);
+    k.kupovine = [];
+    res.json(k);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.put('/api/kupci/:id', requireAdmin, async (req,res) => {
+  try {
+    const {ime,telefon,napomena} = req.body;
+    await dbRun('UPDATE kupci SET ime=?,telefon=?,napomena=? WHERE id=?',[ime,telefon||'',napomena||'',req.params.id]);
+    res.json(await dbGet('SELECT * FROM kupci WHERE id=?',[req.params.id]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/kupci/:id', requireAdmin, async (req,res) => {
+  try {
+    await dbRun('DELETE FROM kupovine WHERE kupac_id=?',[req.params.id]);
+    await dbRun('DELETE FROM kupci WHERE id=?',[req.params.id]);
+    res.json({ok:true});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/kupci/:id/kupovina', requireAdmin, async (req,res) => {
+  try {
+    const {opis,iznos,datum} = req.body;
+    const r = await dbRun('INSERT INTO kupovine (kupac_id,opis,iznos,datum) VALUES (?,?,?,?)',
+      [req.params.id,opis,parseFloat(iznos)||0,datum||new Date().toISOString().slice(0,10)]);
+    res.json(await dbGet('SELECT * FROM kupovine WHERE id=?',[r.lastID]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/kupci/:id/kupovina/:kid', requireAdmin, async (req,res) => {
+  try { await dbRun('DELETE FROM kupovine WHERE id=?',[req.params.kid]); res.json({ok:true}); }
+  catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== CJENOVNIK =====
+app.get('/api/cjenovnik', requireAdmin, async (req,res) => {
+  try { res.json(await dbAll('SELECT * FROM cjenovnik ORDER BY dimenzija')); }
+  catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/cjenovnik', requireAdmin, async (req,res) => {
+  try {
+    const {dimenzija,sezona,cijena_min,cijena_max,napomena} = req.body;
+    if(!dimenzija) return res.status(400).json({error:'Dimenzija je obavezna'});
+    const r = await dbRun('INSERT INTO cjenovnik (dimenzija,sezona,cijena_min,cijena_max,napomena) VALUES (?,?,?,?,?)',
+      [dimenzija,sezona||'',parseFloat(cijena_min)||0,parseFloat(cijena_max)||0,napomena||'']);
+    res.json(await dbGet('SELECT * FROM cjenovnik WHERE id=?',[r.lastID]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.put('/api/cjenovnik/:id', requireAdmin, async (req,res) => {
+  try {
+    const {dimenzija,sezona,cijena_min,cijena_max,napomena} = req.body;
+    await dbRun('UPDATE cjenovnik SET dimenzija=?,sezona=?,cijena_min=?,cijena_max=?,napomena=? WHERE id=?',
+      [dimenzija,sezona||'',parseFloat(cijena_min)||0,parseFloat(cijena_max)||0,napomena||'',req.params.id]);
+    res.json(await dbGet('SELECT * FROM cjenovnik WHERE id=?',[req.params.id]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/cjenovnik/:id', requireAdmin, async (req,res) => {
+  try { await dbRun('DELETE FROM cjenovnik WHERE id=?',[req.params.id]); res.json({ok:true}); }
+  catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== PODSJETNICI — auta sa isteklom/skorom registracijom =====
+app.get('/api/podsjetnici/registracija', requireAdmin, async (req,res) => {
+  try {
+    const auta = await dbAll(`SELECT id,sifra,marka,model,godiste,datum_registracije FROM auta
+      WHERE status!='prodat' AND datum_registracije IS NOT NULL AND datum_registracije != ''`);
+    const danas = new Date();
+    const rezultat = auta.map(a => {
+      const reg = new Date(a.datum_registracije);
+      const daniDo = Math.round((reg - danas) / (1000*60*60*24));
+      return {...a, dani_do_registracije: daniDo, istekla: daniDo < 0};
+    }).sort((a,b) => a.dani_do_registracije - b.dani_do_registracije);
+    res.json(rezultat);
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
