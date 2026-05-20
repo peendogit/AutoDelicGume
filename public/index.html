@@ -573,6 +573,7 @@ function AutaModul({user,showToast}){
   const [dioModal,setDioModal]=useState(null); // auto_id
   const [editDio,setEditDio]=useState(null);
   const [dioForm,setDioForm]=useState({naziv:'',planirana_cijena:'',stvarna_cijena:'',nabavljeno:false});
+  const [savingDio,setSavingDio]=useState(false);
   const [cijenaHistorija,setCijenaHistorija]=useState(null);
   const [sellAutoModal,setSellAutoModal]=useState(false);
   const [sellAutoPrice,setSellAutoPrice]=useState('');
@@ -644,6 +645,7 @@ function AutaModul({user,showToast}){
   // TROŠKOVI
   const doAddDio=async(autoId)=>{
     if(!dioForm.naziv.trim()){showToast('Naziv je obavezan','err');return;}
+    if(savingDio)return;setSavingDio(true);
     try{
       let dio;
       if(editDio){
@@ -655,7 +657,7 @@ function AutaModul({user,showToast}){
       }
       setDioModal(null);setEditDio(null);setDioForm({naziv:'',planirana_cijena:'',stvarna_cijena:'',nabavljeno:false});
       showToast(editDio?'Trošak ažuriran':'Trošak dodan');
-    }catch(e){showToast(e.message,'err');}
+    }catch(e){showToast(e.message,'err');}setSavingDio(false);
   };
   const doDelDio=async(autoId,dioId)=>{
     await api('/auta/'+autoId+'/troskovi/dio/'+dioId,{method:'DELETE'});
@@ -722,7 +724,19 @@ function AutaModul({user,showToast}){
         <span style={{background:statusColor[detail.status]+'22',color:statusColor[detail.status],border:'1px solid '+statusColor[detail.status],borderRadius:4,fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:800,padding:'2px 8px',textTransform:'uppercase'}}>{statusLblLocal[detail.status]}</span>
         <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:15,color:'var(--accent)',letterSpacing:2}}>{detail.sifra}</span>
       </div>
-      {detail.slike&&detail.slike.length>0&&<div className="det-imgs">{detail.slike.map((s,i)=><img key={i} className="thumb" src={s} onClick={()=>setLightbox({images:detail.slike,index:i})}/>)}</div>}
+      {detail.slike&&detail.slike.length>0&&<div>
+          <div className="det-imgs">{detail.slike.map((s,i)=><div key={i} style={{position:'relative',display:'inline-block'}}>
+            <img className="thumb" src={s} onClick={()=>setLightbox({images:detail.slike,index:i})} style={{border:i===0?'2px solid var(--accent)':'2px solid transparent'}}/>
+            {i!==0&&<button onClick={async()=>{
+              const noveSlike=[s,...detail.slike.filter((_,j)=>j!==i)];
+              const updated=await api('/auta/'+detail.id,{method:'PUT',body:{...detail,slike:noveSlike}});
+              setAuta(p=>p.map(a=>a.id===updated.id?updated:a));setDetail(updated);showToast('Naslovna slika promijenjena');
+            }} style={{position:'absolute',bottom:4,left:4,background:'rgba(0,0,0,.75)',border:'none',color:'#fff',borderRadius:3,fontSize:9,padding:'2px 4px',cursor:'pointer',fontFamily:'Barlow Condensed,sans-serif',fontWeight:700}}>★ Naslovna</button>}
+            {i===0&&<span style={{position:'absolute',bottom:4,left:4,background:'var(--accent)',color:'#000',borderRadius:3,fontSize:9,padding:'2px 4px',fontFamily:'Barlow Condensed,sans-serif',fontWeight:800}}>★ Naslovna</span>}
+          </div>)}
+          </div>
+          <div style={{fontSize:10,color:'var(--muted)',marginBottom:8}}>Klikni "★ Naslovna" na slici da je postaviš kao naslovnu</div>
+        </div>}
       {jeMrtavKapital(detail)&&<div style={{background:'rgba(248,81,73,.1)',border:'1.5px solid rgba(248,81,73,.4)',borderRadius:6,padding:'8px 12px',marginBottom:8,fontSize:12,color:'var(--red)'}}>🔴 <b>Mrtav kapital</b> — vozilo stoji {daniNaSkladistu(detail.created_at)} dana</div>}
 
       {/* SPECS */}
@@ -803,11 +817,11 @@ function AutaModul({user,showToast}){
       <div className="fg2"><label>Naziv *</label><input autoFocus value={dioForm.naziv} onChange={e=>setDioForm(f=>({...f,naziv:e.target.value}))} placeholder="npr. alternator, kočnice..."/></div>
       <div className="fg2"><label>Planirana cijena (KM)</label><input type="number" value={dioForm.planirana_cijena} onChange={e=>setDioForm(f=>({...f,planirana_cijena:e.target.value}))} placeholder="0"/></div>
       <div className="fg2" style={{display:'flex',alignItems:'center',gap:10}}>
-        <input type="checkbox" id="nab-chk2" checked={!!dioForm.nabavljeno} onChange={e=>setDioForm(f=>({...f,nabavljeno:e.target.checked}))} style={{width:16,height:16}}/>
+        <input type="checkbox" id="nab-chk2" checked={!!dioForm.nabavljeno} onChange={e=>setDioForm(f=>({...f,nabavljeno:e.target.checked,stvarna_cijena:e.target.checked&&!f.stvarna_cijena?f.planirana_cijena:f.stvarna_cijena}))} style={{width:16,height:16}}/>
         <label htmlFor="nab-chk2" style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',cursor:'pointer'}}>Već nabavljeno/plaćeno</label>
       </div>
       {dioForm.nabavljeno&&<div className="fg2"><label>Stvarna cijena (KM)</label><input type="number" value={dioForm.stvarna_cijena} onChange={e=>setDioForm(f=>({...f,stvarna_cijena:e.target.value}))} placeholder="0"/></div>}
-      <div className="modal-foot"><button className="btn-cancel" onClick={()=>{setDioModal(null);setEditDio(null);}}>Odustani</button><button className="btn-save" onClick={()=>doAddDio(dioModal)}>{editDio?'Sačuvaj':'Dodaj'}</button></div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>{setDioModal(null);setEditDio(null);}}>Odustani</button><button className="btn-save" disabled={savingDio} onClick={()=>doAddDio(dioModal)}>{savingDio?'Čuvanje...':editDio?'Sačuvaj':'Dodaj'}</button></div>
     </div></div>}
 
     {/* SELL MODAL */}
@@ -1852,14 +1866,13 @@ function App(){
     {id:'gume',label:'Gume',icon:<Icons.Tire size={18}/>,always:true},
     {id:'auta',label:'Auta',icon:<Icons.Car size={18}/>,adminOnly:true},
     {id:'zadaci',label:'Zadaci',icon:<Icons.Task size={18}/>,adminOnly:true},
-    {id:'auta',label:'Vozni park',icon:<Icons.Car size={18}/>,adminOnly:true},
     {id:'analitika',label:'Analitika',icon:<Icons.Chart size={18}/>,adminOnly:true},
     {id:'log',label:'Dnevnik',icon:<Icons.Log size={18}/>,adminOnly:true},
     {id:'finansije',label:'Finansije',icon:<Icons.Money size={18}/>,adminOnly:true},
     {id:'podesavanja',label:'Podešavanja',icon:<Icons.Gear size={18}/>,adminOnly:true},
   ].filter(i=>i.always||(i.adminOnly&&isAdmin));
 
-  const pageTitles={dashboard:'Pregled',gume:'Gume',auta:'Vozni park',zadaci:'Zadaci',finansije:'Finansijski izvještaj',analitika:'Analitika',log:'Dnevnik aktivnosti',podesavanja:'Podešavanja'};
+  const pageTitles={dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansijski izvještaj',analitika:'Analitika',log:'Dnevnik aktivnosti',podesavanja:'Podešavanja'};
 
   return(<div className="layout">
     {/* SIDEBAR OVERLAY on mobile */}
