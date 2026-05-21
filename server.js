@@ -836,7 +836,7 @@ app.get('/api/auta', requireAuth, async (req,res) => {
 
 app.post('/api/auta', requireAuth, async (req,res) => {
   try {
-    const {marka,model,godiste,boja,km,motor,vin,napomena,slike,nabavna_cijena,prodajna_cijena,olx_link} = req.body;
+    const {marka,model,godiste,boja,km,motor,vin,napomena,slike,nabavna_cijena,prodajna_cijena,olx_link,status,datum_registracije} = req.body;
     if(!marka||!model) return res.status(400).json({error:'Marka i model su obavezni'});
     const num = await nextCounter('au');
     const sifra = 'AU'+String(num).padStart(3,'0');
