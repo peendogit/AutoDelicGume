@@ -521,7 +521,19 @@ function useImageUpload(initialSlike=[]){
     if(uploadingRef.current)return;uploadingRef.current=true;
     setUploadState({uploading:true,done:0,total:files.length});
     const results=[];
-    for(let i=0;i<files.length;i++){results.push(await resizeImage(files[i]));setUploadState({uploading:true,done:i+1,total:files.length});}
+    for(let i=0;i<files.length;i++){
+      // Resize on client side first
+      const dataURL=await resizeImage(files[i]);
+      // Upload to server disk
+      try{
+        const r=await fetch('/api/upload-slika',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dataURL})});
+        const d=await r.json();
+        results.push(d.url||dataURL); // Fallback to base64 if upload fails
+      }catch(err){
+        results.push(dataURL); // Fallback to base64
+      }
+      setUploadState({uploading:true,done:i+1,total:files.length});
+    }
     setSlike(p=>[...p,...results]);setUploadState({uploading:false,done:0,total:0});uploadingRef.current=false;
   };
   const removeImg=(i)=>setSlike(p=>p.filter((_,j)=>j!==i));
