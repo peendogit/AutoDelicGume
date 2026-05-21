@@ -2767,7 +2767,7 @@ function App(){
     <aside className={'sidebar'+(sidebarOpen?' open':'')}>
       <div className="sb-logo">
         <img src="/logo-delic.svg" alt="Auto Delić" style={{height:36,objectFit:'contain'}}/>
-        <div className="sb-logo-text">Auto Delić<span>Upravljanje otpadom</span></div>
+        
       </div>
       <nav className="sb-nav">
         {navItems.map(item=><button key={item.id} className={'sb-item'+(page===item.id?' active':'')} onClick={()=>nav(item.id)}>
