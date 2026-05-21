@@ -183,11 +183,17 @@ async function initDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       ime TEXT NOT NULL,
       telefon TEXT,
+      adresa TEXT DEFAULT '',
+      jib TEXT DEFAULT '',
+      pdv_broj TEXT DEFAULT '',
       napomena TEXT DEFAULT '',
       dodao_korisnik TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  try { await dbExec(`ALTER TABLE kupci ADD COLUMN adresa TEXT DEFAULT ''`); } catch(e) {}
+  try { await dbExec(`ALTER TABLE kupci ADD COLUMN jib TEXT DEFAULT ''`); } catch(e) {}
+  try { await dbExec(`ALTER TABLE kupci ADD COLUMN pdv_broj TEXT DEFAULT ''`); } catch(e) {}
 
   // KUPOVINE (historija kupovine po kupcu)
   await dbExec(`
@@ -1098,10 +1104,10 @@ app.get('/api/kupci', requireAdmin, async (req,res) => {
 
 app.post('/api/kupci', requireAdmin, async (req,res) => {
   try {
-    const {ime,telefon,napomena} = req.body;
+    const {ime,telefon,adresa,jib,pdv_broj,napomena} = req.body;
     if(!ime) return res.status(400).json({error:'Ime je obavezno'});
-    const r = await dbRun('INSERT INTO kupci (ime,telefon,napomena,dodao_korisnik) VALUES (?,?,?,?)',
-      [ime,telefon||'',napomena||'',req.user.username]);
+    const r = await dbRun('INSERT INTO kupci (ime,telefon,adresa,jib,pdv_broj,napomena,dodao_korisnik) VALUES (?,?,?,?,?,?,?)',
+      [ime,telefon||'',adresa||'',jib||'',pdv_broj||'',napomena||'',req.user.username]);
     const k = await dbGet('SELECT * FROM kupci WHERE id=?',[r.lastID]);
     k.kupovine = [];
     res.json(k);
@@ -1110,8 +1116,9 @@ app.post('/api/kupci', requireAdmin, async (req,res) => {
 
 app.put('/api/kupci/:id', requireAdmin, async (req,res) => {
   try {
-    const {ime,telefon,napomena} = req.body;
-    await dbRun('UPDATE kupci SET ime=?,telefon=?,napomena=? WHERE id=?',[ime,telefon||'',napomena||'',req.params.id]);
+    const {ime,telefon,adresa,jib,pdv_broj,napomena} = req.body;
+    await dbRun('UPDATE kupci SET ime=?,telefon=?,adresa=?,jib=?,pdv_broj=?,napomena=? WHERE id=?',
+      [ime,telefon||'',adresa||'',jib||'',pdv_broj||'',napomena||'',req.params.id]);
     res.json(await dbGet('SELECT * FROM kupci WHERE id=?',[req.params.id]));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
