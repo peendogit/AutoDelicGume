@@ -307,6 +307,75 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .dead-capital{position:absolute;top:7px;left:7px;background:rgba(248,81,73,.9);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:900;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;border-radius:3px;display:flex;align-items:center;gap:3px}
 .site-footer{text-align:center;padding:18px 20px;color:var(--muted);font-size:11px;border-top:1px solid var(--border);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;font-weight:700;margin-top:auto}
 .site-footer span{color:var(--accent)}
+/* ===== DESKTOP ONLY — larger fonts and spacing ===== */
+@media(min-width:769px){
+  body{font-size:15px}
+  .page{padding:24px 28px}
+  .page-title{font-size:32px}
+  .page-sub{font-size:14px}
+  .kpi-val{font-size:38px}
+  .kpi-lbl{font-size:10px;letter-spacing:2px}
+  .kpi-sub{font-size:12px}
+  .kpi{padding:16px 20px}
+  .kpi-grid{gap:14px;margin-bottom:24px}
+  .section-title{font-size:15px;margin-bottom:14px}
+  .card-panel{padding:18px 20px;margin-bottom:20px;border-radius:12px}
+  .sb-item{font-size:15px;padding:10px 14px;gap:12px}
+  .sb-logo-text{font-size:20px}
+  .sb-section{font-size:10px}
+  .topbar{height:60px;padding:0 24px}
+  .topbar-title{font-size:18px}
+  .tire-grid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+  .tire-size{font-size:20px}
+  .tire-cod{font-size:12px}
+  .tire-loc{font-size:12px}
+  .tire-thumb{height:150px}
+  .tire-info{padding:10px 12px}
+  .auto-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+  .auto-img{height:170px}
+  .auto-name{font-size:22px}
+  .auto-sub{font-size:13px}
+  .auto-price{font-size:16px}
+  .status-tabs{gap:8px;margin-bottom:16px}
+  .stab{font-size:13px;padding:7px 16px}
+  .modal{padding:28px;border-radius:16px;max-width:560px}
+  .modal-title{font-size:20px;margin-bottom:20px}
+  .fg2{margin-bottom:16px}
+  .fg2 label{font-size:10px;margin-bottom:6px}
+  .fg2 input,.fg2 select,.fg2 textarea{font-size:14px;padding:10px 12px;border-radius:7px}
+  .btn-save{font-size:13px;padding:9px 20px;border-radius:7px}
+  .btn-cancel{font-size:12px;padding:8px 14px}
+  .btn-sm{font-size:11px;padding:5px 11px}
+  .btn-add-main{font-size:13px;padding:9px 18px;border-radius:8px}
+  .two-col{gap:14px}
+  .spec-box{padding:10px 14px}
+  .spec-lbl{font-size:9px}
+  .spec-val{font-size:20px}
+  .act-main{font-size:14px}
+  .act-time{font-size:12px}
+  .act-dot{width:10px;height:10px;margin-top:5px}
+  .log-badge{font-size:10px;padding:3px 9px}
+  .log-user{font-size:14px}
+  .log-detail{font-size:12px}
+  .log-time{font-size:11px}
+  .zadatak{padding:14px 18px;border-radius:10px}
+  .zadatak-title{font-size:17px}
+  .zadatak-opis{font-size:13px}
+  .prioritet{font-size:10px;padding:3px 8px}
+  .trosak-name{font-size:18px}
+  .dio-naziv{font-size:13px}
+  .dio-plan{font-size:12px}
+  .dio-stv{font-size:14px}
+  .set-tab{font-size:12px;padding:6px 14px}
+  .res-count{font-size:12px}
+  .sf-wrap{padding:14px 18px;margin-bottom:16px}
+  .user-item{padding:12px 18px}
+  .site-footer{font-size:12px;padding:22px}
+  .sidebar{width:240px}
+  .content{margin-left:240px}
+  @media(min-width:769px){.sidebar{transform:translateX(0)}}
+}
+
 @media(max-width:600px){
   .two-col{grid-template-columns:1fr}
   .kpi-grid{grid-template-columns:1fr 1fr}
