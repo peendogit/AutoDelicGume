@@ -309,7 +309,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .site-footer span{color:var(--accent)}
 /* ===== DESKTOP ONLY — larger fonts and spacing ===== */
 @media(min-width:769px){
-  body{font-size:15px}
+  body{font-size:15px;line-height:1.5}
   .page{padding:24px 28px}
   .page-title{font-size:32px}
   .page-sub{font-size:14px}
@@ -374,6 +374,28 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
   .sidebar{width:240px}
   .content{margin-left:240px}
   @media(min-width:769px){.sidebar{transform:translateX(0)}}
+  /* Table and list content */
+  .act-main{font-size:14px}
+  .trosak-head .trosak-name{font-size:19px}
+  .dio-naziv{font-size:14px}
+  .dio-plan,.dio-stv{font-size:13px}
+  .tire-info .tire-loc{font-size:12px}
+  .auto-info .auto-sub{font-size:13px}
+  .log-detail{font-size:12px}
+  .user-item{padding:14px 18px;font-size:14px}
+  /* Forms bigger */
+  .overlay .fg2 label{font-size:11px}
+  .overlay .fg2 input,.overlay .fg2 select,.overlay .fg2 textarea{font-size:15px;padding:11px 13px}
+  /* KPI bigger */
+  .kpi-val{font-size:40px}
+  /* Dashboard cards */
+  .card-panel .act-main{font-size:14px}
+  /* Filters */
+  .sf-wrap .fg input,.sf-wrap .fg select{font-size:14px;padding:9px 11px}
+  /* Badges */
+  .bs{font-size:10px;padding:3px 7px}
+  .tip-badge{font-size:11px}
+  .prioritet{font-size:11px}
 }
 
 @media(max-width:600px){
@@ -2359,7 +2381,7 @@ function PonudaModul({showToast}){
       .header-firma .tel{font-size:11pt;font-weight:bold;color:#111}
       .header-firma .web{color:#5a9e2f;font-weight:bold}
       /* SEPARATOR */
-      .jib-bar{background:#2d2d2d;color:#fff;font-size:8.5pt;padding:3px 8px;display:flex;justify-content:space-between;margin-bottom:5mm;letter-spacing:0.3px}
+      .jib-bar{background:#fff;color:#555;font-size:8.5pt;padding:3px 0;display:flex;justify-content:space-between;margin-bottom:5mm;letter-spacing:0.3px;border-bottom:1px solid #ddd}
       /* KOMITENT + DOC INFO */
       .doc-row{display:flex;justify-content:space-between;gap:10mm;margin-bottom:5mm}
       .komitent-box{flex:1;border:1px solid #ccc;border-radius:3px;padding:5px 8px;min-height:28mm}
@@ -2373,19 +2395,19 @@ function PonudaModul({showToast}){
       .doc-title{font-size:14pt;font-weight:bold;text-align:center;margin-bottom:4mm;color:#1a1a1a;letter-spacing:0.5px}
       /* STAVKE */
       .stavke-table{width:100%;border-collapse:collapse;margin-bottom:4mm;font-size:9.5pt}
-      .stavke-table th{background:#2d2d2d;color:#fff;padding:5px 6px;text-align:left;font-size:8.5pt;white-space:nowrap;letter-spacing:0.3px}
+      .stavke-table th{background:#f5f5f5;color:#222;border-bottom:2px solid #333;padding:5px 6px;text-align:left;font-size:8.5pt;white-space:nowrap;letter-spacing:0.3px}
       .stavke-table th.num{text-align:right}
       .stavke-table td{padding:4px 6px;border-bottom:1px solid #e5e5e5;vertical-align:top}
       .stavke-table td.num{text-align:right;font-weight:bold}
-      .stavke-table tr:nth-child(even) td{background:#f9f9f9}
+      .stavke-table tr:nth-child(even) td{background:#fafafa}
       /* TOTALS */
       .totals-wrap{display:flex;justify-content:flex-end;margin-bottom:6mm}
       .totals-table{width:72mm;border-collapse:collapse;font-size:10pt}
       .totals-table td{padding:3px 6px}
       .totals-table td:last-child{text-align:right;font-weight:bold}
-      .totals-table .main-row{background:#2d2d2d;color:#fff;font-size:11pt;font-weight:bold}
+      .totals-table .main-row{background:#fff;color:#111;font-size:11pt;font-weight:bold;border-top:2px solid #333}
       .totals-table .main-row td{padding:5px 6px}
-      .totals-table .pdv-row{background:#f0f0f0}
+      .totals-table .pdv-row{background:#fff;border-top:1px solid #e0e0e0}
       /* FOOTER */
       .footer{position:fixed;bottom:8mm;left:12mm;right:12mm;border-top:1px solid #ccc;padding-top:3mm;font-size:7.5pt;color:#888;text-align:center}
       .napomena-box{border:1px dashed #ccc;border-radius:3px;padding:5px 8px;font-size:9pt;color:#555;margin-bottom:5mm}
