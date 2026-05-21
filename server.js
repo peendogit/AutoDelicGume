@@ -840,10 +840,11 @@ app.post('/api/auta', requireAuth, async (req,res) => {
     if(!marka||!model) return res.status(400).json({error:'Marka i model su obavezni'});
     const num = await nextCounter('au');
     const sifra = 'AU'+String(num).padStart(3,'0');
-    await dbRun(`INSERT INTO auta (sifra,marka,model,godiste,boja,km,motor,vin,napomena,slike,nabavna_cijena,prodajna_cijena,olx_link,dodao_korisnik)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    await dbRun(`INSERT INTO auta (sifra,marka,model,godiste,boja,km,motor,vin,napomena,slike,nabavna_cijena,prodajna_cijena,olx_link,status,datum_registracije,dodao_korisnik)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [sifra,marka,model,godiste||null,boja||null,km||null,motor||null,vin||null,napomena||'',
-       JSON.stringify(slike||[]),nabavna_cijena||null,prodajna_cijena||null,olx_link||null,req.user.username]);
+       JSON.stringify(slike||[]),nabavna_cijena||null,prodajna_cijena||null,olx_link||null,
+       status||'na_stanju',datum_registracije||null,req.user.username]);
     const a = await dbGet('SELECT * FROM auta WHERE sifra=?',[sifra]);
     await logActivity(req.user.username,'DODANO_AUTO',`${a.sifra} — ${marka} ${model} ${godiste||''}`);
     res.json({...a, slike:JSON.parse(a.slike||'[]')});
@@ -852,7 +853,7 @@ app.post('/api/auta', requireAuth, async (req,res) => {
 
 app.put('/api/auta/:id', requireAuth, async (req,res) => {
   try {
-    const {marka,model,godiste,boja,km,motor,vin,napomena,slike,nabavna_cijena,prodajna_cijena,olx_link,status} = req.body;
+    const {marka,model,godiste,boja,km,motor,vin,napomena,slike,nabavna_cijena,prodajna_cijena,olx_link,status,datum_registracije} = req.body;
     // Log price change if prodajna_cijena changed
     const stari = await dbGet('SELECT prodajna_cijena FROM auta WHERE id=?',[req.params.id]);
     if (stari && stari.prodajna_cijena !== (prodajna_cijena||null)) {
@@ -860,9 +861,9 @@ app.put('/api/auta/:id', requireAuth, async (req,res) => {
         [req.params.id, stari.prodajna_cijena||null, prodajna_cijena||'0', req.user.username]);
     }
     await dbRun(`UPDATE auta SET marka=?,model=?,godiste=?,boja=?,km=?,motor=?,vin=?,napomena=?,slike=?,
-      nabavna_cijena=?,prodajna_cijena=?,olx_link=?,status=? WHERE id=?`,
+      nabavna_cijena=?,prodajna_cijena=?,olx_link=?,status=?,datum_registracije=? WHERE id=?`,
       [marka,model,godiste||null,boja||null,km||null,motor||null,vin||null,napomena||'',
-       JSON.stringify(slike||[]),nabavna_cijena||null,prodajna_cijena||null,olx_link||null,status||'na_stanju',req.params.id]);
+       JSON.stringify(slike||[]),nabavna_cijena||null,prodajna_cijena||null,olx_link||null,status||'na_stanju',datum_registracije||null,req.params.id]);
     const a = await dbGet('SELECT * FROM auta WHERE id=?',[req.params.id]);
     await logActivity(req.user.username,'EDITOVANO_AUTO',`${a.sifra} — ${a.marka} ${a.model}`);
     res.json({...a, slike:JSON.parse(a.slike||'[]')});
