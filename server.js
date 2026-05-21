@@ -485,20 +485,30 @@ app.put('/api/korisnici/:id', requireAdmin, async (req,res) => {
 // BACKUP — JSON export (DB je u Turso cloudu, ne može se skinuti kao .db fajl)
 app.get('/api/backup', requireAdmin, async (req,res) => {
   try {
-    const [korisnici,magacini,police,gume] = await Promise.all([
-      dbAll('SELECT id,username,role,created_at FROM korisnici'),
-      dbAll('SELECT * FROM magacini'),
-      dbAll('SELECT * FROM police'),
-      dbAll('SELECT * FROM gume'),
-    ]);
-    const prolazi = await dbAll('SELECT * FROM prolazi');
-    const regali = await dbAll('SELECT * FROM regali');
-    const counters = await dbAll('SELECT * FROM counters');
+    const { execSync } = require('child_process');
     const date = new Date().toISOString().slice(0,10);
-    const backup = { exported_at: new Date().toISOString(), korisnici, magacini, prolazi, regali, police, gume, counters };
-    res.setHeader('Content-Disposition', `attachment; filename="autodelic-backup-${date}.json"`);
-    res.setHeader('Content-Type', 'application/json');
-    res.send(JSON.stringify(backup, null, 2));
+    const zipName = `autodelic-backup-${date}.zip`;
+    const zipPath = path.join('/tmp', zipName);
+
+    // Build zip with db + uploads
+    const dbPath2 = process.env.DB_PATH || path.join(__dirname, 'data', 'gume.db');
+    const uploadsDir = path.join(__dirname, 'public', 'uploads');
+
+    // Remove old zip if exists
+    if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+
+    // Create zip
+    let cmd = `zip -j "${zipPath}" "${dbPath2}"`;
+    if (fs.existsSync(uploadsDir) && fs.readdirSync(uploadsDir).length > 0) {
+      cmd = `zip -j "${zipPath}" "${dbPath2}" && zip -r "${zipPath}" "${uploadsDir}"`;
+    }
+    execSync(cmd);
+
+    res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
+    res.setHeader('Content-Type', 'application/zip');
+    const stream = fs.createReadStream(zipPath);
+    stream.pipe(res);
+    stream.on('end', () => { try { fs.unlinkSync(zipPath); } catch(e){} });
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
