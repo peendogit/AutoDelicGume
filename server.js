@@ -217,6 +217,7 @@ async function initDB() {
       kupac_ime TEXT NOT NULL,
       kupac_adresa TEXT DEFAULT '',
       kupac_telefon TEXT,
+      vozilo TEXT DEFAULT '',
       stavke TEXT DEFAULT '[]',
       napomena TEXT DEFAULT '',
       pdv INTEGER DEFAULT 1,
@@ -231,6 +232,22 @@ async function initDB() {
   try { await dbExec(`ALTER TABLE ponude ADD COLUMN pdv INTEGER DEFAULT 1`); } catch(e) {}
   try { await dbExec(`ALTER TABLE ponude ADD COLUMN rok_placanja TEXT DEFAULT 'Avansno plaćanje'`); } catch(e) {}
   try { await dbExec(`ALTER TABLE ponude ADD COLUMN mjesto TEXT DEFAULT 'Bijeljina'`); } catch(e) {}
+  try { await dbExec(`ALTER TABLE ponude ADD COLUMN vozilo TEXT DEFAULT ''`); } catch(e) {}
+
+  // KOMPENZACIJE
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS kompenzacije (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kupac_id INTEGER NOT NULL,
+      opis TEXT NOT NULL,
+      iznos REAL NOT NULL,
+      smjer TEXT NOT NULL DEFAULT 'dugujemo',
+      datum TEXT,
+      napomena TEXT DEFAULT '',
+      izmireno INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 
   // CJENOVNIK
   await dbExec(`
@@ -1154,6 +1171,35 @@ app.delete('/api/kupci/:id/kupovina/:kid', requireAdmin, async (req,res) => {
   catch(e) { res.status(500).json({error:e.message}); }
 });
 
+
+// ===== KOMPENZACIJE =====
+app.get('/api/kupci/:id/kompenzacije', requireAdmin, async (req,res) => {
+  try { res.json(await dbAll('SELECT * FROM kompenzacije WHERE kupac_id=? ORDER BY datum DESC',[req.params.id])); }
+  catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/kupci/:id/kompenzacije', requireAdmin, async (req,res) => {
+  try {
+    const {opis,iznos,smjer,datum,napomena} = req.body;
+    const r = await dbRun('INSERT INTO kompenzacije (kupac_id,opis,iznos,smjer,datum,napomena) VALUES (?,?,?,?,?,?)',
+      [req.params.id,opis,parseFloat(iznos)||0,smjer||'dugujemo',datum||new Date().toISOString().slice(0,10),napomena||'']);
+    res.json(await dbGet('SELECT * FROM kompenzacije WHERE id=?',[r.lastID]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.put('/api/kupci/:id/kompenzacije/:kid', requireAdmin, async (req,res) => {
+  try {
+    const {izmireno} = req.body;
+    await dbRun('UPDATE kompenzacije SET izmireno=? WHERE id=?',[izmireno?1:0,req.params.kid]);
+    res.json(await dbGet('SELECT * FROM kompenzacije WHERE id=?',[req.params.kid]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/kupci/:id/kompenzacije/:kid', requireAdmin, async (req,res) => {
+  try { await dbRun('DELETE FROM kompenzacije WHERE id=?',[req.params.kid]); res.json({ok:true}); }
+  catch(e) { res.status(500).json({error:e.message}); }
+});
+
 // ===== CJENOVNIK =====
 app.get('/api/cjenovnik', requireAdmin, async (req,res) => {
   try { res.json(await dbAll('SELECT * FROM cjenovnik ORDER BY dimenzija')); }
@@ -1194,13 +1240,13 @@ app.get('/api/ponude', requireAdmin, async (req,res) => {
 
 app.post('/api/ponude', requireAdmin, async (req,res) => {
   try {
-    const {kupac_ime,kupac_adresa,kupac_telefon,stavke,napomena,pdv,rok_placanja,mjesto} = req.body;
+    const {kupac_ime,kupac_adresa,kupac_telefon,vozilo,stavke,napomena,pdv,rok_placanja,mjesto} = req.body;
     const year = new Date().getFullYear();
     const count = await dbGet('SELECT COUNT(*) as c FROM ponude WHERE broj LIKE ?',[year+'-%']);
     const broj = year+'-'+(String((count?.c||0)+1).padStart(3,'0'));
     const r = await dbRun(
-      'INSERT INTO ponude (broj,kupac_ime,kupac_adresa,kupac_telefon,stavke,napomena,pdv,rok_placanja,mjesto,kreirao) VALUES (?,?,?,?,?,?,?,?,?,?)',
-      [broj,kupac_ime,kupac_adresa||'',kupac_telefon||'',JSON.stringify(stavke||[]),napomena||'',pdv?1:0,rok_placanja||'Avansno plaćanje',mjesto||'Bijeljina',req.user.username]);
+      'INSERT INTO ponude (broj,kupac_ime,kupac_adresa,kupac_telefon,vozilo,stavke,napomena,pdv,rok_placanja,mjesto,kreirao) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+      [broj,kupac_ime,kupac_adresa||'',kupac_telefon||'',vozilo||'',JSON.stringify(stavke||[]),napomena||'',pdv?1:0,rok_placanja||'Avansno plaćanje',mjesto||'Bijeljina',req.user.username]);
     const p = await dbGet('SELECT * FROM ponude WHERE id=?',[r.lastID]);
     res.json({...p, stavke:JSON.parse(p.stavke||'[]')});
   } catch(e) { res.status(500).json({error:e.message}); }
@@ -1208,9 +1254,9 @@ app.post('/api/ponude', requireAdmin, async (req,res) => {
 
 app.put('/api/ponude/:id', requireAdmin, async (req,res) => {
   try {
-    const {kupac_ime,kupac_adresa,kupac_telefon,stavke,napomena,pdv,rok_placanja,mjesto} = req.body;
-    await dbRun('UPDATE ponude SET kupac_ime=?,kupac_adresa=?,kupac_telefon=?,stavke=?,napomena=?,pdv=?,rok_placanja=?,mjesto=? WHERE id=?',
-      [kupac_ime,kupac_adresa||'',kupac_telefon||'',JSON.stringify(stavke||[]),napomena||'',pdv?1:0,rok_placanja||'Avansno plaćanje',mjesto||'Bijeljina',req.params.id]);
+    const {kupac_ime,kupac_adresa,kupac_telefon,vozilo,stavke,napomena,pdv,rok_placanja,mjesto} = req.body;
+    await dbRun('UPDATE ponude SET kupac_ime=?,kupac_adresa=?,kupac_telefon=?,vozilo=?,stavke=?,napomena=?,pdv=?,rok_placanja=?,mjesto=? WHERE id=?',
+      [kupac_ime,kupac_adresa||'',kupac_telefon||'',vozilo||'',JSON.stringify(stavke||[]),napomena||'',pdv?1:0,rok_placanja||'Avansno plaćanje',mjesto||'Bijeljina',req.params.id]);
     const p = await dbGet('SELECT * FROM ponude WHERE id=?',[req.params.id]);
     res.json({...p, stavke:JSON.parse(p.stavke||'[]')});
   } catch(e) { res.status(500).json({error:e.message}); }
