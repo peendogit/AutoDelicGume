@@ -1,12 +1,51 @@
 const express = require('express');
 const Database = require('better-sqlite3');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ===== SECURITY =====
+// Helmet - HTTP security headers
+app.use(helmet({
+  contentSecurityPolicy: false, // Disabled - app uses inline scripts (Babel/React CDN)
+  crossOriginEmbedderPolicy: false,
+}));
+
+// Rate limiting - login brute force protection
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // max 20 login attempts per 15 min per IP
+  message: { error: 'Previše pokušaja prijave. Pokušaj ponovo za 15 minuta.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// General API rate limit
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 300, // 300 requests per minute per IP
+  message: { error: 'Previše zahtjeva. Usporite.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path === '/api/backup', // backup has its own limit
+});
+
+// Backup rate limit - max 5 per hour
+const backupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: 'Backup je moguć max 5 puta na sat.' },
+});
+
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/backup', backupLimiter);
+app.use('/api', apiLimiter);
 
 app.use(cors());
 app.use(express.json({ limit: '100mb' }));
@@ -25,21 +64,27 @@ app.use('/uploads', express.static(uploadsPath));
 // ===== UPLOAD SLIKA NA DISK =====
 app.post('/api/upload-slika', requireAuth, async (req,res) => {
   try {
-    const { dataURL, filename } = req.body;
+    const { dataURL } = req.body;
     if (!dataURL || !dataURL.startsWith('data:image')) {
       return res.status(400).json({ error: 'Neispravan format slike' });
     }
-    // Extract base64 data
-    const matches = dataURL.match(/^data:image\/(\w+);base64,(.+)$/);
-    if (!matches) return res.status(400).json({ error: 'Neispravan format' });
-    
+
+    // Validate image type - only jpg, png, webp allowed
+    const matches = dataURL.match(/^data:image\/(jpeg|jpg|png|webp);base64,(.+)$/);
+    if (!matches) return res.status(400).json({ error: 'Dozvoljeni formati: JPG, PNG, WEBP' });
+
     const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
     const data = Buffer.from(matches[2], 'base64');
-    
-    // Generate unique filename
-    const fname = `${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
+
+    // Max 5MB per image
+    if (data.length > 5 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Slika je prevelika (max 5MB)' });
+    }
+
+    // Generate unique filename - no user input in filename
+    const fname = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}.${ext}`;
     const fpath = path.join(uploadsPath, fname);
-    
+
     fs.writeFileSync(fpath, data);
     res.json({ url: `/uploads/${fname}` });
   } catch(e) { res.status(500).json({ error: e.message }); }
