@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 60" width="280" height="60">
+  <defs>
+    <linearGradient id="carGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7ab648;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5a9e2f;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Car silhouette (simple clean car icon) -->
+  <g transform="translate(4, 8)">
+    <!-- Car body -->
+    <path d="M8 28 L8 22 Q8 20 10 20 L16 20 L22 12 Q24 10 27 10 L44 10 Q47 10 49 12 L55 20 L60 20 Q62 20 62 22 L62 28 Q62 30 60 30 L56 30 Q55 34 52 34 Q49 34 48 30 L22 30 Q21 34 18 34 Q15 34 14 30 L10 30 Q8 30 8 28 Z"
+      fill="url(#carGrad)" />
+    <!-- Windshield -->
+    <path d="M24 20 L29 13 Q30 11 32 11 L42 11 Q44 11 45 13 L49 20 Z"
+      fill="#c8e6a0" opacity="0.85"/>
+    <!-- Rear window -->
+    <path d="M17 20 L22 13 L24 13 L20 20 Z"
+      fill="#c8e6a0" opacity="0.7"/>
+    <!-- Wheels -->
+    <circle cx="18" cy="30" r="5" fill="#2d2d2d"/>
+    <circle cx="18" cy="30" r="2.5" fill="#888"/>
+    <circle cx="52" cy="30" r="5" fill="#2d2d2d"/>
+    <circle cx="52" cy="30" r="2.5" fill="#888"/>
+    <!-- Speed lines -->
+    <line x1="0" y1="18" x2="7" y2="18" stroke="#5a9e2f" stroke-width="1.5" opacity="0.7"/>
+    <line x1="0" y1="22" x2="5" y2="22" stroke="#5a9e2f" stroke-width="1" opacity="0.5"/>
+    <line x1="0" y1="26" x2="6" y2="26" stroke="#5a9e2f" stroke-width="1.2" opacity="0.6"/>
+  </g>
+
+  <!-- DELIĆ text -->
+  <text x="78" y="42"
+    font-family="Arial Black, Arial, sans-serif"
+    font-weight="900"
+    font-size="30"
+    fill="#ffffff"
+    letter-spacing="2">DELI&#x106;</text>
+
+  <!-- Thin green underline accent -->
+  <rect x="78" y="47" width="190" height="2.5" fill="#5a9e2f" rx="1"/>
+
+  <!-- "AUTO OTPAD" subtitle -->
+  <text x="79" y="58"
+    font-family="Arial, sans-serif"
+    font-weight="400"
+    font-size="9"
+    fill="#aaaaaa"
+    letter-spacing="3">AUTO OTPAD · SERVIS</text>
+</svg>

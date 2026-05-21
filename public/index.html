@@ -586,7 +586,7 @@ function LoginScreen({onLogin}){
     catch(e){setError(e.message);}setLoading(false);
   };
   return(<div className="login-wrap"><div className="login-card">
-    <div className="login-logo"><img src="/logo-delic.png" alt="Auto Delić" style={{height:56,objectFit:"contain"}}/></div>
+    <div className="login-logo"><img src="/logo-delic.svg" alt="Auto Delić" style={{height:64,objectFit:"contain"}}/></div>
     <div className="login-sub">Upravljanje auto otpadom</div>
     {error&&<div className="login-err">{error}</div>}
     <div className="fg2"><label>Korisničko ime</label><input autoFocus value={username} onChange={e=>setUsername(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doLogin()} placeholder="admin"/></div>
@@ -2766,7 +2766,7 @@ function App(){
     {/* SIDEBAR */}
     <aside className={'sidebar'+(sidebarOpen?' open':'')}>
       <div className="sb-logo">
-        <img src="/logo-delic.png" alt="Auto Delić" style={{height:32,objectFit:'contain'}}/>
+        <img src="/logo-delic.svg" alt="Auto Delić" style={{height:36,objectFit:'contain'}}/>
         <div className="sb-logo-text">Auto Delić<span>Upravljanje otpadom</span></div>
       </div>
       <nav className="sb-nav">
