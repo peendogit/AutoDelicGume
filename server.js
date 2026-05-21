@@ -17,6 +17,34 @@ if (!fs.existsSync(publicPath)) publicPath = path.join(process.cwd(), 'public');
 if (!fs.existsSync(publicPath)) publicPath = path.join(process.cwd(), 'Public');
 app.use(express.static(publicPath));
 
+// Uploads directory for images
+const uploadsPath = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath, { recursive: true });
+app.use('/uploads', express.static(uploadsPath));
+
+// ===== UPLOAD SLIKA NA DISK =====
+app.post('/api/upload-slika', requireAuth, async (req,res) => {
+  try {
+    const { dataURL, filename } = req.body;
+    if (!dataURL || !dataURL.startsWith('data:image')) {
+      return res.status(400).json({ error: 'Neispravan format slike' });
+    }
+    // Extract base64 data
+    const matches = dataURL.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!matches) return res.status(400).json({ error: 'Neispravan format' });
+    
+    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+    const data = Buffer.from(matches[2], 'base64');
+    
+    // Generate unique filename
+    const fname = `${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
+    const fpath = path.join(uploadsPath, fname);
+    
+    fs.writeFileSync(fpath, data);
+    res.json({ url: `/uploads/${fname}` });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Local SQLite via better-sqlite3
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'data', 'gume.db');
 const dbDir = path.dirname(dbPath);
