@@ -1242,8 +1242,19 @@ app.post('/api/ponude', requireAdmin, async (req,res) => {
   try {
     const {kupac_ime,kupac_adresa,kupac_telefon,vozilo,stavke,napomena,pdv,rok_placanja,mjesto} = req.body;
     const year = new Date().getFullYear();
-    const count = await dbGet('SELECT COUNT(*) as c FROM ponude WHERE broj LIKE ?',[year+'-%']);
-    const broj = year+'-'+(String((count?.c||0)+1).padStart(3,'0'));
+    // Use MAX to avoid gaps causing duplicate keys when ponude are deleted
+    const lastBroj = await dbGet(`SELECT broj FROM ponude WHERE broj LIKE ? ORDER BY id DESC LIMIT 1`,[year+'-%']);
+    let nextNum = 1;
+    if(lastBroj) {
+      const parts = lastBroj.broj.split('-');
+      nextNum = (parseInt(parts[parts.length-1])||0) + 1;
+    }
+    let broj = year+'-'+String(nextNum).padStart(3,'0');
+    // Extra safety: keep incrementing if somehow still taken
+    while(await dbGet('SELECT id FROM ponude WHERE broj=?',[broj])) {
+      nextNum++;
+      broj = year+'-'+String(nextNum).padStart(3,'0');
+    }
     const r = await dbRun(
       'INSERT INTO ponude (broj,kupac_ime,kupac_adresa,kupac_telefon,vozilo,stavke,napomena,pdv,rok_placanja,mjesto,kreirao) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
       [broj,kupac_ime,kupac_adresa||'',kupac_telefon||'',vozilo||'',JSON.stringify(stavke||[]),napomena||'',pdv?1:0,rok_placanja||'Avansno plaćanje',mjesto||'Bijeljina',req.user.username]);
