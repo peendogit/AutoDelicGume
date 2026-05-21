@@ -2314,6 +2314,8 @@ function PonudaModul({showToast}){
   const [ponude,setPonude]=useState([]);const [modal,setModal]=useState(false);
   const [printModal,setPrintModal]=useState(null);
   const [editPonuda,setEditPonuda]=useState(null);
+  const [racunModal,setRacunModal]=useState(null);
+  const [brFiskInput,setBrFiskInput]=useState('');
   const [form,setForm]=useState({kupac_ime:'',kupac_adresa:'',kupac_telefon:'',napomena:'',pdv:true,rok_placanja:'Avansno plaćanje',mjesto:'Bijeljina'});
   const [stavke,setStavke]=useState([{opis:'',kolicina:1,cijena:'',jm:'KOM'}]);
 
@@ -2360,11 +2362,23 @@ function PonudaModul({showToast}){
     return txt;
   };
 
-  const doPrint=(p,tip2,brFisk2)=>{
-    const tip=tip2||'predracun';
-    const brFisk=brFisk2||'';
-    const w=window.open('/api/print?id='+p.id+'&tip='+tip+'&brFisk='+encodeURIComponent(brFisk),'_blank','width=900,height=1100');
-    setTimeout(()=>{if(w)w.focus();},300);
+  const doPrint=(p,tip,brFisk)=>{
+    // Build print HTML directly in browser - no server roundtrip needed
+    const tip2=tip||'predracun';
+    const brFisk2=brFisk||'';
+    const st=p.stavke||[];
+    const hasPdv=p.pdv!==0&&p.pdv!==false;
+    const datum=new Date(p.created_at).toLocaleDateString('sr-Latn-RS');
+    const bez=st.reduce((s,x)=>s+(parseFloat(x.cijena)||0)*(parseInt(x.kolicina)||1),0);
+    const pdvIz=Math.round(bez*0.17*100)/100;
+    const ukup=hasPdv?Math.round((bez+pdvIz)*100)/100:bez;
+    const stavkeHTML=st.map((s,i)=>{const v=(parseFloat(s.cijena)||0)*(parseInt(s.kolicina)||1);
+      return '<tr><td>'+(i+1)+'.</td><td>'+s.opis+'</td><td>'+(s.jm||'KOM')+'</td><td class=n>'+s.kolicina+'</td><td class=n>'+parseFloat(s.cijena||0).toFixed(2)+' KM</td><td class=n>'+v.toFixed(2)+' KM</td></tr>';}).join('');
+    const totHTML=hasPdv?'<tr><td>Ukupno bez PDV-a:</td><td>'+bez.toFixed(2)+' KM</td></tr><tr class=pr><td>PDV (17%):</td><td>'+pdvIz.toFixed(2)+' KM</td></tr><tr class=mr><td>UKUPNO sa PDV-om:</td><td>'+ukup.toFixed(2)+' KM</td></tr>':'<tr class=mr><td>UKUPNO:</td><td>'+bez.toFixed(2)+' KM</td></tr>';
+    const fiscRow=(tip2==='racun'&&brFisk2)?'<tr><td><b>Br. fisc. racuna:</b></td><td><b>'+brFisk2+'</b></td></tr>':'';
+    const doc='<!DOCTYPE html><html><head><meta charset=UTF-8><title>'+(tip2==='racun'?'Racun':'Predracun')+' '+p.broj+'</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:10.5pt;color:#111}.page{width:210mm;min-height:297mm;margin:0 auto;padding:10mm 12mm 15mm}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #5a9e2f;padding-bottom:5mm;margin-bottom:4mm}.hdr img{height:52px;object-fit:contain}.firma{text-align:right;font-size:9pt;color:#333;line-height:1.6}.firma b{font-size:11pt;color:#111}.firma .web{color:#5a9e2f}.jib{color:#555;font-size:8pt;display:flex;justify-content:space-between;margin-bottom:4mm;padding-bottom:2mm;border-bottom:1px solid #ddd}.tit{font-size:14pt;font-weight:bold;text-align:center;margin-bottom:4mm}.row{display:flex;gap:8mm;margin-bottom:5mm}.kom{flex:1;border:1px solid #ccc;border-radius:3px;padding:5px 8px;min-height:24mm}.kl{font-size:8pt;text-transform:uppercase;color:#777;margin-bottom:2px;font-weight:bold}.kn{font-size:12pt;font-weight:bold;margin-bottom:1px}.ki{font-size:8.5pt;color:#444;line-height:1.5}.ib{flex:0 0 65mm;border:1px solid #ccc;border-radius:3px;padding:5px 8px}.ib table{width:100%;border-collapse:collapse;font-size:9pt}.ib td{padding:2px 4px;vertical-align:top}.ib td:first-child{color:#666;font-weight:bold;width:45%}table.st{width:100%;border-collapse:collapse;margin-bottom:4mm;font-size:9.5pt}table.st th{background:#f5f5f5;border-top:1.5px solid #333;border-bottom:1.5px solid #333;padding:5px 6px;text-align:left;font-size:8.5pt}th.n{text-align:right}table.st td{padding:4px 6px;border-bottom:1px solid #e5e5e5}td.n{text-align:right;font-weight:bold}tr:nth-child(even) td{background:#fafafa}.tw{display:flex;justify-content:flex-end;margin-bottom:5mm}.tt{width:70mm;border-collapse:collapse;font-size:10pt}.tt td{padding:3px 6px}.tt td:last-child{text-align:right;font-weight:bold}.mr td{padding:5px 6px;font-size:11pt;font-weight:bold;border-top:2px solid #333}.pr{border-top:1px solid #e0e0e0}.nap{border:1px dashed #ccc;border-radius:3px;padding:5px 8px;font-size:9pt;color:#555;margin-bottom:5mm}.pot{display:flex;justify-content:space-between;margin-top:10mm}.pb{text-align:center;width:60mm}.pl{border-top:1px solid #aaa;margin-top:10mm;padding-top:3px;font-size:8pt;color:#666}.ft{margin-top:15px;font-size:7.5pt;color:#888;text-align:center;border-top:1px solid #ddd;padding-top:3mm}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:0}.page{padding:8mm 10mm 12mm}}</style></head><body><div class=page><div class=hdr><img src="'+window.location.origin+'/logo-print.webp" alt="Auto Delic"/><div class=firma><b>Tel: 066 027 888</b><br><span class=web>www.delicauto.com</span><br>Pavlovica put 13, 76300 Bijeljina<br>autootpaddelic@gmail.com</div></div><div class=jib><span>JIB: 5540010000584312</span><span>ZR: 5540010000584312</span></div><div class=tit>'+(tip2==='racun'?'RACUN':'PREDRACUN / PONUDA')+' BR. '+p.broj+'</div><div class=row><div class=kom><div class=kl>Komitent (kupac):</div><div class=kn>'+p.kupac_ime+'</div><div class=ki>'+(p.kupac_adresa?'<div>'+p.kupac_adresa+'</div>':'')+(p.kupac_telefon?'<div>Tel: '+p.kupac_telefon+'</div>':'')+'</div></div><div class=ib><table><tr><td>Datum:</td><td>'+datum+'</td></tr><tr><td>Rok placanja:</td><td>'+(p.rok_placanja||'Avansno placanje')+'</td></tr><tr><td>Mjesto:</td><td>'+(p.mjesto||'Bijeljina')+'</td></tr>'+fiscRow+'</table></div></div><table class=st><thead><tr><th>Br.</th><th>Opis</th><th>JM</th><th class=n>Kol.</th><th class=n>Cijena</th><th class=n>Vrijednost</th></tr></thead><tbody>'+stavkeHTML+'</tbody></table><div class=tw><table class=tt>'+totHTML+'</table></div>'+(p.napomena?'<div class=nap><b>Napomena:</b> '+p.napomena+'</div>':'')+'<div class=pot><div class=pb><div class=pl>Potpis kupca</div></div><div class=pb><div class=pl>Potpis izdavaoca</div></div></div><div class=ft>Auto Delic - Pavlovica put 13, 76300 Bijeljina - Tel: 066 027 888</div></div></body></html>';
+    const w=window.open('','_blank','width=860,height=1100');
+    if(w){w.document.write(doc);w.document.close();setTimeout(()=>{w.focus();w.print();},600);}
   };
 
 
@@ -2397,7 +2411,7 @@ function PonudaModul({showToast}){
               <button className="btn-sm" onClick={e=>{e.stopPropagation();const m=e.currentTarget.nextElementSibling;m.style.display=m.style.display==='block'?'none':'block';}}>🖨 Štampaj ▾</button>
               <div style={{display:'none',position:'absolute',top:'110%',left:0,zIndex:100,background:'var(--surf)',border:'1px solid var(--border)',borderRadius:6,boxShadow:'0 4px 16px rgba(0,0,0,.5)',minWidth:170,overflow:'hidden'}}>
                 <div style={{padding:'10px 14px',cursor:'pointer',fontSize:12,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'1px'}} onClick={e=>{doPrint(p,'predracun');e.currentTarget.parentNode.style.display='none';}}>📋 Predračun</div>
-                <div style={{padding:'10px 14px',cursor:'pointer',fontSize:12,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'1px',borderTop:'1px solid var(--border)'}} onClick={e=>{const br=prompt('Broj fiskalnog računa:');if(br!==null){doPrint(p,'racun',br);}e.currentTarget.parentNode.style.display='none';}}>🧾 Račun</div>
+                <div style={{padding:'10px 14px',cursor:'pointer',fontSize:12,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'1px',borderTop:'1px solid var(--border)'}} onClick={e=>{e.currentTarget.parentNode.style.display='none';setRacunModal(p);}}>🧾 Račun</div>
               </div>
             </div>
             {p.kupac_telefon&&<button className="btn-sm" style={{background:'#25d366',color:'#fff',borderColor:'#25d366'}} onClick={()=>window.open('https://wa.me/387'+p.kupac_telefon.replace(/^0/,'').replace(/\D/g,'')+'?text='+encodeURIComponent(genWAText(p)),'_blank')}>💬 WA</button>}
@@ -2449,6 +2463,18 @@ function PonudaModul({showToast}){
       </div>}
       <div className="fg2"><label>Napomena</label><textarea value={form.napomena} onChange={e=>setForm(f=>({...f,napomena:e.target.value}))} placeholder="Rok važenja, uvjeti..."/></div>
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>{setModal(false);setEditPonuda(null);}}>Odustani</button><button className="btn-save" onClick={doSave}>Kreiraj ponudu</button></div>
+    </div></div>}
+    {racunModal&&<div className="overlay" onClick={()=>setRacunModal(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">Štampaj račun <button className="btn-close" onClick={()=>setRacunModal(null)}>x</button></div>
+      <div style={{fontSize:13,marginBottom:14,color:'var(--muted)'}}>Ponuda: <b style={{color:'var(--text)'}}>{racunModal.broj}</b></div>
+      <div className="fg2">
+        <label>Broj fiskalnog računa <span style={{color:'var(--muted)',fontWeight:400,fontSize:10}}>(opciono)</span></label>
+        <input autoFocus value={brFiskInput} onChange={e=>setBrFiskInput(e.target.value)} placeholder="npr. IT-12345-67890" onKeyDown={e=>e.key==='Enter'&&(doPrint(racunModal,'racun',brFiskInput),setRacunModal(null),setBrFiskInput(''))}/>
+      </div>
+      <div className="modal-foot">
+        <button className="btn-cancel" onClick={()=>setRacunModal(null)}>Odustani</button>
+        <button className="btn-save" onClick={()=>{doPrint(racunModal,'racun',brFiskInput);setRacunModal(null);setBrFiskInput('');}}>🖨 Štampaj račun</button>
+      </div>
     </div></div>}
     <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
