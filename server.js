@@ -314,6 +314,7 @@ async function initDB() {
   try { await dbExec(`ALTER TABLE ponude ADD COLUMN rok_placanja TEXT DEFAULT 'Avansno plaćanje'`); } catch(e) {}
   try { await dbExec(`ALTER TABLE ponude ADD COLUMN mjesto TEXT DEFAULT 'Bijeljina'`); } catch(e) {}
   try { await dbExec(`ALTER TABLE ponude ADD COLUMN vozilo TEXT DEFAULT ''`); } catch(e) {}
+  try { await dbExec(`ALTER TABLE ponude ADD COLUMN unos_sa_pdv INTEGER DEFAULT 0`); } catch(e) {}
 
   // KOMPENZACIJE
   await dbExec(`
@@ -1337,13 +1338,13 @@ app.delete('/api/cjenovnik/:id', requireAdmin, async (req,res) => {
 app.get('/api/ponude', requireAdmin, async (req,res) => {
   try {
     const ponude = await dbAll('SELECT * FROM ponude ORDER BY created_at DESC');
-    res.json(ponude.map(p=>({...p, stavke:JSON.parse(p.stavke||'[]')})));
+    res.json(ponude.map(p=>({...p, stavke:JSON.parse(p.stavke||'[]'), unosSaPdv:!!p.unos_sa_pdv})));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
 app.post('/api/ponude', requireAdmin, async (req,res) => {
   try {
-    const {kupac_ime,kupac_adresa,kupac_telefon,vozilo,stavke,napomena,pdv,rok_placanja,mjesto} = req.body;
+    const {kupac_ime,kupac_adresa,kupac_telefon,vozilo,stavke,napomena,pdv,rok_placanja,mjesto,unosSaPdv} = req.body;
     const year = new Date().getFullYear();
     // Use MAX to avoid gaps causing duplicate keys when ponude are deleted
     const lastBroj = await dbGet(`SELECT broj FROM ponude WHERE broj LIKE ? ORDER BY id DESC LIMIT 1`,[year+'-%']);
@@ -1359,8 +1360,8 @@ app.post('/api/ponude', requireAdmin, async (req,res) => {
       broj = year+'-'+String(nextNum).padStart(3,'0');
     }
     const r = await dbRun(
-      'INSERT INTO ponude (broj,kupac_ime,kupac_adresa,kupac_telefon,vozilo,stavke,napomena,pdv,rok_placanja,mjesto,kreirao) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-      [broj,kupac_ime,kupac_adresa||'',kupac_telefon||'',vozilo||'',JSON.stringify(stavke||[]),napomena||'',pdv?1:0,rok_placanja||'Avansno plaćanje',mjesto||'Bijeljina',req.user.username]);
+      'INSERT INTO ponude (broj,kupac_ime,kupac_adresa,kupac_telefon,vozilo,stavke,napomena,pdv,unos_sa_pdv,rok_placanja,mjesto,kreirao) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+      [broj,kupac_ime,kupac_adresa||'',kupac_telefon||'',vozilo||'',JSON.stringify(stavke||[]),napomena||'',pdv?1:0,unosSaPdv?1:0,rok_placanja||'Avansno plaćanje',mjesto||'Bijeljina',req.user.username]);
     const p = await dbGet('SELECT * FROM ponude WHERE id=?',[r.lastID]);
     res.json({...p, stavke:JSON.parse(p.stavke||'[]')});
   } catch(e) { res.status(500).json({error:e.message}); }
