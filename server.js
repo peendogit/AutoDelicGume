@@ -39,14 +39,13 @@ app.use('/api/backup', backupLimiter);
 app.use('/api', apiLimiter);
 
 app.use(cors());
-app.use(express.json({ limit: '100mb' }));
-
-// Prevent crash on invalid JSON
-app.use((err, req, res, next) => {
-  if (err.type === 'entity.parse.failed') {
-    return res.status(400).json({ error: 'Neispravan JSON' });
-  }
-  next(err);
+app.use((req, res, next) => {
+  express.json({ limit: '100mb' })(req, res, (err) => {
+    if (err && err.type === 'entity.parse.failed') {
+      return res.status(400).json({ error: 'Neispravan JSON' });
+    }
+    next(err || undefined);
+  });
 });
 
 let publicPath = path.join(__dirname, 'public');
