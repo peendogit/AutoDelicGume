@@ -1800,7 +1800,8 @@ function PonudaModul({showToast}){
     const tip2=tip||'predracun';
     const brFisk2=brFisk||'';
     const st=p.stavke||[];
-    const hasPdv=p.pdv!==0&&p.pdv!==false;
+    const hasPdv=p.pdv!==0&&p.pdv!==false&&!p.unosSaPdv;
+    const unosSaPdv=!!p.unosSaPdv;
     const datum=new Date(p.created_at).toLocaleDateString('sr-Latn-BA');
     const bez=st.reduce((s,x)=>s+(parseFloat(x.cijena)||0)*(parseInt(x.kolicina)||1),0);
     const pdvIz=Math.round(bez*0.17*100)/100;
@@ -1810,7 +1811,9 @@ function PonudaModul({showToast}){
       const v=(parseFloat(s.cijena)||0)*(parseInt(s.kolicina)||1);
       return '<tr><td class=br>'+(i+1)+'.</td><td class=op>'+s.opis+'</td><td class=jm>'+(s.jm||'KOM')+'</td><td class=n>'+s.kolicina+'</td><td class=n>'+parseFloat(s.cijena||0).toFixed(2)+'</td><td class=n>'+v.toFixed(2)+'</td></tr>';
     }).join('');
-    const totHTML=hasPdv
+    const totHTML=unosSaPdv
+      ?'<tr><td colspan=2>Cijena (bez PDV):</td><td>'+(ukup/1.17).toFixed(2)+' KM</td></tr><tr class=pr><td colspan=2>PDV 17% (sadržan):</td><td>'+(ukup-ukup/1.17).toFixed(2)+' KM</td></tr><tr class=mr><td colspan=2>UKUPNO:</td><td>'+ukup.toFixed(2)+' KM</td></tr>'
+      :hasPdv
       ?'<tr><td colspan=2>Ukupno bez PDV-a:</td><td>'+bez.toFixed(2)+' KM</td></tr><tr class=pr><td colspan=2>PDV (17%):</td><td>'+pdvIz.toFixed(2)+' KM</td></tr><tr class=mr><td colspan=2>UKUPNO sa PDV-om:</td><td>'+ukup.toFixed(2)+' KM</td></tr>'
       :'<tr class=mr><td colspan=2>UKUPNO:</td><td>'+ukup.toFixed(2)+' KM</td></tr>';
     const fiscRow=(tip2==='racun'&&brFisk2)?'<tr><td>Br. fisc. računa:</td><td colspan=2><b>'+brFisk2+'</b></td></tr>':'';
@@ -1956,11 +1959,11 @@ function PonudaModul({showToast}){
       </div>
       <div style={{display:'flex',gap:20,alignItems:'center',flexWrap:'wrap',marginBottom:12}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
-          <input type="checkbox" id="pdv-chk" checked={!!form.pdv} onChange={e=>setForm(f=>({...f,pdv:e.target.checked}))} style={{width:16,height:16}}/>
+          <input type="checkbox" id="pdv-chk" checked={!!form.pdv&&!form.unosSaPdv} onChange={e=>setForm(f=>({...f,pdv:e.target.checked,unosSaPdv:false}))} style={{width:16,height:16}}/>
           <label htmlFor="pdv-chk" style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',cursor:'pointer'}}>Obračunaj PDV (17%)</label>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
-          <input type="checkbox" id="unos-sa-pdv-chk" checked={!!form.unosSaPdv} onChange={e=>setForm(f=>({...f,unosSaPdv:e.target.checked}))} style={{width:16,height:16}}/>
+          <input type="checkbox" id="unos-sa-pdv-chk" checked={!!form.unosSaPdv} onChange={e=>setForm(f=>({...f,unosSaPdv:e.target.checked,pdv:false}))} style={{width:16,height:16}}/>
           <label htmlFor="unos-sa-pdv-chk" style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',cursor:'pointer',color:'var(--accent)'}}>Unosim cijenu SA PDV</label>
         </div>
       </div>
@@ -1976,15 +1979,33 @@ function PonudaModul({showToast}){
         <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow,sans-serif',fontSize:12,padding:'5px 7px',outline:'none'}} placeholder="Opis..." value={s.opis} onChange={e=>updateStavka(i,'opis',e.target.value)}/>
         <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,padding:'5px 4px',outline:'none',textAlign:'center'}} type="number" min="1" value={s.kolicina} onChange={e=>updateStavka(i,'kolicina',e.target.value)}/>
         <select style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:11,padding:'5px 3px',outline:'none'}} value={s.jm||'KOM'} onChange={e=>updateStavka(i,'jm',e.target.value)}><option>KOM</option><option>PAR</option><option>SET</option><option>KG</option></select>
-        <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,padding:'5px 4px',outline:'none',textAlign:'right'}} type="number" placeholder={form.unosSaPdv?"sa PDV":"bez PDV"} value={s.cijena} onChange={e=>{const v=e.target.value;updateStavka(i,'cijena',form.unosSaPdv&&v?(parseFloat(v)/1.17).toFixed(2):v);}}/>
+        <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,padding:'5px 4px',outline:'none',textAlign:'right'}} type="number" placeholder="KM" value={s.cijena} onChange={e=>updateStavka(i,'cijena',e.target.value)}/>
         <button onClick={()=>removeStavka(i)} style={{background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:14,padding:0}}>×</button>
       </div>)}
       <button className="btn-sm" style={{marginBottom:10}} onClick={addStavka}><Icons.Plus size={10}/> Dodaj stavku</button>
-      {stavke.some(s=>s.opis&&s.cijena)&&<div style={{background:'rgba(63,185,80,.08)',border:'1px solid rgba(63,185,80,.2)',borderRadius:6,padding:'8px 12px',marginBottom:10}}>
-        {form.pdv&&<><div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}><span style={{color:'var(--muted)'}}>Bez PDV-a:</span><span>{ukupnoBezPdv(stavke).toFixed(2)} KM</span></div>
-        <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}><span style={{color:'var(--muted)'}}>PDV (17%):</span><span>{pdvIznos(stavke).toFixed(2)} KM</span></div></>}
-        <div style={{display:'flex',justifyContent:'space-between',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18}}><span>UKUPNO:</span><span style={{color:'var(--green)'}}>{ukupnoSaPdv(stavke,form.pdv).toFixed(2)} KM</span></div>
-      </div>}
+      {stavke.some(s=>s.opis&&s.cijena)&&(()=>{
+        const ukup=stavke.reduce((s,x)=>s+(parseFloat(x.cijena)||0)*(parseInt(x.kolicina)||1),0);
+        if(form.unosSaPdv){
+          // Cijene su SA PDV — prikaži razlaganje
+          const bezPdv=ukup/1.17;const pdvIz=ukup-bezPdv;
+          return(<div style={{background:'rgba(240,180,41,.08)',border:'1px solid rgba(240,180,41,.2)',borderRadius:6,padding:'8px 12px',marginBottom:10}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}><span style={{color:'var(--muted)'}}>Cijena (bez PDV):</span><span>{bezPdv.toFixed(2)} KM</span></div>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}><span style={{color:'var(--muted)'}}>PDV 17% (sadržan):</span><span>{pdvIz.toFixed(2)} KM</span></div>
+            <div style={{display:'flex',justifyContent:'space-between',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18}}><span>UKUPNO:</span><span style={{color:'var(--accent)'}}>{ukup.toFixed(2)} KM</span></div>
+          </div>);
+        }
+        if(form.pdv){
+          const pdvIz=ukup*0.17;
+          return(<div style={{background:'rgba(63,185,80,.08)',border:'1px solid rgba(63,185,80,.2)',borderRadius:6,padding:'8px 12px',marginBottom:10}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}><span style={{color:'var(--muted)'}}>Bez PDV-a:</span><span>{ukup.toFixed(2)} KM</span></div>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}><span style={{color:'var(--muted)'}}>PDV (17%):</span><span>{pdvIz.toFixed(2)} KM</span></div>
+            <div style={{display:'flex',justifyContent:'space-between',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18}}><span>UKUPNO:</span><span style={{color:'var(--green)'}}>{(ukup+pdvIz).toFixed(2)} KM</span></div>
+          </div>);
+        }
+        return(<div style={{background:'rgba(63,185,80,.08)',border:'1px solid rgba(63,185,80,.2)',borderRadius:6,padding:'8px 12px',marginBottom:10}}>
+          <div style={{display:'flex',justifyContent:'space-between',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18}}><span>UKUPNO:</span><span style={{color:'var(--green)'}}>{ukup.toFixed(2)} KM</span></div>
+        </div>);
+      })()}
       <div className="fg2"><label>Napomena</label><textarea value={form.napomena} onChange={e=>setForm(f=>({...f,napomena:e.target.value}))} placeholder="Rok važenja, uvjeti..."/></div>
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>{setModal(false);setEditPonuda(null);}}>Odustani</button><button className="btn-save" onClick={doSave}>{editPonuda?"Sačuvaj":"Kreiraj ponudu"}</button></div>
     </div></div>}
