@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin — Auto Delić</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.4/babel.min.js"></script>
+  <style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--surf:#161b22;--card:#21262d;--border:#30363d;--accent:#f0b429;--red:#f85149;--blue:#58a6ff;--green:#3fb950;--purple:#bc8cff;--text:#e6edf3;--muted:#8b949e;--radius:10px}
+.light{--bg:#f6f8fa;--surf:#ffffff;--card:#f0f3f6;--border:#d0d7de;--accent:#b35f00;--red:#cf222e;--blue:#0969da;--green:#1a7f37;--purple:#8250df;--text:#1f2328;--muted:#57606a;}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-tap-highlight-color:transparent}
+
+/* ===== LAYOUT ===== */
+.layout{display:flex;min-height:100vh}
+.sidebar{width:220px;background:var(--surf);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;transition:transform .25s}
+.sidebar.closed{transform:translateX(-220px)}
+.content{flex:1;margin-left:220px;min-height:100vh;display:flex;flex-direction:column;transition:margin .25s}
+.content.full{margin-left:0}
+@media(max-width:768px){.sidebar{transform:translateX(-220px)}.sidebar.open{transform:translateX(0)}.content{margin-left:0}}
+@media(min-width:769px){.sidebar{transform:translateX(0)}.content{margin-left:220px}}
+
+/* SIDEBAR */
+.sb-logo{padding:18px 16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-logo-icon{color:var(--accent)}
+.sb-logo-text{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;letter-spacing:2px;text-transform:uppercase;line-height:1}
+.sb-logo-text span{color:var(--muted);font-weight:400;font-size:10px;display:block;letter-spacing:1px}
+.sb-nav{flex:1;padding:10px 8px;overflow-y:auto}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);transition:all .15s;user-select:none;border:none;background:none;width:100%;text-align:left}
+.sb-item:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.sb-item.active{background:rgba(240,180,41,.12);color:var(--accent)}
+.sb-item .icon{width:18px;flex-shrink:0;opacity:.7}
+.sb-item.active .icon{opacity:1}
+.sb-sep{height:1px;background:var(--border);margin:6px 0}
+.sb-section{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:8px 12px 4px;opacity:.6}
+.sb-bottom{padding:10px 8px;border-top:1px solid var(--border)}
+.sb-user{display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--card);border-radius:7px;margin-bottom:6px}
+.sb-user-name{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:.5px}
+.sb-user-role{font-size:10px;color:var(--muted)}
+.sb-user-badge{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;border-radius:3px;margin-left:auto}
+.sb-user-badge.admin{background:rgba(240,180,41,.15);color:var(--accent)}
+.sb-user-badge.radnik{background:rgba(88,166,255,.12);color:var(--blue)}
+
+/* TOPBAR */
+.topbar{height:52px;background:var(--surf);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;position:sticky;top:0;z-index:50}
+.topbar-burger{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;display:flex;flex-direction:column;gap:5px}
+.topbar-burger span{display:block;width:20px;height:2px;background:currentColor;border-radius:2px}
+.topbar-title{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:1px;text-transform:uppercase;flex:1}
+.topbar-actions{display:flex;gap:6px;align-items:center}
+.tb-btn{background:none;border:1.5px solid var(--border);color:var(--muted);border-radius:7px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;flex-shrink:0}
+.tb-btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-add-main{background:var(--accent);color:#000;border:none;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:7px 14px;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap}
+
+/* PAGE */
+.page{padding:16px;max-width:1280px;margin:0 auto;width:100%}
+.page-header{margin-bottom:18px}
+.page-title{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;letter-spacing:2px;text-transform:uppercase}
+.page-sub{color:var(--muted);font-size:13px;margin-top:2px}
+
+/* DASHBOARD KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+.kpi{background:var(--surf);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.kpi-lbl{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.kpi-val{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;line-height:1}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:3px}
+.kpi.accent{border-color:rgba(240,180,41,.3);background:rgba(240,180,41,.05)}
+.kpi.green{border-color:rgba(63,185,80,.3);background:rgba(63,185,80,.05)}
+.kpi.blue{border-color:rgba(88,166,255,.3);background:rgba(88,166,255,.05)}
+.kpi.purple{border-color:rgba(188,140,255,.3);background:rgba(188,140,255,.05)}
+.kpi.red{border-color:rgba(248,81,73,.3);background:rgba(248,81,73,.05)}
+
+/* CARDS */
+.section-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.card-panel{background:var(--surf);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px}
+
+/* ACTIVITY LOG */
+.act-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.act-item:last-child{border-bottom:none}
+.act-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.act-dot.green{background:var(--green)}
+.act-dot.blue{background:var(--blue)}
+.act-dot.accent{background:var(--accent)}
+.act-dot.purple{background:var(--purple)}
+.act-dot.red{background:var(--red)}
+.act-body{flex:1;min-width:0}
+.act-main{font-size:12px;line-height:1.4}
+.act-time{font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0;margin-top:2px}
+
+/* GUME MODULE (reuse existing styles) */
+.sf-wrap{background:var(--surf);border:1.5px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px}
+.sf-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.sf-full{grid-column:1/-1}
+.fg label{display:block;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.fg input,.fg select{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:5px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;padding:7px 9px;outline:none}
+.fg select option{background:var(--card)}
+.status-tabs{display:flex;gap:6px;margin-bottom:12px}
+.stab{background:none;border:1.5px solid var(--border);color:var(--muted);border-radius:6px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:5px 12px;cursor:pointer;flex:1;text-align:center}
+.stab.as{border-color:var(--green);color:var(--green);background:rgba(63,185,80,.08)}
+.stab.ap{border-color:var(--purple);color:var(--purple);background:rgba(188,140,255,.08)}
+.res-count{font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.res-count b{color:var(--accent);font-size:13px}
+.tire-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px}
+.tire-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;position:relative}
+.tire-card.sold{opacity:.65;border-color:#3d2d5a}
+.tire-thumb{width:100%;height:120px;background:var(--surf);display:flex;align-items:center;justify-content:center;color:var(--border)}
+.tire-thumb img{width:100%;height:100%;object-fit:cover}
+.bs{position:absolute;top:7px;left:7px;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:2px 5px;border-radius:3px;display:flex;align-items:center;gap:2px}
+.bs.z{background:rgba(88,166,255,.22);color:#58a6ff;border:1px solid #58a6ff}
+.bs.l{background:rgba(240,180,41,.16);color:#f0b429;border:1px solid #f0b429}
+.bsif{position:absolute;top:7px;right:7px;background:rgba(0,0,0,.7);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;padding:2px 5px;border-radius:3px}
+.bsold{position:absolute;bottom:0;left:0;right:0;background:rgba(155,89,182,.85);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;text-align:center;padding:3px}
+.tire-info{padding:8px 10px}
+.tire-size{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;letter-spacing:1px;margin-bottom:1px}
+.tire-cod{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:1px}
+.tire-loc{font-size:10px;color:var(--muted)}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+
+/* AUTA */
+.auto-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.auto-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;position:relative}
+.auto-card:hover{border-color:var(--accent)}
+.auto-img{width:100%;height:140px;background:var(--surf);display:flex;align-items:center;justify-content:center;color:var(--border);overflow:hidden}
+.auto-img img{width:100%;height:100%;object-fit:cover}
+.auto-status{position:absolute;top:7px;right:7px;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:3px}
+.auto-status.na_stanju{background:rgba(63,185,80,.2);color:var(--green);border:1px solid var(--green)}
+.auto-status.prodat{background:rgba(188,140,255,.2);color:var(--purple);border:1px solid var(--purple)}
+
+.auto-info{padding:10px 12px}
+.auto-name{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;letter-spacing:.5px;margin-bottom:2px}
+.auto-sub{font-size:11px;color:var(--muted);margin-bottom:6px}
+.auto-price{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:var(--accent)}
+
+/* ZADACI */
+.zadaci-list{display:flex;flex-direction:column;gap:8px}
+.zadatak{background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px}
+.zadatak.zatvoren{opacity:.5}
+.zadatak-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:all .15s}
+.zadatak-check:hover{border-color:var(--green)}
+.zadatak-check.done{background:var(--green);border-color:var(--green)}
+.zadatak-body{flex:1}
+.zadatak-title{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;margin-bottom:2px}
+.zadatak-opis{font-size:12px;color:var(--muted);line-height:1.5}
+.prioritet{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;border-radius:3px}
+.prioritet.visok{background:rgba(248,81,73,.15);color:var(--red)}
+.prioritet.srednji{background:rgba(240,180,41,.15);color:var(--accent)}
+.prioritet.nizak{background:rgba(88,166,255,.12);color:var(--blue)}
+
+/* TROŠKOVI */
+.trosak-card{background:var(--card);border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px}
+.trosak-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer}
+.trosak-head:hover{background:rgba(255,255,255,.02)}
+.trosak-name{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:.5px}
+.trosak-sum{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700}
+.trosak-sum.over{color:var(--red)}
+.trosak-sum.ok{color:var(--green)}
+.trosak-body{padding:0 14px 12px;border-top:1px solid var(--border)}
+.dio-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+.dio-row:last-child{border-bottom:none}
+.dio-naziv{flex:1;font-weight:500}
+.dio-plan{color:var(--muted);width:70px;text-align:right}
+.dio-stv{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;width:80px;text-align:right}
+.dio-stv.over{color:var(--red)}
+.dio-stv.under{color:var(--green)}
+.dio-stv.pending{color:var(--muted)}
+.dio-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--border);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.dio-check.done{background:var(--green);border-color:var(--green)}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.overlay-inner{min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding:14px;}
+.modal{background:var(--surf);border:1.5px solid var(--border);border-radius:14px;padding:20px;width:100%;max-width:480px;margin:auto;}
+.modal-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.btn-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1}
+.fg2{margin-bottom:12px}
+.fg2 input:focus,.fg2 select:focus,.fg2 textarea:focus{scroll-margin-bottom:200px}
+.modal input:focus,.modal select:focus,.modal textarea:focus{scroll-margin-bottom:300px}
+.fg2 label{display:block;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.fg2 input,.fg2 select,.fg2 textarea{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:5px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;padding:8px 10px;outline:none}
+.fg2 select option{background:var(--card)}
+.fg2 textarea{resize:vertical;min-height:60px}
+.fg2 input.ok{border-color:var(--green)}
+.fg2 input.err{border-color:var(--red)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.modal-foot{display:flex;gap:7px;justify-content:flex-end;margin-top:16px;padding-top:13px;border-top:1px solid var(--border);align-items:center}
+.foot-left{margin-right:auto}
+.btn-cancel{background:none;border:1.5px solid var(--border);color:var(--muted);border-radius:5px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;cursor:pointer}
+.btn-save{background:var(--accent);color:#000;border:none;border-radius:5px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:900;letter-spacing:1px;text-transform:uppercase;padding:7px 16px;cursor:pointer}
+.btn-save:disabled{opacity:.4;cursor:not-allowed}
+.btn-danger{background:var(--red);color:#fff;border:none;border-radius:5px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;cursor:pointer}
+.btn-sm{background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:3px}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm.red:hover{border-color:var(--red);color:var(--red)}
+
+/* DETAIL */
+.specs-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:9px}
+.spec-box{background:var(--card);border:1px solid var(--border);border-radius:5px;padding:7px 11px}
+.spec-lbl{font-family:'Barlow Condensed',sans-serif;font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:1px}
+.spec-val{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800}
+.loc-box{background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);border-radius:5px;padding:7px 11px;font-size:11px;color:#58a6ff;margin-bottom:9px}
+.sold-box{background:rgba(188,140,255,.1);border:1px solid rgba(188,140,255,.3);border-radius:5px;padding:7px 11px;font-size:11px;color:var(--purple);margin-bottom:9px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.sec-lbl{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--border);margin-top:10px}
+.sell-box{background:rgba(63,185,80,.06);border:1.5px solid rgba(63,185,80,.2);border-radius:9px;padding:14px;margin-bottom:4px}
+.price-row{display:flex;align-items:center;border:1.5px solid var(--border);border-radius:5px;overflow:hidden;background:var(--card)}
+.price-inp{flex:1;background:transparent;border:none;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;padding:9px 12px;outline:none}
+.price-curr{padding:9px 12px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:var(--muted);border-left:1px solid var(--border)}
+
+/* IMGS */
+.det-imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:5px;margin-bottom:12px}
+.det-imgs .thumb{width:100%;aspect-ratio:1;object-fit:cover;border-radius:5px;cursor:pointer;display:block;border:2px solid transparent}
+.det-imgs .thumb:hover{border-color:var(--accent)}
+.img-zone{border:2px dashed var(--border);border-radius:7px;padding:14px;text-align:center;cursor:pointer;color:var(--muted);font-size:11px;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:64px}
+.img-zone:hover{border-color:var(--accent)}
+.img-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:7px}
+.img-item{position:relative;border-radius:4px;overflow:hidden;aspect-ratio:1;background:var(--card)}
+.img-item img{width:100%;height:100%;object-fit:cover;display:block}
+.img-rm{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.75);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center}
+.upload-bar-wrap{background:var(--card);border-radius:4px;height:6px;overflow:hidden;margin:6px 0 4px}
+.upload-bar{background:var(--blue);height:100%;border-radius:4px;transition:width .2s}
+
+/* LIGHTBOX */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+.lightbox img{max-width:100%;max-height:90vh;border-radius:8px;object-fit:contain}
+.lightbox-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.1);border:none;color:#fff;width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center}
+.lightbox-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.1);border:none;color:#fff;width:44px;height:44px;border-radius:50%;cursor:pointer;font-size:22px;display:flex;align-items:center;justify-content:center}
+.lightbox-nav.prev{left:12px}
+.lightbox-nav.next{right:12px}
+
+/* SETTINGS */
+.set-tabs{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap}
+.set-tab{background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:5px 11px;cursor:pointer}
+.set-tab.on{border-color:var(--accent);color:var(--accent);background:rgba(240,180,41,.08)}
+.mag-card{background:var(--card);border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:6px}
+.tree-row{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;cursor:pointer;user-select:none}
+.tree-row:hover{background:rgba(255,255,255,.03)}
+.tree-lbl-mag{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.tree-lbl-prolaz{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--blue)}
+.tree-lbl-regal{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.polica-chip{background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.25);color:var(--blue);border-radius:3px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;padding:1px 5px;display:inline-flex;align-items:center;gap:2px}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:1px 3px;border-radius:2px;display:flex;align-items:center;opacity:.6}
+.del-btn:hover{color:var(--red);opacity:1}
+.police-wrap{display:flex;flex-wrap:wrap;gap:3px}
+.add-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.add-btn{background:none;border:1px dashed var(--border);color:var(--muted);border-radius:3px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;text-transform:uppercase;padding:2px 7px;cursor:pointer;display:flex;align-items:center;gap:2px}
+.add-btn:hover{border-color:var(--accent);color:var(--accent)}
+.cust-inp{background:var(--card);border:1px dashed var(--border);border-radius:3px;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;padding:3px 7px;outline:none;width:90px;text-transform:uppercase}
+.user-item{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.user-role{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:3px}
+.user-role.admin{background:rgba(240,180,41,.15);color:var(--accent)}
+.user-role.radnik{background:rgba(88,166,255,.12);color:var(--blue)}
+.btn-new{background:var(--accent);color:#000;border:none;border-radius:6px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:5px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:3px}
+.sifra-prev{background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.25);border-radius:6px;padding:6px 12px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;color:var(--accent);letter-spacing:2px;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.ph{margin-top:4px;padding:5px 9px;border-radius:4px;font-size:11px;display:flex;align-items:center;gap:4px}
+.ph.ok{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.3);color:var(--green)}
+.ph.err{background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.3);color:var(--red)}
+.tip-badge{display:inline-flex;align-items:center;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:3px}
+.tip-badge.tip-komad{background:rgba(88,166,255,.15);color:var(--blue)}
+.tip-badge.tip-par{background:rgba(240,180,41,.15);color:var(--accent)}
+.tip-badge.tip-set{background:rgba(63,185,80,.15);color:var(--green)}
+.log-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.log-item:last-child{border-bottom:none}
+.log-badge{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:3px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+.log-badge.PRIJAVA{background:rgba(88,166,255,.15);color:var(--blue)}
+.log-badge.DODANA_GUMA,.log-badge.DODAN_AUTO{background:rgba(63,185,80,.15);color:var(--green)}
+.log-badge.EDITOVANA_GUMA,.log-badge.EDITOVAN_AUTO{background:rgba(240,180,41,.15);color:var(--accent)}
+.log-badge.PREMJESTENA_GUMA{background:rgba(188,140,255,.15);color:var(--purple)}
+.log-badge.PRODANA_GUMA,.log-badge.PRODAT_AUTO{background:rgba(63,185,80,.2);color:var(--green)}
+.log-badge.OBRISANA_GUMA,.log-badge.OBRISAN_AUTO{background:rgba(248,81,73,.15);color:var(--red)}
+.log-time{font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.log-user{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;color:var(--text)}
+.log-detail{font-size:11px;color:var(--muted);margin-top:1px}
+
+/* OLX badge */
+.olx-link{display:inline-flex;align-items:center;gap:5px;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--green);border-radius:5px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;text-decoration:none;cursor:pointer}
+
+/* TOAST */
+.offline-bar{position:fixed;top:0;left:0;right:0;background:#f85149;color:#fff;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:5px;z-index:1000;display:flex;align-items:center;justify-content:center;gap:6px}
+.fab{position:fixed;bottom:20px;right:20px;width:56px;height:56px;background:var(--accent);color:#000;border:none;border-radius:50%;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(240,180,41,.4);z-index:200;transition:transform .15s}
+.fab:active{transform:scale(.9)}
+.fab-menu{position:fixed;bottom:86px;right:20px;display:flex;flex-direction:column;gap:8px;align-items:flex-end;z-index:200}
+.fab-item{display:flex;align-items:center;gap:8px;cursor:pointer}
+.fab-item-lbl{background:var(--surf);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.fab-item-btn{width:40px;height:40px;background:var(--surf);border:1.5px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.fab-overlay{position:fixed;inset:0;z-index:199}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1f2e;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:999;white-space:nowrap;border-left:3px solid var(--green);box-shadow:0 4px 20px rgba(0,0,0,.4);pointer-events:none}
+.toast.err{border-left-color:var(--red)}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--bg)}
+.login-card{background:var(--surf);border:1.5px solid var(--border);border-radius:16px;padding:32px;width:100%;max-width:360px}
+.login-logo{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:24px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);text-align:center;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:8px}
+.login-sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:28px}
+.login-err{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.4);color:var(--red);border-radius:6px;padding:10px 14px;font-size:13px;margin-bottom:14px;text-align:center}
+
+/* COMBOBOX */
+.combo-custom{width:100%;margin-top:5px;background:var(--card);border:1.5px solid var(--accent);border-radius:5px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;padding:8px 10px;outline:none}
+
+.dead-capital{position:absolute;top:7px;left:7px;background:rgba(248,81,73,.9);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:900;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;border-radius:3px;display:flex;align-items:center;gap:3px}
+.site-footer{text-align:center;padding:18px 20px;color:var(--muted);font-size:11px;border-top:1px solid var(--border);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;font-weight:700;margin-top:auto}
+.site-footer span{color:var(--accent)}
+/* ===== DESKTOP ONLY — larger fonts and spacing ===== */
+@media(min-width:769px){
+  body{font-size:15px;line-height:1.5}
+  .page{padding:24px 28px}
+  .page-title{font-size:32px}
+  .page-sub{font-size:14px}
+  .kpi-val{font-size:38px}
+  .kpi-lbl{font-size:10px;letter-spacing:2px}
+  .kpi-sub{font-size:12px}
+  .kpi{padding:16px 20px}
+  .kpi-grid{gap:14px;margin-bottom:24px}
+  .section-title{font-size:15px;margin-bottom:14px}
+  .card-panel{padding:18px 20px;margin-bottom:20px;border-radius:12px}
+  .sb-item{font-size:15px;padding:10px 14px;gap:12px}
+  .sb-logo-text{font-size:20px}
+  .sb-section{font-size:10px}
+  .topbar{height:60px;padding:0 24px}
+  .topbar-title{font-size:18px}
+  .tire-grid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+  .tire-size{font-size:20px}
+  .tire-cod{font-size:12px}
+  .tire-loc{font-size:12px}
+  .tire-thumb{height:150px}
+  .tire-info{padding:10px 12px}
+  .auto-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+  .auto-img{height:170px}
+  .auto-name{font-size:22px}
+  .auto-sub{font-size:13px}
+  .auto-price{font-size:16px}
+  .status-tabs{gap:8px;margin-bottom:16px}
+  .stab{font-size:13px;padding:7px 16px}
+  .modal{padding:28px;border-radius:16px;max-width:560px}
+  .modal-title{font-size:20px;margin-bottom:20px}
+  .fg2{margin-bottom:16px}
+  .fg2 label{font-size:10px;margin-bottom:6px}
+  .fg2 input,.fg2 select,.fg2 textarea{font-size:14px;padding:10px 12px;border-radius:7px}
+  .btn-save{font-size:13px;padding:9px 20px;border-radius:7px}
+  .btn-cancel{font-size:12px;padding:8px 14px}
+  .btn-sm{font-size:11px;padding:5px 11px}
+  .btn-add-main{font-size:13px;padding:9px 18px;border-radius:8px}
+  .two-col{gap:14px}
+  .spec-box{padding:10px 14px}
+  .spec-lbl{font-size:9px}
+  .spec-val{font-size:20px}
+  .act-main{font-size:14px}
+  .act-time{font-size:12px}
+  .act-dot{width:10px;height:10px;margin-top:5px}
+  .log-badge{font-size:10px;padding:3px 9px}
+  .log-user{font-size:14px}
+  .log-detail{font-size:12px}
+  .log-time{font-size:11px}
+  .zadatak{padding:14px 18px;border-radius:10px}
+  .zadatak-title{font-size:17px}
+  .zadatak-opis{font-size:13px}
+  .prioritet{font-size:10px;padding:3px 8px}
+  .trosak-name{font-size:18px}
+  .dio-naziv{font-size:13px}
+  .dio-plan{font-size:12px}
+  .dio-stv{font-size:14px}
+  .set-tab{font-size:12px;padding:6px 14px}
+  .res-count{font-size:12px}
+  .sf-wrap{padding:14px 18px;margin-bottom:16px}
+  .user-item{padding:12px 18px}
+  .site-footer{font-size:12px;padding:22px}
+  .sidebar{width:240px}
+  .content{margin-left:240px}
+  @media(min-width:769px){.sidebar{transform:translateX(0)}}
+  /* Table and list content */
+  .act-main{font-size:14px}
+  .trosak-head .trosak-name{font-size:19px}
+  .dio-naziv{font-size:14px}
+  .dio-plan,.dio-stv{font-size:13px}
+  .tire-info .tire-loc{font-size:12px}
+  .auto-info .auto-sub{font-size:13px}
+  .log-detail{font-size:12px}
+  .user-item{padding:14px 18px;font-size:14px}
+  /* Forms bigger */
+  .overlay .fg2 label{font-size:11px}
+  .overlay .fg2 input,.overlay .fg2 select,.overlay .fg2 textarea{font-size:15px;padding:11px 13px}
+  /* KPI bigger */
+  .kpi-val{font-size:40px}
+  /* Dashboard cards */
+  .card-panel .act-main{font-size:14px}
+  /* Filters */
+  .sf-wrap .fg input,.sf-wrap .fg select{font-size:14px;padding:9px 11px}
+  /* Badges */
+  .bs{font-size:10px;padding:3px 7px}
+  .tip-badge{font-size:11px}
+  .prioritet{font-size:11px}
+}
+
+@media(max-width:600px){
+  .two-col{grid-template-columns:1fr}
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .tire-grid{grid-template-columns:1fr 1fr}
+  .auto-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+const {useState,useMemo,useRef,useEffect,useCallback} = React;
+
+// ===== API =====
+function getToken(){return localStorage.getItem('adg_token');}
+async function api(path,opts={}){
+  const token=getToken();
+  const res=await fetch('/api'+path,{
+    headers:{'Content-Type':'application/json',...(token?{'Authorization':'Bearer '+token}:{})},
+    ...opts,body:opts.body?JSON.stringify(opts.body):undefined
+  });
+  const data=await res.json();
+  if(res.status===401){localStorage.removeItem('adg_token');window.location.reload();throw new Error('Sesija istekla');}
+  if(!res.ok) throw new Error(data.error||'Greška');
+  return data;
+}
+
+// ===== UTILS =====
+function resizeImage(file,maxW=1200,maxH=1200,quality=0.82){
+  return new Promise(resolve=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        if(w>maxW||h>maxH){const ratio=Math.min(maxW/w,maxH/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}
+        const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',quality));
+      };img.src=e.target.result;
+    };reader.readAsDataURL(file);
+  });
+}
+function promjerDisp(p){if(!p)return '';return /^[0-9]/.test(p)?'R'+p:p;}
+function tipLbl(t){return {komad:'Komad (1)',par:'Par (2)',set:'Set (4)'}[t]||t||'';}
+function statusLbl(s){return {na_stanju:'Na stanju',prodat:'Prodat'}[s]||s||'';}
+function timeAgo(dt){
+  const sec=Math.floor((Date.now()-new Date(dt).getTime())/1000);
+  if(sec<60)return 'upravo';if(sec<3600)return Math.floor(sec/60)+' min';
+  if(sec<86400)return Math.floor(sec/3600)+' h';return Math.floor(sec/86400)+' d';
+}
+const PROMJER_OPTIONS=['13','14','15','16','16C','17','17C','18','19','20','21'];
+const SIRINA_OPTIONS=['155','165','175','185','195','205','215','225','235','245','255'];
+const VISINA_OPTIONS=['40','45','50','55','60','65','70','75','80'];
+const EMPTY_GUMA={sezona:'',sirina:'',visina:'',promjer:'',napomena:'',policaKod:'',slike:[],dubina:'',dot:'',tip:'',cijena:''};
+
+class ErrorBoundary extends React.Component {
+  constructor(props){super(props);this.state={error:null};}
+  static getDerivedStateFromError(e){return {error:e};}
+  render(){
+    if(this.state.error){
+      return <div style={{padding:24,background:'#1a0a0a',color:'#f85149',fontFamily:'monospace',fontSize:12,borderRadius:8,margin:16,border:'1px solid #f85149'}}>
+        <div style={{fontFamily:"Barlow Condensed,sans-serif",fontSize:16,fontWeight:900,marginBottom:12}}>❌ GREŠKA — pošalji ovo programeru:</div>
+        <pre style={{whiteSpace:'pre-wrap',wordBreak:'break-all'}}>{this.state.error?.message}</pre>
+        <pre style={{whiteSpace:'pre-wrap',wordBreak:'break-all',fontSize:10,color:'#f8514988',marginTop:8}}>{this.state.error?.stack?.slice(0,500)}</pre>
+        <button onClick={()=>this.setState({error:null})} style={{marginTop:12,background:'#f85149',color:'#fff',border:'none',borderRadius:4,padding:'6px 12px',cursor:'pointer',fontFamily:'Barlow Condensed,sans-serif',fontWeight:700}}>Pokušaj ponovo</button>
+      </div>;
+    }
+    return this.props.children;
+  }
+}
+
+// ===== ICONS =====
+const Icons={
+  Tire:({size=20})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="22"/><line x1="2" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="22" y2="12"/></svg>,
+  Car:({size=20})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-4h10l2 4h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/></svg>,
+  Task:({size=20})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
+  Money:({size=20})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+  Home:({size=20})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  Gear:({size=18})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+  Plus:({size=13})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  Trash:({size=12})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>,
+  Edit:({size=12})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  Check:({size=11})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>,
+  Logout:({size=16})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+  Chart:({size=20})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+  Log:({size=20})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+  Img:({size=20})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
+  Search:({size=13})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  Move:({size=14})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 9l-3 3 3 3"/><path d="M19 9l3 3-3 3"/><path d="M2 12h20"/></svg>,
+  History:({size=14})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  Link:({size=13})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
+};
+
+// ===== COMBOBOX =====
+function ComboBox({value,onChange,options,placeholder,normalize}){
+  const [showCustom,setShowCustom]=useState(false);
+  const isCustom=value&&!options.includes(value);
+  return(<div>
+    <select style={{width:'100%',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:5,color:value&&!isCustom?'var(--text)':'var(--muted)',fontFamily:'Barlow,sans-serif',fontSize:13,padding:'8px 10px',outline:'none'}}
+      value={showCustom||isCustom?'__custom__':value||''}
+      onChange={e=>{if(e.target.value==='__custom__'){setShowCustom(true);onChange('');}else{setShowCustom(false);onChange(normalize?normalize(e.target.value):e.target.value);}}}>
+      <option value="">{placeholder||'Odaberi'}</option>
+      {options.map(o=><option key={o} value={o}>{o}</option>)}
+      <option value="__custom__">Unesi ručno...</option>
+    </select>
+    {(showCustom||isCustom)&&<input autoFocus className="combo-custom" value={value} placeholder="Unesi vrijednost..."
+      onChange={e=>onChange(normalize?normalize(e.target.value):e.target.value)}/>}
+  </div>);
+}
+
+// ===== IMAGE UPLOAD HOOK =====
+function useImageUpload(initialSlike=[]){
+  const [slike,setSlike]=useState(initialSlike);
+  const [uploadState,setUploadState]=useState({uploading:false,done:0,total:0});
+  const uploadingRef=useRef(false);
+  const fileRef=useRef();
+  const progress=uploadState.total>0?Math.round((uploadState.done/uploadState.total)*100):0;
+  const handleFiles=async(e)=>{
+    const files=Array.from(e.target.files);if(!files.length)return;e.target.value='';
+    if(uploadingRef.current)return;uploadingRef.current=true;
+    setUploadState({uploading:true,done:0,total:files.length});
+    const results=[];
+    for(let i=0;i<files.length;i++){
+      // Resize on client side first
+      const dataURL=await resizeImage(files[i]);
+      // Upload to server disk
+      try{
+        const r=await fetch('/api/upload-slika',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dataURL})});
+        const d=await r.json();
+        results.push(d.url||dataURL); // Fallback to base64 if upload fails
+      }catch(err){
+        results.push(dataURL); // Fallback to base64
+      }
+      setUploadState({uploading:true,done:i+1,total:files.length});
+    }
+    setSlike(p=>[...p,...results]);setUploadState({uploading:false,done:0,total:0});uploadingRef.current=false;
+  };
+  const removeImg=(i)=>setSlike(p=>p.filter((_,j)=>j!==i));
+  return{slike,setSlike,uploadState,uploadingRef,progress,handleFiles,removeImg,fileRef};
+}
+
+// ===== LIGHTBOX =====
+function Lightbox({images,startIndex,onClose}){
+  const [idx,setIdx]=useState(startIndex||0);
+  const [scale,setScale]=useState(1);
+  const [offset,setOffset]=useState({x:0,y:0});
+  const [dragging,setDragging]=useState(false);
+  const pinchRef=useRef(null);const pinchScaleRef=useRef(1);
+  const dragRef=useRef(null);const lastTap=useRef(0);
+  const touchStartX=useRef(null);const touchStartY=useRef(null);
+  useEffect(()=>{setScale(1);setOffset({x:0,y:0});},[idx]);
+  useEffect(()=>{
+    const h=e=>{
+      if(e.key==='Escape'){if(scale>1){setScale(1);setOffset({x:0,y:0});}else onClose();}
+      if(e.key==='ArrowRight'&&scale===1)setIdx(i=>Math.min(i+1,images.length-1));
+      if(e.key==='ArrowLeft'&&scale===1)setIdx(i=>Math.max(i-1,0));
+    };
+    window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h);
+  },[images,onClose,scale]);
+  const onTouchStart=e=>{
+    if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;pinchRef.current=Math.sqrt(dx*dx+dy*dy);pinchScaleRef.current=scale;return;}
+    touchStartX.current=e.touches[0].clientX;touchStartY.current=e.touches[0].clientY;
+    if(scale>1)dragRef.current={x:e.touches[0].clientX-offset.x,y:e.touches[0].clientY-offset.y};
+    const now=Date.now();if(now-lastTap.current<300){e.stopPropagation();if(scale>1){setScale(1);setOffset({x:0,y:0});}else setScale(2.5);lastTap.current=0;}else lastTap.current=now;
+  };
+  const onTouchMove=e=>{
+    e.stopPropagation();
+    if(e.touches.length===2&&pinchRef.current){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;const d=Math.sqrt(dx*dx+dy*dy);const ns=Math.min(Math.max(pinchScaleRef.current*(d/pinchRef.current),1),5);setScale(ns);if(ns===1)setOffset({x:0,y:0});return;}
+    if(e.touches.length===1&&scale>1&&dragRef.current)setOffset({x:e.touches[0].clientX-dragRef.current.x,y:e.touches[0].clientY-dragRef.current.y});
+  };
+  const onTouchEnd=e=>{
+    if(pinchRef.current){pinchRef.current=null;return;}if(scale>1){dragRef.current=null;return;}
+    if(touchStartX.current===null)return;
+    const dx=e.changedTouches[0].clientX-touchStartX.current,dy=Math.abs(e.changedTouches[0].clientY-touchStartY.current);
+    if(dy<40){if(dx>60)setIdx(i=>Math.max(i-1,0));else if(dx<-60)setIdx(i=>Math.min(i+1,images.length-1));}
+    touchStartX.current=null;touchStartY.current=null;
+  };
+  const onWheel=e=>{e.stopPropagation();setScale(s=>{const n=Math.min(Math.max(s+(e.deltaY>0?-.3:.3),1),5);if(n===1)setOffset({x:0,y:0});return n;});};
+  return(
+    <div className="lightbox" onClick={scale>1?undefined:onClose} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onWheel={onWheel} onMouseMove={e=>{if(dragging&&scale>1&&dragRef.current)setOffset({x:e.clientX-dragRef.current.x,y:e.clientY-dragRef.current.y});}} onMouseUp={()=>setDragging(false)} style={{cursor:scale>1?(dragging?'grabbing':'grab'):'default'}}>
+      <button className="lightbox-close" onClick={onClose}>×</button>
+      {images.length>1&&<div style={{position:'absolute',top:16,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.6)',color:'#fff',fontFamily:'Barlow Condensed,sans-serif',fontSize:13,fontWeight:700,padding:'3px 12px',borderRadius:20,letterSpacing:'1px',zIndex:1}}>{idx+1} / {images.length}</div>}
+      {scale>1&&<div style={{position:'absolute',top:16,right:16,background:'rgba(0,0,0,.6)',color:'#fff',fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,padding:'3px 10px',borderRadius:20,zIndex:1}}>{Math.round(scale*100)}%</div>}
+      {scale>1&&<button onClick={e=>{e.stopPropagation();setScale(1);setOffset({x:0,y:0});}} style={{position:'absolute',bottom:60,right:16,background:'rgba(255,255,255,.15)',border:'none',color:'#fff',borderRadius:8,padding:'6px 12px',cursor:'pointer',fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,zIndex:1}}>Poništi zoom</button>}
+      {scale===1&&idx>0&&<button className="lightbox-nav prev" onClick={e=>{e.stopPropagation();setIdx(i=>Math.max(i-1,0));}}>‹</button>}
+      <img src={images[idx]} alt="" onClick={e=>{if(scale>1)e.stopPropagation();}} onMouseDown={e=>{if(scale>1){e.stopPropagation();setDragging(true);dragRef.current={x:e.clientX-offset.x,y:e.clientY-offset.y};}}} style={{maxWidth:'100%',maxHeight:'80vh',borderRadius:8,objectFit:'contain',userSelect:'none',transform:`scale(${scale}) translate(${offset.x/scale}px,${offset.y/scale}px)`,transition:dragging?'none':'transform .15s ease',cursor:scale>1?(dragging?'grabbing':'grab'):'zoom-in'}}/>
+      {scale===1&&idx<images.length-1&&<button className="lightbox-nav next" onClick={e=>{e.stopPropagation();setIdx(i=>Math.min(i+1,images.length-1));}}>›</button>}
+      {images.length>1&&scale===1&&<div style={{position:'absolute',bottom:20,left:'50%',transform:'translateX(-50%)',display:'flex',gap:6}}>{images.map((_,i)=><span key={i} onClick={e=>{e.stopPropagation();setIdx(i);}} style={{width:i===idx?20:8,height:8,borderRadius:4,background:i===idx?'#fff':'rgba(255,255,255,.4)',cursor:'pointer',transition:'all .2s'}}/>)}</div>}
+    </div>
+  );
+}
+
+// ===== IMG UPLOAD UI =====
+function ImgUploadUI({slike,progress,uploadState,uploadingRef,handleFiles,removeImg,fileRef,onThumbClick}){
+  return(<div className="fg2">
+    <label>Slike</label>
+    <div className="img-zone" onClick={()=>!uploadState.uploading&&(()=>{if(fileRef.current){fileRef.current.removeAttribute('capture');fileRef.current.click();}})()}>
+      <Icons.Img size={22}/><span>{uploadState.uploading?'Obrađivanje...':'Dodaj slike'}</span>
+      {!uploadState.uploading&&<span style={{fontSize:10,color:'var(--muted)'}}>JPG, PNG — automatski se optimizuju</span>}
+    </div>
+    {uploadState.uploading&&<div style={{marginTop:6}}><div className="upload-bar-wrap"><div className="upload-bar" style={{width:progress+'%'}}/></div><div style={{fontSize:10,color:'var(--muted)',textAlign:'center'}}>Obrađena {uploadState.done} od {uploadState.total} ({progress}%)</div></div>}
+    <input ref={fileRef} type="file" accept="image/*" multiple style={{display:'none'}} onChange={handleFiles}/>
+    <div style={{display:'flex',gap:6,marginTop:6}}>
+      <button style={{flex:1,background:'none',border:'1px dashed var(--border)',color:'var(--muted)',borderRadius:5,padding:'5px',fontSize:11,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,cursor:'pointer',letterSpacing:'1px',textTransform:'uppercase'}} onClick={()=>{if(fileRef.current){fileRef.current.removeAttribute('capture');fileRef.current.click();}}}>🖼 Galerija</button>
+      <button style={{flex:1,background:'none',border:'1px dashed var(--accent)',color:'var(--accent)',borderRadius:5,padding:'5px',fontSize:11,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,cursor:'pointer',letterSpacing:'1px',textTransform:'uppercase'}} onClick={()=>{if(fileRef.current){fileRef.current.setAttribute('capture','environment');fileRef.current.click();}}}>📷 Kamera</button>
+    </div>
+    {slike.length>0&&<div className="img-grid">{slike.map((src,i)=><div key={i} className="img-item"><img src={src} alt="" onClick={()=>onThumbClick&&onThumbClick(i)}/><button className="img-rm" onClick={()=>removeImg(i)}>×</button></div>)}</div>}
+  </div>);
+}
+
+// ===== LOGIN =====
+function LoginScreen({onLogin}){
+  const [username,setUsername]=useState('');const [password,setPassword]=useState('');
+  const [loading,setLoading]=useState(false);const [error,setError]=useState('');
+  const doLogin=async()=>{
+    if(!username||!password){setError('Unesite korisničko ime i lozinku');return;}
+    setLoading(true);setError('');
+    try{const d=await api('/auth/login',{method:'POST',body:{username,password}});localStorage.setItem('adg_token',d.token);onLogin({username:d.username,role:d.role});}
+    catch(e){setError(e.message);}setLoading(false);
+  };
+  return(<div className="login-wrap"><div className="login-card">
+    <div className="login-logo"><img src="/logo-orig.webp" alt="Auto Delić" style={{height:64,objectFit:"contain"}}/></div>
+    <div className="login-sub">Upravljanje auto otpadom</div>
+    {error&&<div className="login-err">{error}</div>}
+    <div className="fg2"><label>Korisničko ime</label><input autoFocus value={username} onChange={e=>setUsername(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doLogin()} placeholder="admin"/></div>
+    <div className="fg2"><label>Lozinka</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doLogin()} placeholder="••••••"/></div>
+    <button className="btn-save" style={{width:'100%',marginTop:4,padding:'10px',fontSize:14}} onClick={doLogin} disabled={loading}>{loading?'Prijavljivanje...':'Prijavi se'}</button>
+  </div></div>);
+}
+
+// ===== DASHBOARD =====
+function Dashboard({user,onNav,showToast}){
+  const [data,setData]=useState(null);
+  useEffect(()=>{api('/dashboard').then(setData).catch(console.error);},[]);
+  if(!data)return <div className="page"><div style={{color:'var(--muted)',padding:40,textAlign:'center',fontFamily:'Barlow Condensed,sans-serif',letterSpacing:2,textTransform:'uppercase',fontSize:13}}>Učitavanje...</div></div>;
+  const aktDot={PRIJAVA:'blue',DODANA_GUMA:'green',PRODANA_GUMA:'green',PREMJESTENA_GUMA:'accent',EDITOVANA_GUMA:'accent',OBRISANA_GUMA:'red',DODAN_AUTO:'blue',PRODAT_AUTO:'green',OBRISAN_AUTO:'red'};
+  const aktNaziv={PRIJAVA:'Prijava',DODANA_GUMA:'Dodana guma',PRODANA_GUMA:'Prodana guma',PREMJESTENA_GUMA:'Premještena',EDITOVANA_GUMA:'Izmijenjena guma',OBRISANA_GUMA:'Obrisana guma',DODAN_AUTO:'Dodan auto',PRODAT_AUTO:'Prodat auto',OBRISAN_AUTO:'Obrisan auto'};
+  return(<div className="page">
+    <div className="page-header">
+      <div className="page-title">Dobrodošao, {user.username} 👋</div>
+      <div className="page-sub">Pregled stanja — {new Date().toLocaleDateString('sr-Latn-RS',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+    </div>
+    <div className="kpi-grid">
+      <div className="kpi accent" style={{cursor:'pointer'}} onClick={()=>onNav('gume')}><div className="kpi-lbl">Gume na stanju</div><div className="kpi-val" style={{color:'var(--accent)'}}>{data.gume_stanje}</div><div className="kpi-sub">{data.gume_prodato} prodato ukupno</div></div>
+      <div className="kpi green" style={{cursor:'pointer'}} onClick={()=>onNav('auta')}><div className="kpi-lbl">Auta na stanju</div><div className="kpi-val" style={{color:'var(--green)'}}>{data.auta_stanje}</div><div className="kpi-sub">{data.auta_prodato} prodato ukupno</div></div>
+      {user.role==='admin'&&<div className="kpi blue" style={{cursor:'pointer'}} onClick={()=>onNav('zadaci')}><div className="kpi-lbl">Otvoreni zadaci</div><div className="kpi-val" style={{color:'var(--blue)'}}>{data.zadaci_otvoreno}</div><div className="kpi-sub">to-do lista</div></div>}
+      {user.role==='admin'&&<div className="kpi purple" style={{cursor:'pointer'}} onClick={()=>onNav('troskovi')}><div className="kpi-lbl">U popravci</div><div className="kpi-val" style={{color:'var(--purple)'}}>{data.troskovi_aktivno}</div><div className="kpi-sub">auta na popravci</div></div>}
+    </div>
+    {data&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+      <div className="card-panel">
+        <div className="section-title">Posljednje dodano — Gume</div>
+        {(data.zadnje_gume||[]).length===0?<div style={{fontSize:12,color:'var(--muted)'}}>Nema guma</div>:
+        (data.zadnje_gume||[]).map(g=><div key={g.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>onNav('gume')}>
+          <div><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>{g.sirina}/{g.visina} {promjerDisp(g.promjer)}</div><div style={{fontSize:10,color:'var(--muted)'}}>{g.sifra} · {g.polica_kod}</div></div>
+          <button className="btn-sm" onClick={e=>{e.stopPropagation();onNav('gume');}}>Pregledaj</button>
+        </div>)}
+      </div>
+      <div className="card-panel">
+        <div className="section-title">Posljednje dodano — Auta</div>
+        {(data.zadnja_auta||[]).length===0?<div style={{fontSize:12,color:'var(--muted)'}}>Nema auta</div>:
+        (data.zadnja_auta||[]).map(a=><div key={a.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>onNav('auta')}>
+          <div><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>{a.marka} {a.model}</div><div style={{fontSize:10,color:'var(--muted)'}}>{a.sifra} · {a.godiste}</div></div>
+          <button className="btn-sm" onClick={e=>{e.stopPropagation();onNav('auta');}}>Pregledaj</button>
+        </div>)}
+      </div>
+    </div>}
+    {user.role==='admin'&&<div className="card-panel" style={{marginTop:14}}>
+      <div className="section-title">Posljednje aktivnosti</div>
+      {(data.aktivnosti||[]).length===0?<div style={{fontSize:12,color:'var(--muted)'}}>Nema aktivnosti</div>:
+      (data.aktivnosti||[]).map((a,i)=>{
+        const dt=new Date(a.created_at);
+        return(<div key={i} className="act-item">
+          <div className={'act-dot '+(aktDot[a.akcija]||'accent')}/>
+          <div className="act-body"><div className="act-main"><b>{a.korisnik}</b> — {aktNaziv[a.akcija]||a.akcija}{a.detalji&&<span style={{color:'var(--muted)'}}> · {a.detalji}</span>}</div></div>
+          <div className="act-time">{timeAgo(a.created_at)}</div>
+        </div>);
+      })}
+    </div>}
+  </div>);
+}
+
+// ===== AUTA MODULE =====
+// ===== PODESAVANJA MODULE =====
+function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice}){
+  const [setTab,setSetTab]=useState('magacin');
+  const [korisnici,setKorisnici]=useState([]);
+  const [cjenovnikLista,setCjenovnikLista]=useState([]);
+  const [cjenovnikModal,setCjenovnikModal]=useState(false);
+  const [editCjenovnik,setEditCjenovnik]=useState(null);
+  const [cjenovnikForm,setCjenovnikForm]=useState({dimenzija:'',sezona:'',cijena_min:'',cijena_max:'',napomena:''});
+  const loadCjenovnik=async()=>{try{const d=await api('/cjenovnik');setCjenovnikLista(d);}catch(e){}};
+  const [openMag,setOpenMag]=useState({});const [openProlaz,setOpenProlaz]=useState({});const [openRegal,setOpenRegal]=useState({});
+  const [customPolica,setCustomPolica]=useState({});
+  const [newMagName,setNewMagName]=useState('');
+  const [newUser,setNewUser]=useState({username:'',password:'',role:'radnik'});
+  const [editUser,setEditUser]=useState(null);
+  const [customSirina,setCustomSirina]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_sirina')||'[]');}catch{return [];}});
+  const [customVisina,setCustomVisina]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_visina')||'[]');}catch{return [];}});
+  const [customPromjer,setCustomPromjer]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_promjer')||'[]');}catch{return [];}});
+  const [newDimVal,setNewDimVal]=useState({sirina:'',visina:'',promjer:''});
+
+  const loadKorisnici=async()=>{try{const k=await api('/korisnici');setKorisnici(k);}catch(e){showToast(e.message,'err');}};
+  useEffect(()=>{
+    if(setTab==='korisnici')loadKorisnici();
+    if(setTab==='cjenovnik')loadCjenovnik();
+  },[setTab]);
+
+  const doDelMag=async(id)=>{if(!window.confirm('Brisanje magacina će obrisati i sve prolaze, regale i police unutar njega.\nDa li ste sigurni?'))return;await api('/magacini/'+id,{method:'DELETE'});setMagacini(p=>p.filter(m=>m.id!=id));await loadPolice();showToast('Magacin obrisan');};
+  const doAddMag=async()=>{if(!newMagName.trim())return;try{const m=await api('/magacini',{method:'POST',body:{naziv:newMagName.trim()}});m.prolazi=[];setMagacini(p=>[...p,m]);setOpenMag(p=>({...p,[m.id]:true}));setNewMagName('');showToast('Magacin "'+newMagName.trim()+'" kreiran');}catch(e){showToast(e.message,'err');}};
+  const doAddMagDirect=async(naziv)=>{try{const m=await api('/magacini',{method:'POST',body:{naziv}});m.prolazi=[];setMagacini(p=>[...p,m]);setOpenMag(p=>({...p,[m.id]:true}));showToast('Magacin "'+naziv+'" kreiran');}catch(e){showToast(e.message,'err');}};
+  const doAddProlaz=async(mid)=>{const pr=await api('/prolazi',{method:'POST',body:{magacin_id:mid}});pr.regali=[];setMagacini(p=>p.map(m=>m.id!=mid?m:{...m,prolazi:[...m.prolazi,pr]}));setOpenProlaz(p=>({...p,[pr.id]:true}));};
+  const doDelProlaz=async(mid,pid)=>{if(!window.confirm('Obrisati prolaz i sve u njemu?'))return;await api('/prolazi/'+pid,{method:'DELETE'});setMagacini(p=>p.map(m=>m.id!=mid?m:{...m,prolazi:m.prolazi.filter(pr=>pr.id!=pid)}));await loadPolice();};
+  const doAddRegal=async(mid,pid)=>{const r=await api('/regali',{method:'POST',body:{prolaz_id:pid}});r.police=[];setMagacini(p=>p.map(m=>m.id!=mid?m:{...m,prolazi:m.prolazi.map(pr=>pr.id!=pid?pr:{...pr,regali:[...pr.regali,r]})}));setOpenRegal(p=>({...p,[r.id]:true}));};
+  const doDelRegal=async(mid,pid,rid)=>{if(!window.confirm('Obrisati regal i sve police u njemu?'))return;await api('/regali/'+rid,{method:'DELETE'});setMagacini(p=>p.map(m=>m.id!=mid?m:{...m,prolazi:m.prolazi.map(pr=>pr.id!=pid?pr:{...pr,regali:pr.regali.filter(r=>r.id!=rid)})}));await loadPolice();};
+  const doAddPolica=async(mid,pid,rid)=>{try{const pl=await api('/police/auto',{method:'POST',body:{regal_id:rid}});setMagacini(p=>p.map(m=>m.id!=mid?m:{...m,prolazi:m.prolazi.map(pr=>pr.id!=pid?pr:{...pr,regali:pr.regali.map(r=>r.id!=rid?r:{...r,police:[...r.police,pl]})})}));setOpenRegal(p=>({...p,[rid]:true}));await loadPolice();}catch(e){showToast(e.message,'err');}};
+  const doAddCustomPolica=async(rid,mid,pid)=>{const raw=(customPolica[rid]||'').trim();if(!raw)return;try{const pl=await api('/police/custom',{method:'POST',body:{regal_id:rid,naziv:raw}});setMagacini(p=>p.map(m=>m.id!=mid?m:{...m,prolazi:m.prolazi.map(pr=>pr.id!=pid?pr:{...pr,regali:pr.regali.map(r=>r.id!=rid?r:{...r,police:[...r.police,pl]})})}));setCustomPolica(p=>({...p,[rid]:''}));setOpenRegal(p=>({...p,[rid]:true}));await loadPolice();}catch(e){showToast(e.message,'err');}};
+  const doDelPolica=async(mid,pid,rid,plid)=>{if(!window.confirm('Obrisati policu?'))return;await api('/police/'+plid,{method:'DELETE'});setMagacini(p=>p.map(m=>m.id!=mid?m:{...m,prolazi:m.prolazi.map(pr=>pr.id!=pid?pr:{...pr,regali:pr.regali.map(r=>r.id!=rid?r:{...r,police:r.police.filter(pl=>pl.id!=plid)})})}));await loadPolice();};
+  const doAddUser=async()=>{if(!newUser.username||!newUser.password){showToast('Unesite korisničko ime i lozinku','err');return;}try{const k=await api('/korisnici',{method:'POST',body:newUser});setKorisnici(p=>[...p,k]);setNewUser({username:'',password:'',role:'radnik'});showToast('Korisnik "'+k.username+'" kreiran');}catch(e){showToast(e.message,'err');}};
+  const doDelUser=async(id)=>{if(!window.confirm('Da li ste sigurni da želite obrisati ovog korisnika?'))return;await api('/korisnici/'+id,{method:'DELETE'});setKorisnici(p=>p.filter(k=>k.id!=id));showToast('Korisnik obrisan');};
+  const doEditUser=async()=>{if(!editUser||!editUser.username.trim()){showToast('Korisničko ime je obavezno','err');return;}try{const body={username:editUser.username.trim(),role:editUser.role};if(editUser.password.trim())body.password=editUser.password.trim();const updated=await api('/korisnici/'+editUser.id,{method:'PUT',body});setKorisnici(p=>p.map(k=>k.id===updated.id?updated:k));setEditUser(null);showToast('Korisnik "'+updated.username+'" ažuriran');}catch(e){showToast(e.message,'err');}};
+  const doBackup=async()=>{try{showToast('Preuzimanje rezervne kopije...');const res=await fetch('/api/backup',{headers:{'Authorization':'Bearer '+getToken()}});if(!res.ok){const d=await res.json();showToast(d.error||'Greška','err');return;}const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');const date=new Date().toISOString().slice(0,10);a.href=url;a.download='autodelic-backup-'+date+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);showToast('Rezervna kopija preuzeta!');}catch(e){showToast('Greška: '+e.message,'err');}};
+  const addCustomDim=(type,val)=>{val=val.trim();if(!val)return;if(type==='sirina'){const n=[...customSirina,val];setCustomSirina(n);localStorage.setItem('adg_sirina',JSON.stringify(n));}if(type==='visina'){const n=[...customVisina,val];setCustomVisina(n);localStorage.setItem('adg_visina',JSON.stringify(n));}if(type==='promjer'){const n=[...customPromjer,val.toUpperCase()];setCustomPromjer(n);localStorage.setItem('adg_promjer',JSON.stringify(n));}setNewDimVal(p=>({...p,[type]:''}));showToast('Dimenzija dodana');};
+  const removeCustomDim=(type,val)=>{if(type==='sirina'){const n=customSirina.filter(x=>x!==val);setCustomSirina(n);localStorage.setItem('adg_sirina',JSON.stringify(n));}if(type==='visina'){const n=customVisina.filter(x=>x!==val);setCustomVisina(n);localStorage.setItem('adg_visina',JSON.stringify(n));}if(type==='promjer'){const n=customPromjer.filter(x=>x!==val);setCustomPromjer(n);localStorage.setItem('adg_promjer',JSON.stringify(n));}};
+
+  return(<div className="page">
+    <div className="set-tabs">
+      <button className={'set-tab'+(setTab==='magacin'?' on':'')} onClick={()=>setSetTab('magacin')}>🏠 Magacin</button>
+      <button className={'set-tab'+(setTab==='karta'?' on':'')} onClick={()=>setSetTab('karta')}>🗺 Karta</button>
+      <button className={'set-tab'+(setTab==='korisnici'?' on':'')} onClick={()=>setSetTab('korisnici')}>👥 Korisnici</button>
+      <button className={'set-tab'+(setTab==='dimenzije'?' on':'')} onClick={()=>setSetTab('dimenzije')}>📐 Dimenzije</button>
+      <button className={'set-tab'+(setTab==='cjenovnik'?' on':'')} onClick={()=>setSetTab('cjenovnik')}>💰 Cjenovnik</button>
+    </div>
+
+    {setTab==='magacin'&&<>
+      <div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
+        <button className="btn-new" onClick={()=>{const n=prompt('Naziv novog magacina:');if(n&&n.trim())doAddMagDirect(n.trim());}}><Icons.Plus size={11}/> Novi magacin</button>
+      </div>
+      {magacini.map(m=><div key={m.id} className="mag-card">
+        <div className="tree-row" onClick={()=>setOpenMag(p=>({...p,[m.id]:!p[m.id]}))}>
+          <div className="tree-lbl-mag">{m.naziv}<span style={{fontSize:10,color:'var(--muted)',fontWeight:400,textTransform:'none',letterSpacing:0,marginLeft:6}}>{m.prolazi.length} prolaza</span></div>
+          <div style={{display:'flex',gap:5,alignItems:'center'}}><span className="del-btn" onClick={e=>{e.stopPropagation();doDelMag(m.id);}}><Icons.Trash/></span><span style={{fontSize:9,color:'var(--muted)'}}>{openMag[m.id]?'▲':'▼'}</span></div>
+        </div>
+        {openMag[m.id]&&<div style={{padding:'0 12px 12px'}}>
+          {m.prolazi.map(pr=><div key={pr.id} style={{background:'var(--surf)',border:'1px solid var(--border)',borderRadius:5,overflow:'hidden',marginBottom:4}}>
+            <div className="tree-row" onClick={()=>setOpenProlaz(p=>({...p,[pr.id]:!p[pr.id]}))}>
+              <span className="tree-lbl-prolaz">{pr.naziv}</span>
+              <div style={{display:'flex',gap:4,alignItems:'center'}}><span className="del-btn" onClick={e=>{e.stopPropagation();doDelProlaz(m.id,pr.id);}}><Icons.Trash/></span><span style={{fontSize:9,color:'var(--muted)'}}>{openProlaz[pr.id]?'▲':'▼'}</span></div>
+            </div>
+            {openProlaz[pr.id]&&<div style={{padding:'4px 10px 10px'}}>
+              {pr.regali.map(r=><div key={r.id} style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,overflow:'hidden',marginBottom:3}}>
+                <div className="tree-row" onClick={()=>setOpenRegal(p=>({...p,[r.id]:!p[r.id]}))}>
+                  <span className="tree-lbl-regal">{r.naziv} ({r.police.length})</span>
+                  <div style={{display:'flex',gap:4,alignItems:'center'}}><span className="del-btn" onClick={e=>{e.stopPropagation();doDelRegal(m.id,pr.id,r.id);}}><Icons.Trash/></span><span style={{fontSize:9,color:'var(--muted)'}}>{openRegal[r.id]?'▲':'▼'}</span></div>
+                </div>
+                {openRegal[r.id]&&<div style={{padding:'4px 8px 8px'}}>
+                  <div className="police-wrap">{r.police.map(pl=><div key={pl.id} className="polica-chip">{pl.naziv}<span className="del-btn" style={{padding:0}} onClick={e=>{e.stopPropagation();doDelPolica(m.id,pr.id,r.id,pl.id);}}><span style={{fontSize:10}}>×</span></span></div>)}</div>
+                  <div className="add-row"><span className="add-btn" onClick={e=>{e.stopPropagation();doAddPolica(m.id,pr.id,r.id);}}><Icons.Plus size={9}/> Auto</span></div>
+                  <div style={{display:'flex',gap:4,marginTop:4}} onClick={e=>e.stopPropagation()}>
+                    <input className="cust-inp" placeholder="P2334" value={customPolica[r.id]||''} onChange={e=>setCustomPolica(p=>({...p,[r.id]:e.target.value}))} onKeyDown={e=>e.key==='Enter'&&doAddCustomPolica(r.id,m.id,pr.id)}/>
+                    <span className="add-btn" style={{border:'1px solid var(--accent)',color:'var(--accent)'}} onClick={()=>doAddCustomPolica(r.id,m.id,pr.id)}><Icons.Plus size={9}/> Custom</span>
+                  </div>
+                </div>}
+              </div>)}
+              <div className="add-row" onClick={e=>e.stopPropagation()}><span className="add-btn" onClick={()=>doAddRegal(m.id,pr.id)}><Icons.Plus size={9}/> Regal</span></div>
+            </div>}
+          </div>)}
+          <div className="add-row" onClick={e=>e.stopPropagation()}><span className="add-btn" onClick={()=>doAddProlaz(m.id)}><Icons.Plus size={9}/> Prolaz</span></div>
+        </div>}
+      </div>)}
+    </>}
+
+    {setTab==='korisnici'&&<>
+      <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:7,padding:'12px 14px',marginBottom:12}}>
+        <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)',marginBottom:9}}>Novi korisnik</div>
+        <div className="two-col" style={{gap:7,marginBottom:7}}>
+          <div className="fg2" style={{marginBottom:0}}><label>Korisničko ime</label><input value={newUser.username} onChange={e=>setNewUser(u=>({...u,username:e.target.value}))} placeholder="marko"/></div>
+          <div className="fg2" style={{marginBottom:0}}><label>Lozinka</label><input type="password" value={newUser.password} onChange={e=>setNewUser(u=>({...u,password:e.target.value}))} placeholder="••••••"/></div>
+        </div>
+        <div style={{display:'flex',gap:7,alignItems:'center'}}>
+          <div className="fg2" style={{marginBottom:0,flex:1}}><label>Uloga</label><select value={newUser.role} onChange={e=>setNewUser(u=>({...u,role:e.target.value}))}><option value="radnik">Radnik</option><option value="admin">Admin</option></select></div>
+          <button className="btn-new" style={{marginTop:14}} onClick={doAddUser}><Icons.Plus size={10}/> Dodaj</button>
+        </div>
+      </div>
+      {korisnici.map(k=><div key={k.id} className="user-item">
+        <div style={{flex:1,minWidth:0}}><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{k.username}</div><div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>{new Date(k.created_at).toLocaleDateString('sr-Latn-RS')}</div></div>
+        <div style={{display:'flex',alignItems:'center',gap:5,flexShrink:0}}>
+          <span className={'user-role '+k.role}>{k.role}</span>
+          <button className="del-btn" style={{color:'var(--blue)',opacity:.8}} title="Uredi" onClick={()=>setEditUser({...k,password:''})}><Icons.Edit/></button>
+          {k.role!=='admin'&&<button className="del-btn" onClick={()=>doDelUser(k.id)}><Icons.Trash/></button>}
+        </div>
+      </div>)}
+      <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)'}}>
+        <button className="btn-new" style={{background:'var(--blue)',width:'100%',justifyContent:'center',gap:6}} onClick={doBackup}>💾 Preuzmi rezervnu kopiju podataka</button>
+        <div style={{fontSize:10,color:'var(--muted)',marginTop:5,textAlign:'center'}}>JSON fajl — sačuvaj na sigurno mjesto</div>
+      </div>
+    </>}
+
+    {setTab==='karta'&&<KartaMagacinaInline showToast={showToast} magacini={magacini}/>}
+    {setTab==='dimenzije'&&<div>{[{label:'Širina (mm)',type:'sirina',base:SIRINA_OPTIONS,custom:customSirina},{label:'Profil (%)',type:'visina',base:VISINA_OPTIONS,custom:customVisina},{label:'Prečnik',type:'promjer',base:PROMJER_OPTIONS,custom:customPromjer}].map(({label,type,base,custom})=>(
+      <div key={type} style={{marginBottom:14,background:'var(--card)',border:'1px solid var(--border)',borderRadius:7,padding:'11px 13px'}}>
+        <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)',marginBottom:8}}>{label}</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:8}}>
+          {base.map(v=><span key={v} style={{background:'rgba(255,255,255,.05)',border:'1px solid var(--border)',borderRadius:3,fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,padding:'2px 7px',color:'var(--muted)'}}>{v}</span>)}
+          {custom.map(v=><span key={v} style={{background:'rgba(240,180,41,.1)',border:'1px solid rgba(240,180,41,.3)',borderRadius:3,fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,padding:'2px 7px',color:'var(--accent)',display:'inline-flex',alignItems:'center',gap:4}}>{v}<span style={{cursor:'pointer',fontSize:12,lineHeight:1}} onClick={()=>removeCustomDim(type,v)}>×</span></span>)}
+        </div>
+        <div style={{display:'flex',gap:5}}>
+          <input style={{flex:1,background:'var(--surf)',border:'1px dashed var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow,sans-serif',fontSize:12,padding:'5px 8px',outline:'none'}} placeholder={'Dodaj npr. '+(type==='sirina'?'185':type==='visina'?'45':'21')} value={newDimVal[type]||''} onChange={e=>setNewDimVal(p=>({...p,[type]:e.target.value}))} onKeyDown={e=>e.key==='Enter'&&addCustomDim(type,newDimVal[type]||'')}/>
+          <button className="btn-new" onClick={()=>addCustomDim(type,newDimVal[type]||'')}><Icons.Plus size={10}/> Dodaj</button>
+        </div>
+      </div>
+    ))}</div>}
+
+    {setTab==='cjenovnik'&&<div>
+      <div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
+        <button className="btn-new" onClick={()=>{setCjenovnikForm({dimenzija:'',sezona:'',cijena_min:'',cijena_max:'',napomena:''});setEditCjenovnik(null);setCjenovnikModal(true);}}><Icons.Plus size={10}/> Dodaj cijenu</button>
+      </div>
+      {cjenovnikLista.length===0?<div style={{fontSize:12,color:'var(--muted)',padding:'20px 0',textAlign:'center'}}>Nema unesenih cijena.</div>:
+      <div style={{display:'flex',flexDirection:'column',gap:5}}>
+        {cjenovnikLista.map(c=><div key={c.id} style={{display:'flex',alignItems:'center',gap:10,background:'var(--card)',border:'1px solid var(--border)',borderRadius:7,padding:'8px 12px'}}>
+          <div style={{flex:1}}><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:15,letterSpacing:'1px'}}>{c.dimenzija}</div>
+          <div style={{fontSize:10,color:'var(--muted)'}}>{c.sezona||'Sve sezone'}{c.napomena?' · '+c.napomena:''}</div></div>
+          <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:14,color:'var(--accent)'}}>{c.cijena_min===c.cijena_max?c.cijena_min+' KM':c.cijena_min+'–'+c.cijena_max+' KM'}</div>
+          <button className="del-btn" style={{color:'var(--blue)',opacity:1}} onClick={()=>{setEditCjenovnik(c);setCjenovnikForm({dimenzija:c.dimenzija,sezona:c.sezona||'',cijena_min:String(c.cijena_min),cijena_max:String(c.cijena_max),napomena:c.napomena||''});setCjenovnikModal(true);}}><Icons.Edit/></button>
+          <button className="del-btn" onClick={async()=>{if(!window.confirm('Obrisati?'))return;await api('/cjenovnik/'+c.id,{method:'DELETE'});setCjenovnikLista(p=>p.filter(x=>x.id!=c.id));}}><Icons.Trash/></button>
+        </div>)}
+      </div>}
+    </div>}
+
+    {cjenovnikModal&&<div className="overlay" onClick={()=>setCjenovnikModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">{editCjenovnik?'Uredi cijenu':'Nova cijena'} <button className="btn-close" onClick={()=>setCjenovnikModal(false)}>x</button></div>
+      <div className="fg2"><label>Dimenzija *</label><input autoFocus value={cjenovnikForm.dimenzija} onChange={e=>setCjenovnikForm(f=>({...f,dimenzija:e.target.value}))} placeholder="205/55 R16"/></div>
+      <div className="fg2"><label>Sezona</label><select value={cjenovnikForm.sezona} onChange={e=>setCjenovnikForm(f=>({...f,sezona:e.target.value}))}><option value="">Sve sezone</option><option value="Zimska">Zimska</option><option value="Ljetna">Ljetna</option></select></div>
+      <div className="two-col">
+        <div className="fg2"><label>Cijena min (KM)</label><div className="price-row"><input className="price-inp" type="number" placeholder="0" value={cjenovnikForm.cijena_min} onChange={e=>setCjenovnikForm(f=>({...f,cijena_min:e.target.value}))}/><span className="price-curr">KM</span></div></div>
+        <div className="fg2"><label>Cijena max (KM)</label><div className="price-row"><input className="price-inp" type="number" placeholder="0" value={cjenovnikForm.cijena_max} onChange={e=>setCjenovnikForm(f=>({...f,cijena_max:e.target.value}))}/><span className="price-curr">KM</span></div></div>
+      </div>
+      <div className="fg2"><label>Napomena</label><input value={cjenovnikForm.napomena} onChange={e=>setCjenovnikForm(f=>({...f,napomena:e.target.value}))} placeholder="Stanje, tip..."/></div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>setCjenovnikModal(false)}>Odustani</button>
+        <button className="btn-save" onClick={async()=>{
+          if(!cjenovnikForm.dimenzija.trim()){showToast('Dimenzija je obavezna','err');return;}
+          try{
+            if(editCjenovnik){const c=await api('/cjenovnik/'+editCjenovnik.id,{method:'PUT',body:cjenovnikForm});setCjenovnikLista(p=>p.map(x=>x.id===c.id?c:x));}
+            else{const c=await api('/cjenovnik',{method:'POST',body:cjenovnikForm});setCjenovnikLista(p=>[...p,c]);}
+            setCjenovnikModal(false);setEditCjenovnik(null);showToast('Sačuvano');
+          }catch(e){showToast(e.message,'err');}
+        }}>Sačuvaj</button>
+      </div>
+    </div></div>}
+
+    {editUser&&<div className="overlay" onClick={()=>setEditUser(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">Uredi korisnika <button className="btn-close" onClick={()=>setEditUser(null)}>×</button></div>
+      <div className="fg2"><label>Korisničko ime</label><input autoFocus value={editUser.username} onChange={e=>setEditUser(u=>({...u,username:e.target.value}))} placeholder="korisničko_ime"/></div>
+      <div className="fg2"><label>Nova lozinka (ostavi prazno da ne mijenjaš)</label><input type="password" value={editUser.password} onChange={e=>setEditUser(u=>({...u,password:e.target.value}))} placeholder="••••••"/></div>
+      <div className="fg2"><label>Uloga</label><select value={editUser.role} onChange={e=>setEditUser(u=>({...u,role:e.target.value}))}><option value="radnik">Radnik</option><option value="admin">Admin</option></select></div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>setEditUser(null)}>Odustani</button><button className="btn-save" onClick={doEditUser}>Sačuvaj izmjene</button></div>
+    </div></div>}
+  </div>);
+}
+
+
+// ===== PREMJEŠTANJE WIDGET (na Dashboardu) =====
+// ===== ANALITIKA MODULE =====
+function AnalitikaModul({showToast}){
+  const [data,setData]=useState(null);const [loading,setLoading]=useState(true);
+  const [tab,setTab]=useState('pregled'); // pregled | abc | prognoza
+
+  useEffect(()=>{
+    api('/analitika').then(d=>{setData(d);setLoading(false);}).catch(e=>{showToast(e.message,'err');setLoading(false);});
+  },[]);
+
+  if(loading)return<div className="page"><div style={{color:'var(--muted)',padding:40,textAlign:'center'}}>Učitavanje...</div></div>;
+  if(!data)return null;
+
+  const ABC_BOJA={A:'var(--green)',B:'var(--accent)',C:'var(--muted)'};
+  const ABC_BG={A:'rgba(63,185,80,.12)',B:'rgba(240,180,41,.12)',C:'rgba(255,255,255,.04)'};
+  const ABC_OPIS={A:'80% prodaje — prioritet nabavke',B:'15% prodaje — pratiti',C:'5% prodaje — razmisliti o odustajanju'};
+
+  const abcGrupe = {
+    A: (data.abcAnaliza||[]).filter(r=>r.kategorija==='A'),
+    B: (data.abcAnaliza||[]).filter(r=>r.kategorija==='B'),
+    C: (data.abcAnaliza||[]).filter(r=>r.kategorija==='C'),
+  };
+
+  return(<div className="page">
+    <div className="page-header"><div className="page-title">Analitika</div><div className="page-sub">Statistike, ABC analiza i prognoza</div></div>
+
+    <div className="status-tabs" style={{marginBottom:14}}>
+      <button className={'stab'+(tab==='pregled'?' as':'')} onClick={()=>setTab('pregled')}>📊 Pregled</button>
+      <button className={'stab'+(tab==='abc'?' as':'')} onClick={()=>setTab('abc')}>🔤 ABC analiza</button>
+      <button className={'stab'+(tab==='prognoza'?' as':'')} onClick={()=>setTab('prognoza')}>🔮 Prognoza</button>
+    </div>
+
+    {tab==='pregled'&&<>
+      <div className="kpi-grid">
+        <div className="kpi accent"><div className="kpi-lbl">Ukupno guma</div><div className="kpi-val" style={{color:'var(--accent)'}}>{data.ukupnoGuma}</div></div>
+        <div className="kpi green"><div className="kpi-lbl">Na stanju</div><div className="kpi-val" style={{color:'var(--green)'}}>{data.naStan}</div></div>
+        <div className="kpi purple"><div className="kpi-lbl">Prodato</div><div className="kpi-val" style={{color:'var(--purple)'}}>{data.prodatoCount}</div></div>
+      </div>
+      {data.topDimenzije&&data.topDimenzije.length>0&&<div className="card-panel">
+        <div className="section-title">Top dimenzije</div>
+        {data.topDimenzije.map((d,i)=><div key={d.dimenzija} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:'1px solid var(--border)'}}>
+          <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,color:'var(--muted)',width:18}}>{i+1}.</span>
+          <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:16,flex:1,letterSpacing:'1px'}}>{d.dimenzija}</span>
+          <span style={{fontSize:11,color:'var(--muted)'}}>Ukupno: <b style={{color:'var(--text)'}}>{d.ukupno}</b></span>
+          <span style={{fontSize:11,color:'var(--muted)'}}>Stanje: <b style={{color:'var(--green)'}}>{d.na_stanju}</b></span>
+          <span style={{fontSize:11,color:'var(--muted)'}}>Prod.: <b style={{color:'var(--purple)'}}>{d.prodato}</b></span>
+        </div>)}
+      </div>}
+      {data.topRadnici&&data.topRadnici.length>0&&<div className="card-panel">
+        <div className="section-title">Radnici</div>
+        {data.topRadnici.map(r=><div key={r.korisnik} style={{display:'flex',alignItems:'center',gap:10,background:'var(--card)',borderRadius:5,padding:'7px 10px',marginBottom:5}}>
+          <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14,flex:1}}>{r.korisnik}</span>
+          <span style={{fontSize:11,color:'var(--muted)'}}>Dodao: <b style={{color:'var(--text)'}}>{r.dodao}</b></span>
+          <span style={{fontSize:11,color:'var(--muted)'}}>Prodao: <b style={{color:'var(--green)'}}>{r.prodao}</b></span>
+        </div>)}
+      </div>}
+      {data.prodajaPoSezonama&&<div className="card-panel">
+        <div className="section-title">Po sezoni</div>
+        {data.prodajaPoSezonama.map(s=><div key={s.sezona} style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
+          <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:13,fontWeight:700,width:70}}>{s.sezona}</span>
+          <div style={{flex:1,background:'var(--card)',borderRadius:3,height:8,overflow:'hidden'}}>
+            <div style={{height:'100%',width:(data.ukupnoGuma>0?(s.ukupno/data.ukupnoGuma*100):0)+'%',background:s.sezona==='Zimska'?'var(--blue)':'var(--accent)',borderRadius:3}}/>
+          </div>
+          <span style={{fontSize:11,color:'var(--muted)',width:80,textAlign:'right'}}>{s.ukupno} ({s.prodato} pr.)</span>
+        </div>)}
+      </div>}
+
+    </>}
+
+    {tab==='abc'&&<>
+      {/* Objašnjenje */}
+      <div style={{background:'rgba(88,166,255,.07)',border:'1px solid rgba(88,166,255,.2)',borderRadius:8,padding:'12px 16px',marginBottom:14,fontSize:12,color:'var(--muted)',lineHeight:1.6}}>
+        <b style={{color:'var(--text)',display:'block',marginBottom:4}}>ABC analiza (Pareto princip)</b>
+        <span style={{color:'var(--green)',fontWeight:700}}>A</span> dimenzije = 80% ukupne prodaje — uvijek drži na stanju<br/>
+        <span style={{color:'var(--accent)',fontWeight:700}}>B</span> dimenzije = 15% prodaje — pratiti, nabavljati po potrebi<br/>
+        <span style={{color:'var(--muted)',fontWeight:700}}>C</span> dimenzije = 5% prodaje — razmisliti, možda odustati
+      </div>
+
+      {/* KPI kartice */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:14}}>
+        {['A','B','C'].map(k=><div key={k} style={{background:ABC_BG[k],border:'1.5px solid '+ABC_BOJA[k]+'44',borderRadius:8,padding:'10px 14px',textAlign:'center'}}>
+          <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:28,fontWeight:900,color:ABC_BOJA[k]}}>{k}</div>
+          <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:20,fontWeight:800}}>{abcGrupe[k].length}</div>
+          <div style={{fontSize:10,color:'var(--muted)'}}>dimenzija</div>
+        </div>)}
+      </div>
+
+      {/* Tabela po grupama */}
+      {['A','B','C'].map(k=>(
+        abcGrupe[k].length>0&&<div key={k} className="card-panel" style={{marginBottom:10}}>
+          <div className="section-title" style={{marginBottom:10}}>
+            <span style={{color:ABC_BOJA[k],fontFamily:'Barlow Condensed,sans-serif',fontSize:18,fontWeight:900,marginRight:8}}>{k}</span>
+            <span style={{fontSize:11,color:'var(--muted)',fontWeight:400,textTransform:'none',letterSpacing:0}}>{ABC_OPIS[k]}</span>
+          </div>
+          {abcGrupe[k].map(r=><div key={r.dimenzija} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:'1px solid var(--border)'}}>
+            <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:15,flex:1,letterSpacing:'1px'}}>{r.dimenzija}</span>
+            <div style={{display:'flex',gap:3,alignItems:'center'}}>
+              <div style={{width:60,height:6,background:'var(--border)',borderRadius:3,overflow:'hidden'}}>
+                <div style={{height:'100%',width:Math.min(100,r.prodato_kom/Math.max(...(data.abcAnaliza||[]).map(x=>x.prodato_kom),1)*100)+'%',background:ABC_BOJA[k],borderRadius:3}}/>
+              </div>
+            </div>
+            <span style={{fontSize:11,color:'var(--muted)',width:55,textAlign:'right'}}>{r.prodato_kom} prod.</span>
+            <span style={{fontSize:11,color:r.na_stanju>0?'var(--green)':'var(--red)',width:50,textAlign:'right'}}>{r.na_stanju} stanje</span>
+          </div>)}
+        </div>
+      ))}
+    </>}
+
+    {tab==='prognoza'&&<>
+      {/* Info */}
+      <div style={{background:'rgba(188,140,255,.07)',border:'1px solid rgba(188,140,255,.2)',borderRadius:8,padding:'12px 16px',marginBottom:14,fontSize:12,color:'var(--muted)',lineHeight:1.6}}>
+        <b style={{color:'var(--text)',display:'block',marginBottom:4}}>Prognoza prodaje</b>
+        Bazirana na prosječnoj prodaji iz istorije. Prosječno prodaješ <b style={{color:'var(--text)'}}>{data.prosjecnaMjesecnaProdaja} kom/mj</b>.
+        {data.prosjecnaMjesecnaProdaja===0&&<span style={{color:'var(--red)'}}> Nedovoljno podataka — unosite prodajne datume kod prodaje guma.</span>}
+      </div>
+
+      {/* Prognoza po sezonama */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10,marginBottom:14}}>
+        {(data.prognoza||[]).map(p=><div key={p.mj} style={{background:'var(--card)',border:'1.5px solid '+(p.ima_historiju?'var(--border)':'rgba(255,255,255,.06)'),borderRadius:8,padding:'12px 14px'}}>
+          <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)',marginBottom:4}}>{p.naziv}</div>
+          <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:28,fontWeight:900,color:p.ima_historiju?'var(--purple)':'var(--muted)'}}>{p.prognoza_kom}</div>
+          <div style={{fontSize:10,color:'var(--muted)',marginTop:2}}>{p.ima_historiju?'kom (historija)':'kom (prosjek)'}</div>
+          <div style={{marginTop:6,display:'inline-flex',alignItems:'center',gap:4,background:p.sezona==='Zimska'?'rgba(88,166,255,.15)':'rgba(240,180,41,.15)',borderRadius:3,padding:'2px 7px',fontFamily:'Barlow Condensed,sans-serif',fontSize:9,fontWeight:800,color:p.sezona==='Zimska'?'var(--blue)':'var(--accent)',letterSpacing:'1px',textTransform:'uppercase'}}>
+            {p.sezona==='Zimska'?'❄ Zimska':'☀ Ljetna'}
+          </div>
+        </div>)}
+      </div>
+
+      {/* Historija prodaje - grafikon */}
+      {(data.prodajaPoMjesecima||[]).length>0&&<div className="card-panel">
+        <div className="section-title">Historija prodaje po mjesecima</div>
+        <div style={{display:'flex',gap:4,alignItems:'flex-end',height:80,marginTop:10}}>
+          {[...(data.prodajaPoMjesecima||[])].reverse().map(m=>{
+            const max=Math.max(...(data.prodajaPoMjesecima||[]).map(x=>x.prodano),1);
+            const h=Math.max(m.prodano>0?4:0,Math.round((m.prodano/max)*70));
+            return(<div key={m.mj} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+              <div style={{fontSize:9,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontWeight:700}}>{m.prodano||''}</div>
+              <div style={{width:'100%',background:'var(--purple)',borderRadius:'3px 3px 0 0',height:h+'px'}} title={m.mj+': '+m.prodano+' prodano'}/>
+              <span style={{fontSize:8,color:'var(--muted)',transform:'rotate(-45deg)',marginTop:2,whiteSpace:'nowrap'}}>{m.mj.slice(5)}</span>
+            </div>);
+          })}
+        </div>
+        <div style={{fontSize:10,color:'var(--muted)',marginTop:8,textAlign:'center'}}>Prikazano zadnjih 12 mjeseci</div>
+      </div>}
+
+      {/* Savjeti na osnovu ABC */}
+      {abcGrupe.A.length>0&&<div className="card-panel">
+        <div className="section-title">💡 Preporuke za nabavku</div>
+        <div style={{fontSize:12,color:'var(--muted)',marginBottom:10}}>Na osnovu ABC analize, ove dimenzije trebaš imati uvijek na stanju:</div>
+        {abcGrupe.A.filter(r=>r.na_stanju===0||r.na_stanju<2).map(r=><div key={r.dimenzija} style={{display:'flex',alignItems:'center',gap:10,background:'rgba(248,81,73,.07)',border:'1px solid rgba(248,81,73,.2)',borderRadius:6,padding:'8px 12px',marginBottom:6}}>
+          <span style={{fontSize:16}}>⚠️</span>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:15}}>{r.dimenzija}</div>
+            <div style={{fontSize:11,color:'var(--muted)'}}>A kategorija — {r.prodato_kom} prodanih, trenutno {r.na_stanju} na stanju</div>
+          </div>
+          <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,color:'var(--red)'}}>NABAVI!</span>
+        </div>)}
+        {abcGrupe.A.filter(r=>r.na_stanju===0||r.na_stanju<2).length===0&&
+          <div style={{fontSize:12,color:'var(--green)'}}>✓ Sve A dimenzije su na stanju.</div>}
+      </div>}
+    </>}
+
+    <div className="site-footer">© 2026 <span>DelicNode</span></div>
+  </div>);
+}
+
+// ===== LOG MODULE =====
+// ===== LOG MODULE =====
+function LogModul({showToast}){
+  const [lista,setLista]=useState([]);const [loading,setLoading]=useState(true);
+  useEffect(()=>{api('/aktivnosti?limit=300').then(d=>{setLista(d);setLoading(false);}).catch(e=>{showToast(e.message,'err');setLoading(false);});},[]);
+  const nazivi={PRIJAVA:'Prijava',DODANA_GUMA:'Dodana guma',EDITOVANA_GUMA:'Izmijenjena guma',PREMJESTENA_GUMA:'Premještena',PRODANA_GUMA:'Prodana guma',OBRISANA_GUMA:'Obrisana guma',DODAN_AUTO:'Dodan auto',PRODAT_AUTO:'Prodat auto',OBRISAN_AUTO:'Obrisan auto'};
+  if(loading)return<div className="page"><div style={{color:'var(--muted)',padding:40,textAlign:'center'}}>Učitavanje...</div></div>;
+  return(<div className="page">
+    <div className="page-header"><div className="page-title">Dnevnik aktivnosti</div><div className="page-sub">{lista.length} zabilježenih aktivnosti</div></div>
+    <div className="card-panel">
+      {lista.length===0&&<div style={{textAlign:'center',padding:'30px 0',color:'var(--muted)',fontSize:13}}>Nema zabilježenih aktivnosti</div>}
+      {lista.map((a,i)=>{
+        const dt=new Date(a.created_at);
+        const timeStr=dt.toLocaleDateString('sr-Latn-RS')+' '+dt.toLocaleTimeString('sr-Latn-RS',{hour:'2-digit',minute:'2-digit'});
+        return(<div key={i} className="log-item">
+          <span className={'log-badge '+(a.akcija||'')}>{nazivi[a.akcija]||a.akcija}</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div className="log-user">{a.korisnik}</div>
+            {a.detalji&&<div className="log-detail">{a.detalji}</div>}
+          </div>
+          <span className="log-time">{timeStr}</span>
+        </div>);
+      })}
+    </div>
+  <div className="site-footer">© 2026 <span>DelicNode</span></div>
+  </div>);
+}
+
+// ===== GUME MODULE =====
+function KartaMagacinaInline({showToast,magacini:magaciniProp}){
+  const [police,setPolice]=useState([]);
+  const [magaciniData,setMagaciniData]=useState([]);
+  const [gumeCount,setGumeCount]=useState({});const [selMag,setSelMag]=useState(null);
+  const [selPolica,setSelPolica]=useState(null);const [policaGume,setPolicaGume]=useState([]);
+  const [loading,setLoading]=useState(true);
+
+  useEffect(()=>{
+    Promise.all([api('/magacini-full'),api('/police'),api('/gume')]).then(([m,p,g])=>{
+      setMagaciniData(m);setPolice(p);
+      const cnt={};g.filter(x=>!x.prodato).forEach(guma=>{cnt[guma.polica_kod]=(cnt[guma.polica_kod]||0)+1;});
+      setGumeCount(cnt);setLoading(false);
+      if(m.length>0)setSelMag(m[0].id);
+      setMagaciniData(m);
+    }).catch(e=>{showToast(e.message,'err');setLoading(false);});
+  },[]);
+
+  const selMagData=useMemo(()=>magaciniData.find(m=>m.id===selMag),[magaciniData,selMag]);
+
+  const loadPolicaGume=async(naziv)=>{
+    setSelPolica(naziv);
+    try{const g=await api('/police/'+encodeURIComponent(naziv)+'/gume');setPolicaGume(g);}
+    catch(e){showToast(e.message,'err');}
+  };
+
+  const getColor=(naziv)=>{
+    const cnt=gumeCount[naziv]||0;
+    if(cnt===0)return{bg:'rgba(255,255,255,.04)',border:'var(--border)',color:'var(--muted)'};
+    if(cnt<=3)return{bg:'rgba(63,185,80,.12)',border:'rgba(63,185,80,.4)',color:'var(--green)'};
+    if(cnt<=7)return{bg:'rgba(240,180,41,.12)',border:'rgba(240,180,41,.4)',color:'var(--accent)'};
+    return{bg:'rgba(248,81,73,.12)',border:'rgba(248,81,73,.4)',color:'var(--red)'};
+  };
+
+  if(loading)return<div className="page"><div style={{color:'var(--muted)',padding:40,textAlign:'center'}}>Učitavanje...</div></div>;
+
+  return(<div className="page">
+    <div className="page-header"><div className="page-title">Karta magacina</div><div className="page-sub">Vizuelni pregled popunjenosti polica</div></div>
+
+    {/* Legenda */}
+    <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
+      {[['Prazna','rgba(255,255,255,.04)','var(--border)','var(--muted)'],['1-3 gume','rgba(63,185,80,.12)','rgba(63,185,80,.4)','var(--green)'],['4-7 guma','rgba(240,180,41,.12)','rgba(240,180,41,.4)','var(--accent)'],['8+ guma','rgba(248,81,73,.12)','rgba(248,81,73,.4)','var(--red)']].map(([l,bg,brd,col])=>(
+        <div key={l} style={{display:'flex',alignItems:'center',gap:5}}>
+          <div style={{width:14,height:14,background:bg,border:'1.5px solid '+brd,borderRadius:3}}/>
+          <span style={{fontSize:10,color:'var(--muted)',fontFamily:'Barlow Condensed,sans-serif',fontWeight:700}}>{l}</span>
+        </div>
+      ))}
+    </div>
+
+    {/* Magacin tabs */}
+    {magaciniData.length>1&&<div className="status-tabs" style={{marginBottom:14}}>
+      {magaciniData.map(m=><button key={m.id} className={"stab"+(selMag===m.id?' as':'')} onClick={()=>setSelMag(m.id)}>{m.naziv}</button>)}
+    </div>}
+
+    {selMagData&&selMagData.prolazi.map(pr=><div key={pr.id} style={{marginBottom:16}}>
+      <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:800,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--blue)',marginBottom:8}}>{pr.naziv}</div>
+      {pr.regali.map(r=><div key={r.id} style={{marginBottom:8}}>
+        <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:9,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)',marginBottom:5}}>{r.naziv}</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+          {r.police.map(p=>{
+            const cnt=gumeCount[p.naziv]||0;
+            const col=getColor(p.naziv);
+            return(<button key={p.id} onClick={()=>loadPolicaGume(p.naziv)}
+              style={{background:col.bg,border:'1.5px solid '+(selPolica===p.naziv?'var(--accent)':col.border),borderRadius:6,padding:'6px 10px',cursor:'pointer',minWidth:52,textAlign:'center',transition:'all .15s'}}>
+              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:13,color:selPolica===p.naziv?'var(--accent)':col.color}}>{p.naziv}</div>
+              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,color:'var(--muted)'}}>{cnt>0?cnt+'x':'—'}</div>
+            </button>);
+          })}
+        </div>
+      </div>)}
+    </div>)}
+
+    {/* Polica detalj */}
+    {selPolica&&<div style={{marginTop:8,background:'var(--surf)',border:'1.5px solid var(--accent)',borderRadius:10,padding:'14px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+        <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:16,color:'var(--accent)'}}>{selPolica} — {policaGume.length} guma</div>
+        <button className="btn-close" onClick={()=>setSelPolica(null)}>×</button>
+      </div>
+      {policaGume.length===0?<div style={{fontSize:12,color:'var(--muted)'}}>Polica je prazna.</div>:
+      <div style={{display:'flex',flexDirection:'column',gap:5}}>
+        {policaGume.map(g=><div key={g.id} style={{display:'flex',alignItems:'center',gap:10,background:'var(--card)',borderRadius:6,padding:'6px 10px',fontSize:12}}>
+          <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,color:'var(--accent)',width:45}}>{g.sifra}</span>
+          <span style={{flex:1,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,fontSize:14}}>{g.sirina}/{g.visina} {promjerDisp(g.promjer)}</span>
+          <span style={{fontSize:10,color:g.sezona==='Zimska'?'var(--blue)':'var(--accent)'}}>{g.sezona==='Zimska'?'❄':'☀'}</span>
+          {g.cijena&&<span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,color:'var(--green)',fontSize:12}}>{g.cijena} KM</span>}
+        </div>)}
+      </div>}
+    </div>}
+    <div className="site-footer">© 2026 <span>DelicNode</span></div>
+  </div>);
+}
+
+
+const KartaMagacinaModul = KartaMagacinaInline;
+
+// ===== ADMIN APP =====
+function AdminApp() {
+  const [user, setUser] = useState(null);
+  const [tab, setTab] = useState('podesavanja');
+  const [magacini, setMagacini] = useState([]);
+  const [police, setPolice] = useState([]);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, type) => {
+    setToast({msg, type});
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const loadPoliceAndMag = async () => {
+    try {
+      const [m, p] = await Promise.all([api('/magacini-full'), api('/police')]);
+      setMagacini(m); setPolice(p);
+    } catch(e) {}
+  };
+
+  useEffect(() => {
+    api('/auth/me').then(u => {
+      if (!u || u.role !== 'admin') { window.location.href = '/'; return; }
+      setUser(u);
+      loadPoliceAndMag();
+    }).catch(() => window.location.href = '/');
+  }, []);
+
+  if (!user) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',color:'var(--muted)'}}>Učitavanje...</div>;
+
+  const TABS = [
+    {id:'podesavanja', label:'⚙️ Podešavanja'},
+    {id:'analitika', label:'📊 Analitika'},
+    {id:'log', label:'📋 Dnevnik'},
+  ];
+
+  return (
+    <div style={{minHeight:'100vh',background:'var(--bg)',color:'var(--text)'}}>
+      <div style={{background:'var(--surf)',borderBottom:'1px solid var(--border)',padding:'12px 20px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+        <button onClick={()=>window.location.href='/'} style={{background:'none',border:'1px solid var(--border)',borderRadius:6,color:'var(--muted)',cursor:'pointer',padding:'5px 12px',fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,letterSpacing:'1px'}}>← Nazad</button>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:18,letterSpacing:1}}>Admin panel</div>
+        <div style={{display:'flex',gap:6,marginLeft:'auto',flexWrap:'wrap'}}>
+          {TABS.map(t => <button key={t.id} className={"stab"+(tab===t.id?' as':'')} onClick={()=>setTab(t.id)} style={{padding:'6px 14px'}}>{t.label}</button>)}
+        </div>
+      </div>
+      <div style={{padding:'16px'}}>
+        {tab==='podesavanja' && <PodesavanjaModul user={user} showToast={showToast} magacini={magacini} setMagacini={setMagacini} police={police} loadPolice={loadPoliceAndMag}/>}
+        {tab==='analitika' && <AnalitikaModul showToast={showToast}/>}
+        {tab==='log' && <LogModul showToast={showToast}/>}
+      </div>
+      {toast && <div className={"toast"+(toast.type==='err'?' err':'')}>{toast.msg}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><AdminApp/></ErrorBoundary>);
+
+</script>
+</body>
+</html>
