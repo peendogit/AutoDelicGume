@@ -41,6 +41,14 @@ app.use('/api', apiLimiter);
 app.use(cors());
 app.use(express.json({ limit: '100mb' }));
 
+// Prevent crash on invalid JSON
+app.use((err, req, res, next) => {
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Neispravan JSON' });
+  }
+  next(err);
+});
+
 let publicPath = path.join(__dirname, 'public');
 if (!fs.existsSync(publicPath)) publicPath = path.join(__dirname, 'Public');
 if (!fs.existsSync(publicPath)) publicPath = path.join(process.cwd(), 'public');
