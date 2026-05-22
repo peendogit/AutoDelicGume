@@ -245,8 +245,18 @@ async function initDB() {
     )
   `);
   // Add na_popravci status support (already text field, no migration needed)
-  // Add auto_id link to troskovi_auta if missing
-  try { await dbExec(`ALTER TABLE troskovi_auta ADD COLUMN auto_id INTEGER`); } catch(e) {}
+  // HISTORIJA STATUSA AUTA
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS status_historija (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      auto_id INTEGER NOT NULL,
+      stari_status TEXT,
+      novi_status TEXT NOT NULL,
+      napomena TEXT DEFAULT '',
+      korisnik TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 
   // KUPCI
   await dbExec(`
@@ -952,11 +962,16 @@ app.post('/api/auta', requireAuth, async (req,res) => {
 app.put('/api/auta/:id', requireAuth, async (req,res) => {
   try {
     const {marka,model,godiste,boja,km,motor,vin,napomena,slike,nabavna_cijena,prodajna_cijena,olx_link,status,datum_registracije} = req.body;
-    // Log price change if prodajna_cijena changed
-    const stari = await dbGet('SELECT prodajna_cijena FROM auta WHERE id=?',[req.params.id]);
+    const stari = await dbGet('SELECT prodajna_cijena,status,marka,model FROM auta WHERE id=?',[req.params.id]);
+    // Log price change
     if (stari && stari.prodajna_cijena !== (prodajna_cijena||null)) {
       await dbRun('INSERT INTO cijena_historija (auto_id,stara_cijena,nova_cijena,korisnik) VALUES (?,?,?,?)',
         [req.params.id, stari.prodajna_cijena||null, prodajna_cijena||'0', req.user.username]);
+    }
+    // Log status change
+    if (stari && stari.status !== (status||'na_stanju')) {
+      await dbRun('INSERT INTO status_historija (auto_id,stari_status,novi_status,korisnik) VALUES (?,?,?,?)',
+        [req.params.id, stari.status, status||'na_stanju', req.user.username]);
     }
     await dbRun(`UPDATE auta SET marka=?,model=?,godiste=?,boja=?,km=?,motor=?,vin=?,napomena=?,slike=?,
       nabavna_cijena=?,prodajna_cijena=?,olx_link=?,status=?,datum_registracije=? WHERE id=?`,
@@ -965,6 +980,13 @@ app.put('/api/auta/:id', requireAuth, async (req,res) => {
     const a = await dbGet('SELECT * FROM auta WHERE id=?',[req.params.id]);
     await logActivity(req.user.username,'EDITOVANO_AUTO',`${a.sifra} — ${a.marka} ${a.model}`);
     res.json({...a, slike:JSON.parse(a.slike||'[]')});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// Historija statusa za auto
+app.get('/api/auta/:id/status-historija', requireAdmin, async (req,res) => {
+  try {
+    res.json(await dbAll('SELECT * FROM status_historija WHERE auto_id=? ORDER BY created_at DESC',[req.params.id]));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
