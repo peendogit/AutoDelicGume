@@ -1911,7 +1911,12 @@ function PonudaModul({showToast}){
     {ponude.length===0?<div className="empty"><Icons.Money size={36}/><p>Nema kreiranih ponuda.</p></div>:
     <div style={{display:'flex',flexDirection:'column',gap:8}}>
       {ponude.map(p=>{
-        const st=p.stavke||[];const hasPdv=p.pdv!==false;
+        const st=p.stavke||[];
+        const hasPdv=p.pdv!==0&&p.pdv!==false&&!p.unosSaPdv;
+        const unosSaPdv=!!p.unosSaPdv;
+        const ukupSt=st.reduce((s,x)=>s+(parseFloat(x.cijena)||0)*(parseInt(x.kolicina)||1),0);
+        const ukupPrikaz=unosSaPdv?ukupSt:(hasPdv?ukupSt*1.17:ukupSt);
+        const pdvLabel=unosSaPdv?'sa PDV (sadržan)':hasPdv?'sa PDV-om':null;
         return(<div key={p.id} style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:8,padding:'12px 14px'}}>
           <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10,marginBottom:8}}>
             <div>
@@ -1923,8 +1928,8 @@ function PonudaModul({showToast}){
               <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{st.length} stavki · {new Date(p.created_at).toLocaleDateString('sr-Latn-RS')}</div>
             </div>
             <div style={{textAlign:'right',flexShrink:0}}>
-              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18,color:'var(--green)'}}>{ukupnoSaPdv(st,hasPdv).toFixed(2)} KM</div>
-              {hasPdv&&<div style={{fontSize:10,color:'var(--muted)'}}>sa PDV-om</div>}
+              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18,color:'var(--green)'}}>{ukupPrikaz.toFixed(2)} KM</div>
+              {pdvLabel&&<div style={{fontSize:10,color:'var(--muted)'}}>{pdvLabel}</div>}
             </div>
           </div>
           <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
@@ -1935,7 +1940,7 @@ function PonudaModul({showToast}){
                 <div style={{padding:'10px 14px',cursor:'pointer',fontSize:12,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'1px',borderTop:'1px solid var(--border)'}} onClick={e=>{e.currentTarget.parentNode.style.display='none';setRacunModal(p);}}>🧾 Račun</div>
               </div>
             </div>
-            <button className="btn-sm" onClick={()=>{setEditPonuda(p);setForm({kupac_ime:p.kupac_ime,kupac_adresa:p.kupac_adresa||'',kupac_telefon:p.kupac_telefon||'',vozilo:p.vozilo||'',napomena:p.napomena||'',pdv:p.pdv!==0,rok_placanja:p.rok_placanja||'Avansno plaćanje',mjesto:p.mjesto||'Bijeljina'});setStavke(p.stavke&&p.stavke.length?p.stavke:[{opis:'',kolicina:1,cijena:'',jm:'KOM'}]);setModal(true);}}><Icons.Edit size={10}/></button>
+            <button className="btn-sm" onClick={()=>{setEditPonuda(p);setForm({kupac_ime:p.kupac_ime,kupac_adresa:p.kupac_adresa||'',kupac_telefon:p.kupac_telefon||'',vozilo:p.vozilo||'',napomena:p.napomena||'',pdv:p.pdv!==0&&!p.unosSaPdv,unosSaPdv:!!p.unosSaPdv,rok_placanja:p.rok_placanja||'Avansno plaćanje',mjesto:p.mjesto||'Bijeljina'});setStavke(p.stavke&&p.stavke.length?p.stavke:[{opis:'',kolicina:1,cijena:'',jm:'KOM'}]);setModal(true);}}><Icons.Edit size={10}/></button>
             <button className="btn-sm red" onClick={()=>doDel(p.id)}><Icons.Trash size={10}/></button>
           </div>
         </div>);
