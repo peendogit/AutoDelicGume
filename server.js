@@ -1369,11 +1369,11 @@ app.post('/api/ponude', requireAdmin, async (req,res) => {
 
 app.put('/api/ponude/:id', requireAdmin, async (req,res) => {
   try {
-    const {kupac_ime,kupac_adresa,kupac_telefon,vozilo,stavke,napomena,pdv,rok_placanja,mjesto} = req.body;
-    await dbRun('UPDATE ponude SET kupac_ime=?,kupac_adresa=?,kupac_telefon=?,vozilo=?,stavke=?,napomena=?,pdv=?,rok_placanja=?,mjesto=? WHERE id=?',
-      [kupac_ime,kupac_adresa||'',kupac_telefon||'',vozilo||'',JSON.stringify(stavke||[]),napomena||'',pdv?1:0,rok_placanja||'Avansno plaćanje',mjesto||'Bijeljina',req.params.id]);
+    const {kupac_ime,kupac_adresa,kupac_telefon,vozilo,stavke,napomena,pdv,rok_placanja,mjesto,unosSaPdv} = req.body;
+    await dbRun('UPDATE ponude SET kupac_ime=?,kupac_adresa=?,kupac_telefon=?,vozilo=?,stavke=?,napomena=?,pdv=?,unos_sa_pdv=?,rok_placanja=?,mjesto=? WHERE id=?',
+      [kupac_ime,kupac_adresa||'',kupac_telefon||'',vozilo||'',JSON.stringify(stavke||[]),napomena||'',pdv?1:0,unosSaPdv?1:0,rok_placanja||'Avansno plaćanje',mjesto||'Bijeljina',req.params.id]);
     const p = await dbGet('SELECT * FROM ponude WHERE id=?',[req.params.id]);
-    res.json({...p, stavke:JSON.parse(p.stavke||'[]')});
+    res.json({...p, stavke:JSON.parse(p.stavke||'[]'), unosSaPdv:!!p.unos_sa_pdv});
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
