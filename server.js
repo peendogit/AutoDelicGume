@@ -13,8 +13,9 @@ const PORT = process.env.PORT || 3000;
 // ===== SECURITY =====
 // Helmet - HTTP security headers
 app.use(helmet({
-  contentSecurityPolicy: false, // Disabled - app uses inline scripts (Babel/React CDN)
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: false,
 }));
 
 // Rate limiting - login brute force protection
