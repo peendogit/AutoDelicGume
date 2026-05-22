@@ -11,33 +11,23 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ===== SECURITY =====
-// Helmet - HTTP security headers
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: false,
-}));
-
 // Rate limiting - login brute force protection
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // max 20 login attempts per 15 min per IP
+  windowMs: 15 * 60 * 1000,
+  max: 20,
   message: { error: 'Previše pokušaja prijave. Pokušaj ponovo za 15 minuta.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// General API rate limit
 const apiLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 300, // 300 requests per minute per IP
+  windowMs: 60 * 1000,
+  max: 300,
   message: { error: 'Previše zahtjeva. Usporite.' },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.path === '/api/backup', // backup has its own limit
 });
 
-// Backup rate limit - max 5 per hour
 const backupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
