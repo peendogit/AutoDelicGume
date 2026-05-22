@@ -2357,10 +2357,6 @@ function App(){
     {id:'zadaci',label:'Zadaci',icon:<Icons.Task size={18}/>,adminOnly:true},
 
 
-    {id:'__admin_pod',label:'Podešavanja',icon:<Icons.Gear size={18}/>,adminOnly:true,isAdminLink:true,adminHash:'podesavanja'},
-    {id:'__admin_fin',label:'Finansije',icon:<Icons.Money size={18}/>,adminOnly:true,isAdminLink:true,adminHash:'finansije'},
-    {id:'__admin_ana',label:'Analitika',icon:<Icons.Chart size={18}/>,adminOnly:true,isAdminLink:true,adminHash:'analitika'},
-    {id:'__admin_log',label:'Dnevnik',icon:<Icons.Log size={18}/>,adminOnly:true,isAdminLink:true,adminHash:'log'},
   ].filter(i=>i.always||(i.adminOnly&&isAdmin));
 
   const pageTitles={dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansijski izvještaj',kupci:'Kupci',ponude:'Ponude / Računi',podesavanja:'Podešavanja'};
@@ -2402,6 +2398,7 @@ function App(){
         </button>
         <div className="topbar-title">{pageTitles[page]||page}</div>
         <div className="topbar-actions">
+          {isAdmin&&<button title="Podešavanja" onClick={()=>window.location.href='/admin.html'} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',padding:'6px 8px',fontSize:20,lineHeight:1}}>⚙️</button>}
         </div>
       </div>
 
