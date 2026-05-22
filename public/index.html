@@ -1750,7 +1750,7 @@ function PonudaModul({showToast}){
   const [racunModal,setRacunModal]=useState(null);
   const [brFiskInput,setBrFiskInput]=useState('');
   const [viewPonuda,setViewPonuda]=useState(null);
-  const [form,setForm]=useState({kupac_ime:'',kupac_adresa:'',kupac_telefon:'',napomena:'',pdv:true,rok_placanja:'Avansno plaćanje',mjesto:'Bijeljina',vozilo:''});
+  const [form,setForm]=useState({kupac_ime:'',kupac_adresa:'',kupac_telefon:'',napomena:'',pdv:true,rok_placanja:'Avansno plaćanje',mjesto:'Bijeljina',vozilo:'',unosSaPdv:false});
   const [stavke,setStavke]=useState([{opis:'',kolicina:1,cijena:'',jm:'KOM'}]);
 
   const FIRMA={naziv:'Auto Delić',adresa:'',tel:'+387 66 027 888',pdv_broj:'',jib:''};
@@ -1954,20 +1954,29 @@ function PonudaModul({showToast}){
         <div className="fg2"><label>Mjesto izdavanja</label><input value={form.mjesto} onChange={e=>setForm(f=>({...f,mjesto:e.target.value}))}/></div>
         <div className="fg2"><label>Rok plaćanja</label><input value={form.rok_placanja} onChange={e=>setForm(f=>({...f,rok_placanja:e.target.value}))}/></div>
       </div>
-      <div className="fg2" style={{display:'flex',alignItems:'center',gap:10}}>
-        <input type="checkbox" id="pdv-chk" checked={!!form.pdv} onChange={e=>setForm(f=>({...f,pdv:e.target.checked}))} style={{width:16,height:16}}/>
-        <label htmlFor="pdv-chk" style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',cursor:'pointer'}}>Obračunaj PDV (17%)</label>
+      <div style={{display:'flex',gap:20,alignItems:'center',flexWrap:'wrap',marginBottom:12}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <input type="checkbox" id="pdv-chk" checked={!!form.pdv} onChange={e=>setForm(f=>({...f,pdv:e.target.checked}))} style={{width:16,height:16}}/>
+          <label htmlFor="pdv-chk" style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',cursor:'pointer'}}>Obračunaj PDV (17%)</label>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <input type="checkbox" id="unos-sa-pdv-chk" checked={!!form.unosSaPdv} onChange={e=>setForm(f=>({...f,unosSaPdv:e.target.checked}))} style={{width:16,height:16}}/>
+          <label htmlFor="unos-sa-pdv-chk" style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',cursor:'pointer',color:'var(--accent)'}}>Unosim cijenu SA PDV</label>
+        </div>
       </div>
       <div className="fg2"><label style={{color:'var(--accent)'}}>🚗 Vozilo <span style={{color:'var(--muted)',fontWeight:400}}>(npr. VW Golf 5 2008)</span></label><input value={form.vozilo||''} onChange={e=>setForm(f=>({...f,vozilo:e.target.value}))} placeholder="Model, godište, motorizacija..."/></div>
-      <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--accent)',marginBottom:8,marginTop:4}}>Stavke</div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 45px 50px 55px 60px 16px',gap:4,marginBottom:4}}>
-        {['Opis','Kom','JM','Bez PDV','Sa PDV',''].map((h,i)=><div key={i} style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:9,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:i===4?'var(--accent)':'var(--muted)'}}>{h}</div>)}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8,marginTop:4}}>
+        <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--accent)'}}>Stavke</div>
+        {form.unosSaPdv&&<div style={{fontSize:10,color:'var(--accent)',fontFamily:'Barlow Condensed,sans-serif',fontWeight:700}}>⚠️ Unosiš cijene SA PDV — automatski se dijeli sa 1.17</div>}
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 45px 50px 55px 16px',gap:4,marginBottom:4}}>
+        {['Opis','Kom','JM','Cij.',''].map((h,i)=><div key={i} style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:9,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)'}}>{h}</div>)}
       </div>
       {stavke.map((s,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'1fr 45px 55px 55px 16px',gap:4,marginBottom:4,alignItems:'center'}}>
         <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow,sans-serif',fontSize:12,padding:'5px 7px',outline:'none'}} placeholder="Opis..." value={s.opis} onChange={e=>updateStavka(i,'opis',e.target.value)}/>
         <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,padding:'5px 4px',outline:'none',textAlign:'center'}} type="number" min="1" value={s.kolicina} onChange={e=>updateStavka(i,'kolicina',e.target.value)}/>
         <select style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:11,padding:'5px 3px',outline:'none'}} value={s.jm||'KOM'} onChange={e=>updateStavka(i,'jm',e.target.value)}><option>KOM</option><option>PAR</option><option>SET</option><option>KG</option></select>
-        <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,padding:'5px 4px',outline:'none',textAlign:'right'}} type="number" placeholder="KM" value={s.cijena} onChange={e=>updateStavka(i,'cijena',e.target.value)}/>
+        <input style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,padding:'5px 4px',outline:'none',textAlign:'right'}} type="number" placeholder={form.unosSaPdv?"sa PDV":"bez PDV"} value={s.cijena} onChange={e=>{const v=e.target.value;updateStavka(i,'cijena',form.unosSaPdv&&v?(parseFloat(v)/1.17).toFixed(2):v);}}/>
         <button onClick={()=>removeStavka(i)} style={{background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:14,padding:0}}>×</button>
       </div>)}
       <button className="btn-sm" style={{marginBottom:10}} onClick={addStavka}><Icons.Plus size={10}/> Dodaj stavku</button>
