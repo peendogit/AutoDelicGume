@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { api } from '../api.js';
-import { promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage } from '../utils.js';
+import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage } from '../utils.js';
 import { ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination } from '../components/index.jsx';
 
 function PremjestanjeWidget({showToast,police:policeProp}){
