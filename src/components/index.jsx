@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { api } from '../api.js';
-import { resizeImage } from '../utils.js';
+import { api, resizeImage } from '../utils.js';
 
 class ErrorBoundary extends React.Component {
   constructor(props){super(props);this.state={error:null};}
