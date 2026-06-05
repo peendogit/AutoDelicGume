@@ -48,10 +48,10 @@ app.use((req, res, next) => {
   });
 });
 
-let publicPath = path.join(__dirname, 'public');
-if (!fs.existsSync(publicPath)) publicPath = path.join(__dirname, 'Public');
-if (!fs.existsSync(publicPath)) publicPath = path.join(process.cwd(), 'public');
-if (!fs.existsSync(publicPath)) publicPath = path.join(process.cwd(), 'Public');
+const publicPath = path.join(process.cwd(), 'dist');
+if (!fs.existsSync(publicPath)) {
+  console.error('dist/ folder not found! Run: npm run build');
+}
 app.use(express.static(publicPath));
 
 // Uploads directory for images
