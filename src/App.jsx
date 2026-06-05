@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { api } from './api.js';
-import { promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage, getToken } from './utils.js';
+import { api, getToken, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage } from './utils.js';
 import { ErrorBoundary, Lightbox, Pagination } from './components/index.jsx';
 import LoginScreen from './modules/LoginScreen.jsx';
 import Dashboard from './modules/Dashboard.jsx';
