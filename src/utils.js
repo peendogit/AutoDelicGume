@@ -45,3 +45,15 @@ export const SIRINA_OPTIONS=['155','165','175','185','195','205','215','225','23
 export const VISINA_OPTIONS=['40','45','50','55','60','65','70','75','80'];
 export const EMPTY_GUMA={sezona:'',sirina:'',visina:'',promjer:'',napomena:'',policaKod:'',slike:[],dubina:'',dot:'',tip:'',cijena:''};
 
+
+export function fmtDate(dt){
+  if(!dt) return '—';
+  const d = new Date(dt);
+  if(isNaN(d.getTime())) {
+    // Try parsing YYYY-MM-DD string directly
+    const m = String(dt).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m) return m[3]+'.'+m[2]+'.'+m[1]+'.';
+    return String(dt);
+  }
+  return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear()+'.';
+}
