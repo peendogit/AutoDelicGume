@@ -7,6 +7,9 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
+// Load .env if exists
+try { require('dotenv').config(); } catch(e) {}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
