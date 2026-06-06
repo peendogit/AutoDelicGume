@@ -291,6 +291,7 @@ async function initDB() {
     )
   `);
   try { await dbExec(`ALTER TABLE kupovine ADD COLUMN placeno REAL DEFAULT 0`); } catch(e) {}
+  try { await dbExec(`ALTER TABLE kupovine ADD COLUMN datum_uplate TEXT`); } catch(e) {}
 
   // PONUDE / RAČUNI
   await dbExec(`
@@ -1260,8 +1261,14 @@ app.post('/api/kupci/:id/kupovina', requireAdmin, async (req,res) => {
 
 app.put('/api/kupci/:id/kupovina/:kid', requireAdmin, async (req,res) => {
   try {
-    const {placeno} = req.body;
-    await dbRun('UPDATE kupovine SET placeno=? WHERE id=?',[parseFloat(placeno)||0,req.params.kid]);
+    const {placeno,datum_uplate,opis,iznos,datum} = req.body;
+    if(opis!==undefined){
+      await dbRun('UPDATE kupovine SET opis=?,iznos=?,placeno=?,datum=?,datum_uplate=? WHERE id=?',
+        [opis,parseFloat(iznos)||0,parseFloat(placeno)||0,datum||null,datum_uplate||null,req.params.kid]);
+    } else {
+      await dbRun('UPDATE kupovine SET placeno=?,datum_uplate=? WHERE id=?',
+        [parseFloat(placeno)||0,datum_uplate||null,req.params.kid]);
+    }
     res.json(await dbGet('SELECT * FROM kupovine WHERE id=?',[req.params.kid]));
   } catch(e) { res.status(500).json({error:e.message}); }
 });
@@ -1467,8 +1474,8 @@ app.get('/api/finansije', requireAdmin, async (req,res) => {
     // Prihodi od guma
     const gumeProdate = await dbAll(
       `SELECT sifra,sirina,visina,promjer,sezona,cijena_prodaje,datum_prodaje,prodao_korisnik
-       FROM gume WHERE prodato=1 AND datum_prodaje >= ? ORDER BY datum_prodaje DESC`,
-      [datumOd.slice(0,7) <= now.toISOString().slice(0,7) ? datumOd : '2000-01-01']);
+       FROM gume WHERE prodato=1 AND (datum_prodaje >= ? OR ? = '2000-01-01') ORDER BY datum_prodaje DESC`,
+      [datumOd, datumOd]);
 
     // Prihodi od auta
     const autaProdana = await dbAll(
