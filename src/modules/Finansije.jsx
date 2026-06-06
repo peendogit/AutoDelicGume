@@ -21,7 +21,7 @@ function FinansijeModul({showToast}){
   useEffect(()=>{loadFin(period);loadTros();loadRedovni();},[]);
   useEffect(()=>{loadFin(period);},[period]);
 
-  const prihodGume=useMemo(()=>(!data?0:(data.gumeProdate||[]).reduce((s,g)=>s+(parseFloat((g.cijena_prodaje||'0 KM').split(' ')[0].replace(',','.'))||0),0)),[data]);
+  const prihodGume=useMemo(()=>(!data?0:(data.gumeProdate||[]).reduce((s,g)=>s+(parseFloat(g.cijena_prodaje)||0),0)),[data]);
   const prihodAuta=useMemo(()=>(!data?0:(data.autaProdana||[]).reduce((s,a)=>s+(parseFloat(a.prodajna_cijena)||0),0)),[data]);
   const filteredTros=useMemo(()=>listaTros.filter(t=>!filterMj||t.datum.startsWith(filterMj)),[listaTros,filterMj]);
   const ukupniTros=useMemo(()=>filteredTros.reduce((s,t)=>s+(parseFloat(t.iznos)||0),0),[filteredTros]);

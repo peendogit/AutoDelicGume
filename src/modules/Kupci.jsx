@@ -13,6 +13,7 @@ function KupciModul({showToast}){
   const [editKupovina,setEditKupovina]=useState(null);
   const [placanjModal,setPlacanjModal]=useState(null);
   const [novoPlacanje,setNovoPlacanje]=useState('');
+  const [datumUplate,setDatumUplate]=useState(new Date().toISOString().slice(0,10));
   const [filterDug,setFilterDug]=useState(false);
   // Kompenzacije
   const [selPartner,setSelPartner]=useState(null);
@@ -63,10 +64,10 @@ function KupciModul({showToast}){
     }catch(e){showToast(e.message,'err');}
   };
   const doPlati=async(kupId,kupovId)=>{
-    const k=await api('/kupci/'+kupId+'/kupovina/'+kupovId,{method:'PUT',body:{placeno:novoPlacanje}});
+    const k=await api('/kupci/'+kupId+'/kupovina/'+kupovId,{method:'PUT',body:{placeno:novoPlacanje,datum_uplate:datumUplate}});
     setKupci(p=>p.map(x=>x.id!=kupId?x:{...x,kupovine:(x.kupovine||[]).map(kup=>kup.id===k.id?k:kup)}));
     setDetail(d=>({...d,kupovine:(d.kupovine||[]).map(kup=>kup.id===k.id?k:kup)}));
-    setPlacanjModal(null);setNovoPlacanje('');showToast('Plaćanje evidentirano');
+    setPlacanjModal(null);setNovoPlacanje('');setDatumUplate(new Date().toISOString().slice(0,10));showToast('Plaćanje evidentirano');
   };
   const doDelKupovina=async(kid)=>{
     await api('/kupci/'+detail.id+'/kupovina/'+kid,{method:'DELETE'});
@@ -202,7 +203,8 @@ function KupciModul({showToast}){
             <div style={{flex:1}}>{k.opis}</div>
             <div style={{textAlign:'right',flexShrink:0}}>
               <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{(parseFloat(k.iznos)||0).toLocaleString('sr-Latn-BA')} KM</div>
-              {parseFloat(k.placeno)>0&&<div style={{fontSize:10,color:'var(--green)'}}>Plaćeno: {parseFloat(k.placeno).toLocaleString('sr-Latn-BA')} KM</div>}
+              {parseFloat(k.placeno)>0&&<div style={{fontSize:10,color:'var(--green)'}}>Plaćeno: {parseFloat(k.placeno).toLocaleString('sr-Latn-BA')} KM{k.datum_uplate?' · '+k.datum_uplate:''}</div>}
+              {k.datum&&<div style={{fontSize:10,color:'var(--muted)'}}>Zaduženo: {k.datum}</div>}
             </div>
             <button className="del-btn" style={{color:'var(--blue)',opacity:1}} onClick={()=>{setEditKupovina(k);setKupForm({opis:k.opis,iznos:String(k.iznos||''),placeno:String(k.placeno||''),datum:k.datum||new Date().toISOString().slice(0,10)});setModalKup(true);}}><Icons.Edit/></button>
             <button className="del-btn" onClick={()=>doDelKupovina(k.id)}><Icons.Trash/></button>
@@ -222,6 +224,7 @@ function KupciModul({showToast}){
     {placanjModal!==null&&detail&&<div className="overlay" onClick={()=>setPlacanjModal(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
       <div className="modal-title">Evidentiraj uplatu <button className="btn-close" onClick={()=>setPlacanjModal(null)}>x</button></div>
       <div className="fg2"><label>Iznos uplate (KM)</label><div className="price-row"><input className="price-inp" type="number" autoFocus value={novoPlacanje} onChange={e=>setNovoPlacanje(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doPlati(detail.id,placanjModal)}/><span className="price-curr">KM</span></div></div>
+      <div className="fg2"><label>Datum uplate</label><input type="date" value={datumUplate} onChange={e=>setDatumUplate(e.target.value)}/></div>
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>setPlacanjModal(null)}>Odustani</button><button className="btn-save" style={{background:'var(--green)',color:'#fff'}} onClick={()=>doPlati(detail.id,placanjModal)}>Potvrdi uplatu</button></div>
     </div></div>}
 
