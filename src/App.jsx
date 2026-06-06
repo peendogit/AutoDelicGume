@@ -10,6 +10,9 @@ import PremjestanjeWidget from './modules/Premjestanje.jsx';
 import KupciModul from './modules/Kupci.jsx';
 import PonudaModul from './modules/Ponude.jsx';
 import PodesavanjaModul from './modules/Podesavanja.jsx';
+import FinansijeModul from './modules/Finansije.jsx';
+import AnalitikaModul from './modules/Analitika.jsx';
+import LogModul from './modules/Log.jsx';
 
 function App(){
   const [user,setUser]=useState(null);const [authChecked,setAuthChecked]=useState(false);
@@ -94,7 +97,7 @@ function App(){
 
   ].filter(i=>i.always||(i.adminOnly&&isAdmin));
 
-  const pageTitles={dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansijski izvještaj',kupci:'Kupci',ponude:'Ponude / Računi',podesavanja:'Podešavanja'};
+  const pageTitles={dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansije',kupci:'Kupci',ponude:'Ponude / Računi',podesavanja:'Podešavanja',analitika:'Analitika',log:'Dnevnik'};
 
   return(<div className="layout">
     {/* SIDEBAR OVERLAY on mobile */}
@@ -107,7 +110,7 @@ function App(){
         <div className="sb-logo-text">Auto Delić<span>Upravljanje otpadom</span></div>
       </div>
       <nav className="sb-nav">
-        {navItems.map(item=><button key={item.id} className={'sb-item'+(page===item.id?' active':'')} onClick={()=>item.isAdminLink?window.location.href='/admin.html#'+item.adminHash:nav(item.id)}>
+        {navItems.map(item=><button key={item.id} className={'sb-item'+(page===item.id?' active':'')} onClick={()=>nav(item.adminHash||item.id)}>
           <span className="icon">{item.icon}</span>{item.label}
         </button>)}
       </nav>
@@ -133,7 +136,7 @@ function App(){
         </button>
         <div className="topbar-title">{pageTitles[page]||page}</div>
         <div className="topbar-actions">
-          {isAdmin&&<button title="Podešavanja" onClick={()=>window.location.href='/admin.html'} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',padding:'6px 8px',fontSize:20,lineHeight:1}}>⚙️</button>}
+          {isAdmin&&<button title="Podešavanja" onClick={()=>nav('podesavanja')} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',padding:'6px 8px',fontSize:20,lineHeight:1}}>⚙️</button>}
         </div>
       </div>
 
@@ -145,6 +148,9 @@ function App(){
       {page==='kupci'&&isAdmin&&<ErrorBoundary><KupciModul showToast={showToast}/></ErrorBoundary>}
       {page==='ponude'&&isAdmin&&<ErrorBoundary><PonudaModul showToast={showToast}/></ErrorBoundary>}
       {page==='podesavanja'&&isAdmin&&<PodesavanjaModul user={user} showToast={showToast} magacini={magacini} setMagacini={setMagacini} police={police} loadPolice={loadPoliceAndMag}/>}
+      {page==='finansije'&&isAdmin&&<FinansijeModul showToast={showToast}/>}
+      {page==='analitika'&&isAdmin&&<AnalitikaModul showToast={showToast}/>}
+      {page==='log'&&isAdmin&&<LogModul showToast={showToast}/>}
     </div>
 
     {lightbox&&<Lightbox images={lightbox.images} startIndex={lightbox.index} onClose={()=>setLightbox(null)}/>}
