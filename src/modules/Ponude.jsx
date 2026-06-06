@@ -36,7 +36,7 @@ function PonudaModul({showToast}){
         setPonude(prev=>prev.map(x=>x.id===p.id?p:x));showToast('Ponuda ažurirana');
       } else {
         p=await api('/ponude',{method:'POST',body:{...form,stavke:valid}});
-        setPonude(prev=>[p,...prev]);setPrintModal(p);showToast('Ponuda '+p.broj+' kreirana');
+        setPonude(prev=>[p,...prev]);doPrint(p,'predracun');showToast('Ponuda '+p.broj+' kreirana');
       }
       setModal(false);setEditPonuda(null);
       setForm({kupac_ime:'',kupac_adresa:'',kupac_telefon:'',napomena:'',pdv:true,rok_placanja:'Avansno plaćanje',mjesto:'Bijeljina'});

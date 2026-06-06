@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage, PROMJER_OPTIONS, SIRINA_OPTIONS, VISINA_OPTIONS } from '../utils.js';
+import { api, getToken, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage, PROMJER_OPTIONS, SIRINA_OPTIONS, VISINA_OPTIONS } from '../utils.js';
 import { Icons, ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination } from '../components/index.jsx';
-import KartaMagacinaInline from './KartaMagacina.jsx';
 
 function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice}){
   const [setTab,setSetTab]=useState('magacin');
@@ -46,7 +45,6 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
   return(<div className="page">
     <div className="set-tabs">
       <button className={'set-tab'+(setTab==='magacin'?' on':'')} onClick={()=>setSetTab('magacin')}>🏠 Magacin</button>
-      <button className={'set-tab'+(setTab==='karta'?' on':'')} onClick={()=>setSetTab('karta')}>🗺 Karta</button>
       <button className={'set-tab'+(setTab==='korisnici'?' on':'')} onClick={()=>setSetTab('korisnici')}>👥 Korisnici</button>
       <button className={'set-tab'+(setTab==='dimenzije'?' on':'')} onClick={()=>setSetTab('dimenzije')}>📐 Dimenzije</button>
       <button className={'set-tab'+(setTab==='cjenovnik'?' on':'')} onClick={()=>setSetTab('cjenovnik')}>💰 Cjenovnik</button>
@@ -116,7 +114,6 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
       </div>
     </>}
 
-    {setTab==='karta'&&<KartaMagacinaInline showToast={showToast} magacini={magacini}/>}
     {setTab==='dimenzije'&&<div>{[{label:'Širina (mm)',type:'sirina',base:SIRINA_OPTIONS,custom:customSirina},{label:'Profil (%)',type:'visina',base:VISINA_OPTIONS,custom:customVisina},{label:'Prečnik',type:'promjer',base:PROMJER_OPTIONS,custom:customPromjer}].map(({label,type,base,custom})=>(
       <div key={type} style={{marginBottom:14,background:'var(--card)',border:'1px solid var(--border)',borderRadius:7,padding:'11px 13px'}}>
         <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)',marginBottom:8}}>{label}</div>
