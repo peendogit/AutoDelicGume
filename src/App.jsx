@@ -38,7 +38,7 @@ function App(){
   const showToast=useCallback((msg,type='ok')=>{setToast({msg,type});setTimeout(()=>setToast(null),2800);},[]);
 
   const loadPoliceAndMag=async()=>{
-    try{const [p,m]=await Promise.all([api('/police'),api('/magacini')]);console.log('Police loaded:',p.length,p);setPolice(p);setMagacini(m);}catch(e){console.error('loadPoliceAndMag error:',e);}
+    try{const [p,m]=await Promise.all([api('/police'),api('/magacini')]);setPolice(p);setMagacini(m);}catch(e){}
   };
 
   const loadGume=async()=>{
@@ -93,8 +93,9 @@ function App(){
     {id:'kupci',label:'Kupci',icon:<Icons.Task size={18}/>,adminOnly:true},
     {id:'ponude',label:'Ponude',icon:<Icons.Money size={18}/>,adminOnly:true},
     {id:'zadaci',label:'Zadaci',icon:<Icons.Task size={18}/>,adminOnly:true},
-
-
+    {id:'finansije',label:'Finansije',icon:<Icons.Money size={18}/>,adminOnly:true},
+    {id:'analitika',label:'Analitika',icon:<Icons.Chart size={18}/>,adminOnly:true},
+    {id:'log',label:'Dnevnik',icon:<Icons.Log size={18}/>,adminOnly:true},
   ].filter(i=>i.always||(i.adminOnly&&isAdmin));
 
   const pageTitles={dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansije',kupci:'Kupci',ponude:'Ponude / Računi',podesavanja:'Podešavanja',analitika:'Analitika',log:'Dnevnik'};
