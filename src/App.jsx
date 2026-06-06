@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { api, getToken, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage } from './utils.js';
-import { ErrorBoundary, Lightbox, Pagination } from './components/index.jsx';
+import { Icons, ErrorBoundary, Lightbox, Pagination } from './components/index.jsx';
 import LoginScreen from './modules/LoginScreen.jsx';
 import Dashboard from './modules/Dashboard.jsx';
 import AutaModul from './modules/Auta.jsx';
