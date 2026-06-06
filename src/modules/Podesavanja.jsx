@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage, PROMJER_OPTIONS, SIRINA_OPTIONS, VISINA_OPTIONS } from '../utils.js';
 import { Icons, ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination } from '../components/index.jsx';
+import KartaMagacinaInline from './KartaMagacina.jsx';
 
 function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice}){
   const [setTab,setSetTab]=useState('magacin');
