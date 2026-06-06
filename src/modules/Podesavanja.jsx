@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage } from '../utils.js';
+import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage, PROMJER_OPTIONS, SIRINA_OPTIONS, VISINA_OPTIONS } from '../utils.js';
 import { Icons, ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination } from '../components/index.jsx';
 
 function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice}){

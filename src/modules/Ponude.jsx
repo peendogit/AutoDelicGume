@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage } from '../utils.js';
-import { ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination } from '../components/index.jsx';
+import { Icons, ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination } from '../components/index.jsx';
 
 function PonudaModul({showToast}){
   const [ponude,setPonude]=useState([]);const [modal,setModal]=useState(false);
