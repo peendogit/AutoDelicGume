@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage } from '../utils.js';
+import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage , fmtDate} from '../utils.js';
 import { Icons, ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination } from '../components/index.jsx';
 
 function KupciModul({showToast}){
@@ -154,7 +154,7 @@ function KupciModul({showToast}){
             <div style={{width:8,height:8,borderRadius:'50%',background:s.smjer==='dugujemo'?'var(--red)':'var(--green)',flexShrink:0}}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{s.opis}</div>
-              <div style={{fontSize:10,color:'var(--muted)'}}>{s.smjer==='dugujemo'?'Mi njima':'Oni nama'} · {s.datum}{s.izmireno?' · ✓ Izmireno':''}</div>
+              <div style={{fontSize:10,color:'var(--muted)'}}>{s.smjer==='dugujemo'?'Mi njima':'Oni nama'} · {fmtDate(s.datum)}{s.izmireno?' · ✓ Izmireno':''}</div>
             </div>
             <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:15,color:s.smjer==='dugujemo'?'var(--red)':'var(--green)',flexShrink:0}}>{(parseFloat(s.iznos)||0).toLocaleString('sr-Latn-BA')} KM</div>
             <button className="btn-sm" style={{color:s.izmireno?'var(--muted)':'var(--green)',borderColor:s.izmireno?'var(--border)':'var(--green)',padding:'3px 8px',fontSize:10}} onClick={()=>toggleKomp(s)}>{s.izmireno?'Poništi':'✓ Izmiri'}</button>
@@ -204,7 +204,7 @@ function KupciModul({showToast}){
             <div style={{textAlign:'right',flexShrink:0}}>
               <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{(parseFloat(k.iznos)||0).toLocaleString('sr-Latn-BA')} KM</div>
               {parseFloat(k.placeno)>0&&<div style={{fontSize:10,color:'var(--green)'}}>Plaćeno: {parseFloat(k.placeno).toLocaleString('sr-Latn-BA')} KM{k.datum_uplate?' · '+k.datum_uplate:''}</div>}
-              {k.datum&&<div style={{fontSize:10,color:'var(--muted)'}}>Zaduženo: {k.datum}</div>}
+              {k.datum&&<div style={{fontSize:10,color:'var(--muted)'}}>Zaduženo: {fmtDate(k.datum)}</div>}
             </div>
             <button className="del-btn" style={{color:'var(--blue)',opacity:1}} onClick={()=>{setEditKupovina(k);setKupForm({opis:k.opis,iznos:String(k.iznos||''),placeno:String(k.placeno||''),datum:k.datum||new Date().toISOString().slice(0,10)});setModalKup(true);}}><Icons.Edit/></button>
             <button className="del-btn" onClick={()=>doDelKupovina(k.id)}><Icons.Trash/></button>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { api } from '../utils.js';
+import { api , fmtDate} from '../utils.js';
 import { Icons } from '../components/index.jsx';
 
 function FinansijeModul({showToast}){
@@ -109,7 +109,7 @@ function FinansijeModul({showToast}){
               <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,width:50,color:'var(--accent)'}}>{g.sifra}</span>
               <span style={{flex:1,color:'var(--muted)'}}>{g.sirina}/{g.visina} {promjerDisp(g.promjer)} {g.sezona}</span>
               <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,color:'var(--green)'}}>{g.cijena_prodaje||'—'}</span>
-              <span style={{fontSize:10,color:'var(--muted)',width:55,textAlign:'right'}}>{g.datum_prodaje}</span>
+              <span style={{fontSize:10,color:'var(--muted)',width:55,textAlign:'right'}}>{fmtDate(g.datum_prodaje)}</span>
             </div>)}
           </div>
         </div>}
@@ -145,7 +145,7 @@ function FinansijeModul({showToast}){
               <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:800}}>{t.kategorija}</span>
               {t.opis&&<span style={{fontSize:11,color:'var(--muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.opis}</span>}
             </div>
-            <div style={{fontSize:10,color:'var(--muted)'}}>{t.datum} · {t.korisnik}</div>
+            <div style={{fontSize:10,color:'var(--muted)'}}>{fmtDate(t.datum)} · {t.korisnik}</div>
           </div>
           <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:16,fontWeight:900,color:'var(--red)',flexShrink:0}}>{parseFloat(t.iznos).toLocaleString('sr-Latn-RS')} KM</div>
           <button className="del-btn" onClick={()=>doDelTros(t.id)}><Icons.Trash/></button>

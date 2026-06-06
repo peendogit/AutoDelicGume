@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage } from '../utils.js';
+import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage, fmtDate } from '../utils.js';
 import { Icons, ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination } from '../components/index.jsx';
 
 function PonudaModul({showToast}){
@@ -47,7 +47,7 @@ function PonudaModul({showToast}){
 
   const genWAText=(p)=>{
     const st=p.stavke||[];const hasPdv=p.pdv!==false;
-    let txt=`PONUDA - ${FIRMA.naziv}\nBroj: ${p.broj}\nDatum: ${new Date(p.created_at).toLocaleDateString('sr-Latn-RS')}\n`;
+    let txt=`PONUDA - ${FIRMA.naziv}\nBroj: ${p.broj}\nDatum: ${fmtDate(p.created_at)}\n`;
     txt+=`\nKupac: ${p.kupac_ime}\n\nSTAVKE:\n`;
     st.forEach((s,i)=>{const u=(parseFloat(s.cijena)||0)*(parseInt(s.kolicina)||1);txt+=`${i+1}. ${s.opis} — ${s.kolicina}x${s.cijena} KM = ${u.toFixed(2)} KM\n`;});
     txt+=hasPdv?`\nBez PDV-a: ${ukupnoBezPdv(st).toFixed(2)} KM\nPDV (17%): ${pdvIznos(st).toFixed(2)} KM\nUKUPNO: ${ukupnoSaPdv(st,true).toFixed(2)} KM`:`\nUKUPNO: ${ukupnoBezPdv(st).toFixed(2)} KM`;
@@ -61,7 +61,7 @@ function PonudaModul({showToast}){
     const st=p.stavke||[];
     const hasPdv=p.pdv!==0&&p.pdv!==false&&!p.unosSaPdv;
     const unosSaPdv=!!p.unosSaPdv;
-    const datum=new Date(p.created_at).toLocaleDateString('sr-Latn-BA');
+    const datum=fmtDate(p.created_at);
     const bez=st.reduce((s,x)=>s+(parseFloat(x.cijena)||0)*(parseInt(x.kolicina)||1),0);
     const pdvIz=Math.round(bez*0.17*100)/100;
     const ukup=hasPdv?Math.round((bez+pdvIz)*100)/100:bez;
@@ -184,7 +184,7 @@ function PonudaModul({showToast}){
                 <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>{p.kupac_ime}</span>
               {p.vozilo&&<span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,color:'var(--accent)',background:'rgba(240,180,41,.12)',borderRadius:4,padding:'1px 6px'}}>🚗 {p.vozilo}</span>}
               </div>
-              <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{st.length} stavki · {new Date(p.created_at).toLocaleDateString('sr-Latn-RS')}</div>
+              <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{st.length} stavki · {fmtDate(p.created_at)}</div>
             </div>
             <div style={{textAlign:'right',flexShrink:0}}>
               <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18,color:'var(--green)'}}>{ukupPrikaz.toFixed(2)} KM</div>
@@ -277,7 +277,7 @@ function PonudaModul({showToast}){
     {viewPonuda&&<div className="overlay" onClick={()=>setViewPonuda(null)}><div className="modal" style={{maxWidth:520}} onClick={e=>e.stopPropagation()}>
       <div className="modal-title">Ponuda {viewPonuda.broj} <button className="btn-close" onClick={()=>setViewPonuda(null)}>x</button></div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-        <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:13,color:'var(--muted)'}}>{viewPonuda.kupac_ime} · {new Date(viewPonuda.created_at).toLocaleDateString('sr-Latn-BA')}</div>
+        <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:13,color:'var(--muted)'}}>{viewPonuda.kupac_ime} · {fmtDate(viewPonuda.created_at)}</div>
         <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:20,color:'var(--green)'}}>{ukupnoSaPdv(viewPonuda.stavke||[],viewPonuda.pdv!==0).toFixed(2)} KM</div>
       </div>
       {viewPonuda.vozilo&&<div style={{background:'rgba(240,180,41,.1)',border:'1px solid rgba(240,180,41,.3)',borderRadius:6,padding:'6px 12px',marginBottom:10,fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14,color:'var(--accent)'}}>🚗 {viewPonuda.vozilo}</div>}

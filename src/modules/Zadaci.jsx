@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage } from '../utils.js';
+import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage, fmtDate } from '../utils.js';
 import { Icons, ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination } from '../components/index.jsx';
 
 function ZadaciModul({user,showToast}){
@@ -55,7 +55,7 @@ function ZadaciModul({user,showToast}){
             <span className={'prioritet '+z.prioritet}>{z.prioritet}</span>
           </div>
           {z.opis&&<div className="zadatak-opis">{z.opis}</div>}
-          <div style={{fontSize:10,color:'var(--muted)',marginTop:4}}>{z.dodao_korisnik} · {new Date(z.created_at).toLocaleDateString('sr-Latn-RS')}</div>
+          <div style={{fontSize:10,color:'var(--muted)',marginTop:4}}>{z.dodao_korisnik} · {fmtDate(z.created_at)}</div>
         </div>
         <button className="del-btn" onClick={()=>doDel(z.id)}><Icons.Trash/></button>
       </div>)}

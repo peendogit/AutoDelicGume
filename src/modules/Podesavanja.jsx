@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { api, getToken, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage, PROMJER_OPTIONS, SIRINA_OPTIONS, VISINA_OPTIONS } from '../utils.js';
+import { api, getToken, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage, PROMJER_OPTIONS, SIRINA_OPTIONS, VISINA_OPTIONS, fmtDate } from '../utils.js';
 import { Icons, ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination } from '../components/index.jsx';
 
 function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice}){
@@ -101,7 +101,7 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
         </div>
       </div>
       {korisnici.map(k=><div key={k.id} className="user-item">
-        <div style={{flex:1,minWidth:0}}><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{k.username}</div><div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>{new Date(k.created_at).toLocaleDateString('sr-Latn-RS')}</div></div>
+        <div style={{flex:1,minWidth:0}}><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{k.username}</div><div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>{fmtDate(k.created_at)}</div></div>
         <div style={{display:'flex',alignItems:'center',gap:5,flexShrink:0}}>
           <span className={'user-role '+k.role}>{k.role}</span>
           <button className="del-btn" style={{color:'var(--blue)',opacity:.8}} title="Uredi" onClick={()=>setEditUser({...k,password:''})}><Icons.Edit/></button>
