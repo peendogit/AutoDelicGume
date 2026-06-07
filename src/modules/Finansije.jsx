@@ -184,7 +184,7 @@ function FinansijeModul({showToast}){
       const do_=new Date(istTo+'T23:59:59');
       const filtGume=(data?.gumeProdate||[]).filter(g=>{
         if(istTip==='auta')return false;
-        const d=g.datum_prodaje?new Date(g.datum_prodaje.split('.').reverse().join('-')+'T00:00:00'):null;
+        const dp=g.datum_prodaje;const d=dp&&dp.length>=13?new Date(dp.substr(8,4)+'-'+dp.substr(4,2).trim()+'-'+dp.substr(0,2)+'T00:00:00'):null;
         return d&&d>=od&&d<=do_;
       });
       const filtAuta=(data?.autaProdana||[]).filter(a=>{
