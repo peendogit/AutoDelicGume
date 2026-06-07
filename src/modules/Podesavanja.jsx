@@ -38,7 +38,7 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
   const doAddUser=async()=>{if(!newUser.username||!newUser.password){showToast('Unesite korisničko ime i lozinku','err');return;}try{const k=await api('/korisnici',{method:'POST',body:newUser});setKorisnici(p=>[...p,k]);setNewUser({username:'',password:'',role:'radnik'});showToast('Korisnik "'+k.username+'" kreiran');}catch(e){showToast(e.message,'err');}};
   const doDelUser=async(id)=>{if(!window.confirm('Da li ste sigurni da želite obrisati ovog korisnika?'))return;await api('/korisnici/'+id,{method:'DELETE'});setKorisnici(p=>p.filter(k=>k.id!=id));showToast('Korisnik obrisan');};
   const doEditUser=async()=>{if(!editUser||!editUser.username.trim()){showToast('Korisničko ime je obavezno','err');return;}try{const body={username:editUser.username.trim(),role:editUser.role};if(editUser.password.trim())body.password=editUser.password.trim();const updated=await api('/korisnici/'+editUser.id,{method:'PUT',body});setKorisnici(p=>p.map(k=>k.id===updated.id?updated:k));setEditUser(null);showToast('Korisnik "'+updated.username+'" ažuriran');}catch(e){showToast(e.message,'err');}};
-  const doBackup=async()=>{try{showToast('Učitavanje...');const res=await fetch('/api/backup',{headers:{'Authorization':'Bearer '+getToken()}});if(!res.ok){const d=await res.json();showToast(d.error||'Greška','err');return;}const blob=await res.blob();const date=new Date().toISOString().slice(0,10);const fileName='autodelic-backup-'+date+'.json';
+  const doBackup=async()=>{try{showToast('Učitavanje...');const res=await fetch('/api/backup',{headers:{'Authorization':'Bearer '+getToken()}});if(!res.ok){let errMsg='Greška '+res.status;try{const ct=res.headers.get('content-type')||'';if(ct.includes('application/json')){const d=await res.json();errMsg=d.error||errMsg;}}catch(e){}showToast(errMsg,'err');return;}const blob=await res.blob();const date=new Date().toISOString().slice(0,10);const fileName='autodelic-backup-'+date+'.zip';
     // Android: pokušaj Web Share API (otvori share sheet sa opcijom Save to Drive, Telegram, itd.)
     if(navigator.canShare&&navigator.canShare({files:[new File([blob],fileName,{type:'application/json'})]})){
       try{await navigator.share({files:[new File([blob],fileName,{type:'application/json'})],title:'Auto Delić Backup'});showToast('Backup podijeljen!');return;}catch(shareErr){if(shareErr.name==='AbortError')return;/* korisnik odustao */}
@@ -118,7 +118,7 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
       </div>)}
       <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)'}}>
         <button className="btn-new" style={{background:'var(--blue)',width:'100%',justifyContent:'center',gap:6}} onClick={doBackup}>💾 Preuzmi rezervnu kopiju podataka</button>
-        <div style={{fontSize:10,color:'var(--muted)',marginTop:5,textAlign:'center'}}>JSON fajl — sačuvaj na sigurno mjesto</div>
+        <div style={{fontSize:10,color:'var(--muted)',marginTop:5,textAlign:'center'}}>ZIP fajl (baza + slike) — sačuvaj na sigurno mjesto</div>
       </div>
     </>}
 
