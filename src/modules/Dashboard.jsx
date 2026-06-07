@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage } from '../utils.js';
-import { ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination } from '../components/index.jsx';
+import React, { useState, useEffect } from 'react';
+import { api, promjerDisp, timeAgo } from '../utils.js';
 
 function Dashboard({user,onNav,showToast}){
   const [data,setData]=useState(null);
   useEffect(()=>{const load=()=>api('/dashboard').then(setData).catch(e=>{if(e.message&&e.message.includes('fetch'))setTimeout(load,1500);});load();},[]);
   if(!data)return <div className="page"><div style={{color:'var(--muted)',padding:40,textAlign:'center',fontFamily:'Barlow Condensed,sans-serif',letterSpacing:2,textTransform:'uppercase',fontSize:13}}>Učitavanje...</div></div>;
-  const aktDot={PRIJAVA:'blue',DODANA_GUMA:'green',PRODANA_GUMA:'green',PREMJESTENA_GUMA:'accent',EDITOVANA_GUMA:'accent',OBRISANA_GUMA:'red',DODAN_AUTO:'blue',PRODAT_AUTO:'green',OBRISAN_AUTO:'red'};
-  const aktNaziv={PRIJAVA:'Prijava',DODANA_GUMA:'Dodana guma',PRODANA_GUMA:'Prodana guma',PREMJESTENA_GUMA:'Premještena',EDITOVANA_GUMA:'Izmijenjena guma',OBRISANA_GUMA:'Obrisana guma',DODAN_AUTO:'Dodan auto',PRODAT_AUTO:'Prodat auto',OBRISAN_AUTO:'Obrisan auto'};
   return(<div className="page">
     <div className="page-header">
       <div className="page-title">Dobrodošao, {user.username} 👋</div>
@@ -22,32 +19,32 @@ function Dashboard({user,onNav,showToast}){
     {data&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
       <div className="card-panel">
         <div className="section-title">Posljednje dodano — Gume</div>
-        {(data.zadnje_gume||[]).length===0?<div style={{fontSize:12,color:'var(--muted)'}}>Nema guma</div>:
-        (data.zadnje_gume||[]).map(g=><div key={g.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>onNav('gume')}>
-          <div><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>{g.sirina}/{g.visina} {promjerDisp(g.promjer)}</div><div style={{fontSize:10,color:'var(--muted)'}}>{g.sifra} · {g.polica_kod}</div></div>
-          <button className="btn-sm" onClick={e=>{e.stopPropagation();onNav('gume');}}>Pregledaj</button>
-        </div>)}
+        {(data.zadnje_gume||[]).length===0
+          ?<div style={{fontSize:12,color:'var(--muted)'}}>Nema guma</div>
+          :(data.zadnje_gume||[]).map(g=><div key={g.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>onNav('gume')}>
+            <div><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>{g.sirina}/{g.visina} {promjerDisp(g.promjer)}</div><div style={{fontSize:10,color:'var(--muted)'}}>{g.sifra} · {g.polica_kod}</div></div>
+            <button className="btn-sm" onClick={e=>{e.stopPropagation();onNav('gume');}}>Pregledaj</button>
+          </div>)
+        }
       </div>
       <div className="card-panel">
-        <div className="section-title">Posljednje dodano — Auta</div>
-        {(data.zadnja_auta||[]).length===0?<div style={{fontSize:12,color:'var(--muted)'}}>Nema auta</div>:
-        (data.zadnja_auta||[]).map(a=><div key={a.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>onNav('auta')}>
-          <div><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>{a.marka} {a.model}</div><div style={{fontSize:10,color:'var(--muted)'}}>{a.sifra} · {a.godiste}</div></div>
-          <button className="btn-sm" onClick={e=>{e.stopPropagation();onNav('auta');}}>Pregledaj</button>
-        </div>)}
+        <div className="section-title">Otvoreni zadaci</div>
+        {(data.zadnji_zadaci||[]).length===0
+          ?<div style={{fontSize:12,color:'var(--muted)'}}>Nema otvorenih zadataka 🎉</div>
+          :(data.zadnji_zadaci||[]).map(z=>{
+            const priColor=z.prioritet==='visok'?'var(--red)':z.prioritet==='srednji'?'var(--accent)':'var(--muted)';
+            return(<div key={z.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>onNav('zadaci')}>
+              <div style={{width:6,height:6,borderRadius:'50%',background:priColor,flexShrink:0}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{z.naslov}</div>
+                <div style={{fontSize:10,color:'var(--muted)'}}>{z.dodao_korisnik}</div>
+              </div>
+              <div style={{fontSize:10,color:priColor,fontWeight:700,flexShrink:0,textTransform:'uppercase'}}>{z.prioritet}</div>
+            </div>);
+          })
+        }
+        {(data.zadnji_zadaci||[]).length>0&&<button className="btn-sm" style={{width:'100%',marginTop:6,justifyContent:'center'}} onClick={()=>onNav('zadaci')}>Svi zadaci →</button>}
       </div>
-    </div>}
-    {user.role==='admin'&&<div className="card-panel" style={{marginTop:14}}>
-      <div className="section-title">Posljednje aktivnosti</div>
-      {(data.aktivnosti||[]).length===0?<div style={{fontSize:12,color:'var(--muted)'}}>Nema aktivnosti</div>:
-      (data.aktivnosti||[]).map((a,i)=>{
-        const dt=new Date(a.created_at);
-        return(<div key={i} className="act-item">
-          <div className={'act-dot '+(aktDot[a.akcija]||'accent')}/>
-          <div className="act-body"><div className="act-main"><b>{a.korisnik}</b> — {aktNaziv[a.akcija]||a.akcija}{a.detalji&&<span style={{color:'var(--muted)'}}> · {a.detalji}</span>}</div></div>
-          <div className="act-time">{timeAgo(a.created_at)}</div>
-        </div>);
-      })}
     </div>}
   </div>);
 }
