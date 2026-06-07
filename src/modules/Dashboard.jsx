@@ -4,7 +4,7 @@ import { ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Paginat
 
 function Dashboard({user,onNav,showToast}){
   const [data,setData]=useState(null);
-  useEffect(()=>{api('/dashboard').then(setData).catch(console.error);},[]);
+  useEffect(()=>{const load=()=>api('/dashboard').then(setData).catch(e=>{if(e.message&&e.message.includes('fetch'))setTimeout(load,1500);});load();},[]);
   if(!data)return <div className="page"><div style={{color:'var(--muted)',padding:40,textAlign:'center',fontFamily:'Barlow Condensed,sans-serif',letterSpacing:2,textTransform:'uppercase',fontSize:13}}>Učitavanje...</div></div>;
   const aktDot={PRIJAVA:'blue',DODANA_GUMA:'green',PRODANA_GUMA:'green',PREMJESTENA_GUMA:'accent',EDITOVANA_GUMA:'accent',OBRISANA_GUMA:'red',DODAN_AUTO:'blue',PRODAT_AUTO:'green',OBRISAN_AUTO:'red'};
   const aktNaziv={PRIJAVA:'Prijava',DODANA_GUMA:'Dodana guma',PRODANA_GUMA:'Prodana guma',PREMJESTENA_GUMA:'Premještena',EDITOVANA_GUMA:'Izmijenjena guma',OBRISANA_GUMA:'Obrisana guma',DODAN_AUTO:'Dodan auto',PRODAT_AUTO:'Prodat auto',OBRISAN_AUTO:'Obrisan auto'};

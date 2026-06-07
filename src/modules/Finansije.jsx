@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { api , fmtDate} from '../utils.js';
+import { api, fmtDate, promjerDisp } from '../utils.js';
 import { Icons } from '../components/index.jsx';
 
 function FinansijeModul({showToast}){
@@ -8,6 +8,9 @@ function FinansijeModul({showToast}){
   const [listaTros,setListaTros]=useState([]);const [modalTros,setModalTros]=useState(false);
   const [formTros,setFormTros]=useState({kategorija:'',opis:'',iznos:'',datum:new Date().toISOString().slice(0,10)});
   const [filterMj,setFilterMj]=useState(new Date().toISOString().slice(0,7));
+  const [istFrom,setIstFrom]=useState(new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10));
+  const [istTo,setIstTo]=useState(new Date().toISOString().slice(0,10));
+  const [istTip,setIstTip]=useState('sve');
   const [redovni,setRedovni]=useState([]);const [modalRedovni,setModalRedovni]=useState(false);
   const [editRedovni,setEditRedovni]=useState(null);
   const [formR,setFormR]=useState({naziv:'',kategorija:'',iznos:'',dan_u_mjesecu:'1'});
@@ -60,6 +63,7 @@ function FinansijeModul({showToast}){
       <button className={"stab"+(mainTab==='prihodi'?' as':'')} onClick={()=>setMainTab('prihodi')}>Prihodi</button>
       <button className={"stab"+(mainTab==='troskovi'?' as':'')} onClick={()=>setMainTab('troskovi')}>Troškovi</button>
       <button className={"stab"+(mainTab==='redovni'?' as':'')} onClick={()=>setMainTab('redovni')}>Redovni</button>
+      <button className={"stab"+(mainTab==='istorija'?' as':'')} onClick={()=>setMainTab('istorija')}>Istorija</button>
     </div>
 
     {mainTab==='pregled'&&<>
@@ -174,6 +178,70 @@ function FinansijeModul({showToast}){
         </div>)}
       </div>}
     </>}
+
+    {mainTab==='istorija'&&(()=>{
+      const od=new Date(istFrom+'T00:00:00');
+      const do_=new Date(istTo+'T23:59:59');
+      const filtGume=(data?.gumeProdate||[]).filter(g=>{
+        if(istTip==='auta')return false;
+        const d=g.datum_prodaje?new Date(g.datum_prodaje.split('.').reverse().join('-')+'T00:00:00'):null;
+        return d&&d>=od&&d<=do_;
+      });
+      const filtAuta=(data?.autaProdana||[]).filter(a=>{
+        if(istTip==='gume')return false;
+        return true; // auta nemaju datum_prodaje filterable, prikazuj sve
+      });
+      const ukGume=filtGume.reduce((s,g)=>s+(parseFloat(g.cijena_prodaje)||0),0);
+      const ukAuta=filtAuta.reduce((s,a)=>s+(parseFloat(a.prodajna_cijena)||0),0);
+      return(<>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center',marginBottom:10}}>
+          <div style={{display:'flex',flexDirection:'column',gap:2,flex:1,minWidth:120}}>
+            <label style={{fontSize:9,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>OD</label>
+            <input type="date" value={istFrom} onChange={e=>setIstFrom(e.target.value)} style={{fontSize:13,padding:'6px 8px',border:'1px solid var(--border)',borderRadius:5,background:'var(--card)',color:'var(--text)'}}/>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:2,flex:1,minWidth:120}}>
+            <label style={{fontSize:9,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>DO</label>
+            <input type="date" value={istTo} onChange={e=>setIstTo(e.target.value)} style={{fontSize:13,padding:'6px 8px',border:'1px solid var(--border)',borderRadius:5,background:'var(--card)',color:'var(--text)'}}/>
+          </div>
+          <div style={{display:'flex',gap:4,alignSelf:'flex-end',paddingBottom:1}}>
+            {[['sve','Sve'],['gume','Gume'],['auta','Auta']].map(([v,l])=><button key={v} className={"stab"+(istTip===v?' as':'')} style={{padding:'6px 10px',fontSize:11}} onClick={()=>setIstTip(v)}>{l}</button>)}
+          </div>
+        </div>
+        <div className="kpi-grid" style={{gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',marginBottom:12}}>
+          {istTip!=='auta'&&<div className="kpi green" style={{padding:'8px 12px'}}><div className="kpi-lbl">Gume prihod</div><div className="kpi-val" style={{color:'var(--green)',fontSize:18}}>{ukGume.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{filtGume.length} kom</div></div>}
+          {istTip!=='gume'&&<div className="kpi blue" style={{padding:'8px 12px'}}><div className="kpi-lbl">Auta prihod</div><div className="kpi-val" style={{color:'var(--blue)',fontSize:18}}>{ukAuta.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{filtAuta.length} kom</div></div>}
+          <div className="kpi accent" style={{padding:'8px 12px'}}><div className="kpi-lbl">Ukupno</div><div className="kpi-val" style={{color:'var(--accent)',fontSize:18}}>{(ukGume+ukAuta).toLocaleString('sr-Latn-RS')} KM</div></div>
+        </div>
+        {istTip!=='auta'&&filtGume.length>0&&<div className="card-panel" style={{marginBottom:10}}>
+          <div className="section-title">Prodane gume ({filtGume.length})</div>
+          <div style={{display:'flex',flexDirection:'column',gap:4}}>
+            {filtGume.map((g,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:12}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{g.sirina}/{g.visina} {promjerDisp(g.promjer)} {g.sezona}</div>
+                <div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>
+                  {g.sifra} · {g.prodao_korisnik||'—'} · {g.datum_prodaje||'—'}
+                </div>
+              </div>
+              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,color:'var(--green)',flexShrink:0}}>{g.cijena_prodaje||'—'} KM</div>
+            </div>)}
+          </div>
+        </div>}
+        {istTip!=='auta'&&filtGume.length===0&&istTip!=='auta'&&<div className="empty" style={{padding:'20px 0'}}><p style={{fontSize:13,color:'var(--muted)'}}>Nema prodanih guma za odabrani period.</p></div>}
+        {istTip!=='gume'&&filtAuta.length>0&&<div className="card-panel">
+          <div className="section-title">Prodana auta ({filtAuta.length})</div>
+          <div style={{display:'flex',flexDirection:'column',gap:4}}>
+            {filtAuta.map((a,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:12}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{a.marka} {a.model}{a.godiste?' ('+a.godiste+')':''}</div>
+                <div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>{a.sifra} · {a.dodao_korisnik||'—'}</div>
+              </div>
+              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,color:'var(--green)',flexShrink:0}}>{a.prodajna_cijena||'—'} KM</div>
+            </div>)}
+          </div>
+        </div>}
+      </>);
+    })()}
+
 
     {modalTros&&<div className="overlay" onClick={()=>setModalTros(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
       <div className="modal-title">Novi trošak <button className="btn-close" onClick={()=>setModalTros(false)}>x</button></div>
