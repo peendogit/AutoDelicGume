@@ -910,16 +910,15 @@ app.get('/api/dashboard', requireAuth, async (req,res) => {
   try {
     const [gumeStanje, gumeProdato, autaStanje, autaProdato,
            zadaciOtvoreni, troskoviAktivno,
-           aktivnosti, zadnjeGume, zadnjaAuta] = await Promise.all([
+           zadnjeGume, zadnjiZadaci] = await Promise.all([
       dbGet('SELECT COUNT(*) as c FROM gume WHERE prodato=0'),
       dbGet('SELECT COUNT(*) as c FROM gume WHERE prodato=1'),
       dbGet("SELECT COUNT(*) as c FROM auta WHERE status='na_stanju'"),
       dbGet("SELECT COUNT(*) as c FROM auta WHERE status='prodat'"),
       dbGet("SELECT COUNT(*) as c FROM zadaci WHERE status='otvoreno'"),
       dbGet('SELECT COUNT(*) as c FROM troskovi_auta'),
-      dbAll('SELECT * FROM aktivnosti ORDER BY created_at DESC LIMIT 15'),
       dbAll('SELECT id,sifra,sezona,sirina,visina,promjer,polica_kod,created_at FROM gume ORDER BY created_at DESC LIMIT 5'),
-      dbAll('SELECT id,sifra,marka,model,godiste,status,created_at FROM auta ORDER BY created_at DESC LIMIT 5'),
+      dbAll("SELECT id,naslov,prioritet,status,dodao_korisnik,created_at FROM zadaci WHERE status='otvoreno' ORDER BY CASE prioritet WHEN 'visok' THEN 1 WHEN 'srednji' THEN 2 ELSE 3 END, created_at DESC LIMIT 5"),
     ]);
     res.json({
       gume_stanje: gumeStanje?.c||0,
@@ -928,9 +927,8 @@ app.get('/api/dashboard', requireAuth, async (req,res) => {
       auta_prodato: autaProdato?.c||0,
       zadaci_otvoreno: zadaciOtvoreni?.c||0,
       troskovi_aktivno: troskoviAktivno?.c||0,
-      aktivnosti,
       zadnje_gume: zadnjeGume,
-      zadnja_auta: zadnjaAuta,
+      zadnji_zadaci: zadnjiZadaci,
     });
   } catch(e) { res.status(500).json({error:e.message}); }
 });
@@ -1477,7 +1475,11 @@ app.get('/api/finansije', requireAdmin, async (req,res) => {
     // Prihodi od guma
     const gumeProdate = await dbAll(
       `SELECT sifra,sirina,visina,promjer,sezona,cijena_prodaje,datum_prodaje,prodao_korisnik
-       FROM gume WHERE prodato=1 AND (datum_prodaje >= ? OR ? = '2000-01-01') ORDER BY datum_prodaje DESC`,
+       FROM gume WHERE prodato=1 AND (
+         ? = '2000-01-01' OR
+         (length(datum_prodaje)>=10 AND
+          substr(datum_prodaje,7,4)||'-'||substr(datum_prodaje,4,2)||'-'||substr(datum_prodaje,1,2) >= ?)
+       ) ORDER BY datum_prodaje DESC`,
       [datumOd, datumOd]);
 
     // Prihodi od auta
