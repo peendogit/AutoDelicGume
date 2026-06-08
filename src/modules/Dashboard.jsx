@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { api, promjerDisp, timeAgo } from '../utils.js';
+import { api, promjerDisp } from '../utils.js';
 
 function Dashboard({user,onNav,showToast}){
   const [data,setData]=useState(null);
   useEffect(()=>{const load=()=>api('/dashboard').then(setData).catch(e=>{if(e.message&&e.message.includes('fetch'))setTimeout(load,1500);});load();},[]);
   if(!data)return <div className="page"><div style={{color:'var(--muted)',padding:40,textAlign:'center',fontFamily:'Barlow Condensed,sans-serif',letterSpacing:2,textTransform:'uppercase',fontSize:13}}>Učitavanje...</div></div>;
+  const prod24=data.prodaja_24h||[];
+  const prihod24=prod24.reduce((s,g)=>s+(parseFloat(g.cijena_prodaje)||0),0);
   return(<div className="page">
     <div className="page-header">
       <div className="page-title">Dobrodošao, {user.username} 👋</div>
@@ -16,7 +18,28 @@ function Dashboard({user,onNav,showToast}){
       {user.role==='admin'&&<div className="kpi blue" style={{cursor:'pointer'}} onClick={()=>onNav('zadaci')}><div className="kpi-lbl">Otvoreni zadaci</div><div className="kpi-val" style={{color:'var(--blue)'}}>{data.zadaci_otvoreno}</div><div className="kpi-sub">to-do lista</div></div>}
       {user.role==='admin'&&<div className="kpi purple" style={{cursor:'pointer'}} onClick={()=>onNav('troskovi')}><div className="kpi-lbl">U popravci</div><div className="kpi-val" style={{color:'var(--purple)'}}>{data.troskovi_aktivno}</div><div className="kpi-sub">auta na popravci</div></div>}
     </div>
-    {data&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+
+    <div className="card-panel" style={{marginBottom:14}}>
+      <div className="section-title">Prodaja — zadnja 24h</div>
+      {prod24.length===0
+        ?<div style={{fontSize:12,color:'var(--muted)'}}>Nema prodaje u zadnja 24h</div>
+        :<>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+            <span style={{fontSize:11,color:'var(--muted)'}}>{prod24.length} kom prodano</span>
+            <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,color:'var(--green)',fontSize:16}}>{prihod24.toLocaleString('sr-Latn-RS')} KM</span>
+          </div>
+          {prod24.map((g,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid var(--border)'}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{g.sirina}/{g.visina} {promjerDisp(g.promjer)} {g.sezona}</div>
+              <div style={{fontSize:10,color:'var(--muted)'}}>{g.sifra} · {g.prodao_korisnik||'—'}</div>
+            </div>
+            <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,color:'var(--green)',flexShrink:0,fontSize:13}}>{g.cijena_prodaje}</div>
+          </div>)}
+        </>
+      }
+    </div>
+
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
       <div className="card-panel">
         <div className="section-title">Posljednje dodano — Gume</div>
         {(data.zadnje_gume||[]).length===0
@@ -45,10 +68,8 @@ function Dashboard({user,onNav,showToast}){
         }
         {(data.zadnji_zadaci||[]).length>0&&<button className="btn-sm" style={{width:'100%',marginTop:6,justifyContent:'center'}} onClick={()=>onNav('zadaci')}>Svi zadaci →</button>}
       </div>
-    </div>}
+    </div>
   </div>);
 }
-
-// ===== AUTA MODULE =====
 
 export default Dashboard;
