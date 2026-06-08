@@ -10,6 +10,7 @@ import PremjestanjeWidget from './modules/Premjestanje.jsx';
 import KupciModul from './modules/Kupci.jsx';
 import PonudaModul from './modules/Ponude.jsx';
 import PodesavanjaModul from './modules/Podesavanja.jsx';
+import NaloziModul from './modules/Nalozi.jsx';
 import FinansijeModul from './modules/Finansije.jsx';
 import AnalitikaModul from './modules/Analitika.jsx';
 import LogModul from './modules/Log.jsx';
@@ -49,6 +50,7 @@ function App(){
   useEffect(()=>{if(user&&(page==='gume'||page==='dashboard')&&!gumeLoaded)loadGume();},[user,page]);
 
   const [isOnline,setIsOnline]=useState(navigator.onLine);
+  const [nalogCount,setNalogCount]=useState(0);
   const [fabOpen,setFabOpen]=useState(false);
   const overlayCountRef = React.useRef(0);
   const [quickAddModal,setQuickAddModal]=useState(null); // 'guma' | 'auto'
@@ -98,7 +100,7 @@ function App(){
     {id:'log',label:'Dnevnik',icon:<Icons.Log size={18}/>,adminOnly:true},
   ].filter(i=>i.always||(i.adminOnly&&isAdmin));
 
-  const pageTitles={dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansije',kupci:'Kupci',ponude:'Ponude / Računi',podesavanja:'Podešavanja',analitika:'Analitika',log:'Dnevnik'};
+  const pageTitles={nalozi:'Nalozi za gume',dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansije',kupci:'Kupci',ponude:'Ponude / Računi',podesavanja:'Podešavanja',analitika:'Analitika',log:'Dnevnik'};
 
   return(<div className="layout">
     {/* SIDEBAR OVERLAY on mobile */}
@@ -137,6 +139,10 @@ function App(){
         </button>
         <div className="topbar-title">{pageTitles[page]||page}</div>
         <div className="topbar-actions">
+          <button onClick={()=>nav('nalozi')} style={{position:'relative',background:'none',border:'none',color:page==='nalozi'?'var(--accent)':'var(--muted)',cursor:'pointer',padding:'6px 8px',fontSize:13,fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,letterSpacing:1,textTransform:'uppercase',lineHeight:1}}>
+            NALOZI
+            {nalogCount>0&&<span style={{position:'absolute',top:2,right:2,background:'var(--red)',color:'#fff',borderRadius:'50%',width:16,height:16,fontSize:9,fontWeight:900,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>{nalogCount}</span>}
+          </button>
           {isAdmin&&<button title="Podešavanja" onClick={()=>nav('podesavanja')} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',padding:'6px 8px',fontSize:20,lineHeight:1}}>⚙️</button>}
         </div>
       </div>
@@ -148,6 +154,7 @@ function App(){
       {page==='zadaci'&&isAdmin&&<ZadaciModul user={user} showToast={showToast}/>}
       {page==='kupci'&&isAdmin&&<ErrorBoundary><KupciModul showToast={showToast}/></ErrorBoundary>}
       {page==='ponude'&&isAdmin&&<ErrorBoundary><PonudaModul showToast={showToast}/></ErrorBoundary>}
+      {page==='nalozi'&&<NaloziModul user={user} showToast={showToast} onCountChange={setNalogCount}/> }
       {page==='podesavanja'&&isAdmin&&<PodesavanjaModul user={user} showToast={showToast} magacini={magacini} setMagacini={setMagacini} police={police} loadPolice={loadPoliceAndMag}/>}
       {page==='finansije'&&isAdmin&&<FinansijeModul showToast={showToast}/>}
       {page==='analitika'&&isAdmin&&<AnalitikaModul showToast={showToast}/>}
