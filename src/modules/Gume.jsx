@@ -17,6 +17,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
   const [savingGuma,setSavingGuma]=useState(false);
   const [moveModal,setMoveModal]=useState(null);const [moveKod,setMoveKod]=useState('');
   const [showHistorija,setShowHistorija]=useState(false);const [historijaGuma,setHistorijaGuma]=useState([]);
+  const [nalogModal,setNalogModal]=useState(null);const [nalogForm,setNalogForm]=useState({napomena:'',hitno:false,za_slanje:false});const [nalogSaving,setNalogSaving]=useState(false);
   const [customSirina,setCustomSirina]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_sirina')||'[]');}catch{return [];}});
   const [customVisina,setCustomVisina]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_visina')||'[]');}catch{return [];}});
   const [customPromjer,setCustomPromjer]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_promjer')||'[]');}catch{return [];}});
@@ -87,6 +88,44 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
   const loadHistorija=async(id)=>{try{const h=await api('/gume/'+id+'/historija');setHistorijaGuma(h);setShowHistorija(true);}catch(e){showToast(e.message,'err');}};
 
   const TIP_OPTS=[{v:'',l:'Svi tipovi'},{v:'komad',l:'Komad (1)'},{v:'par',l:'Par (2)'},{v:'set',l:'Set (4)'}];
+
+    {nalogModal&&<div className="overlay" onClick={()=>setNalogModal(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">Pošalji nalog <button className="btn-close" onClick={()=>setNalogModal(null)}>×</button></div>
+      <div style={{padding:'4px 0 8px',fontSize:13,color:'var(--muted)'}}>Guma: <b style={{color:'var(--text)'}}>{nalogModal.sifra}</b> — {nalogModal.sirina}/{nalogModal.visina}</div>
+      <div className="fg2">
+        <label>Napomena</label>
+        <input value={nalogForm.napomena} onChange={e=>setNalogForm(f=>({...f,napomena:e.target.value}))} placeholder="npr. donesi do 14h, spremi za Marka..."/>
+      </div>
+      <div style={{display:'flex',gap:16,marginTop:10}}>
+        <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
+          <input type="checkbox" checked={nalogForm.hitno} onChange={e=>setNalogForm(f=>({...f,hitno:e.target.checked}))}/>
+          <span style={{color:'var(--red)',fontWeight:700}}>🔴 Hitno</span>
+        </label>
+        <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
+          <input type="checkbox" checked={nalogForm.za_slanje} onChange={e=>setNalogForm(f=>({...f,za_slanje:e.target.checked}))}/>
+          <span style={{color:'var(--blue)',fontWeight:700}}>📦 Za slanje</span>
+        </label>
+      </div>
+      <div className="modal-foot">
+        <button className="btn-cancel" onClick={()=>setNalogModal(null)}>Odustani</button>
+        <button className="btn-save" disabled={nalogSaving} onClick={async()=>{
+          setNalogSaving(true);
+          try{
+            await fetch('/api/nalozi',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('adg_token')},body:JSON.stringify({
+              guma_id:nalogModal.id,
+              guma_sifra:nalogModal.sifra,
+              guma_opis:`${nalogModal.sirina}/${nalogModal.visina} R${nalogModal.promjer} ${nalogModal.sezona}`,
+              napomena:nalogForm.napomena,
+              hitno:nalogForm.hitno,
+              za_slanje:nalogForm.za_slanje
+            })});
+            showToast('Nalog poslan!');
+            setNalogModal(null);
+          }catch(e){showToast('Greška','err');}
+          setNalogSaving(false);
+        }}>Pošalji nalog</button>
+      </div>
+    </div></div>}
 
   return(<div className="page">
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,flexWrap:'wrap',gap:8}}>
@@ -193,6 +232,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
       <div className="modal-foot">
         {isAdmin&&<div className="foot-left"><button className="btn-sm red" onClick={()=>doDel(detailG.id)}><Icons.Trash/> Obriši</button></div>}
         {!detailG.prodato&&<button className="btn-sm" style={{color:'var(--blue)',borderColor:'rgba(88,166,255,.3)'}} onClick={()=>{setMoveModal(detailG);setMoveKod('');setDetailG(null);}}><Icons.Move/> Premjesti</button>}
+        {!detailG.prodato&&isAdmin&&<button className="btn-sm" style={{color:'var(--accent)',borderColor:'rgba(255,165,0,.3)'}} onClick={()=>{setNalogModal(detailG);setNalogForm({napomena:'',hitno:false,za_slanje:false});setDetailG(null);}}>📋 Pošalji nalog</button>}
         <button className="btn-sm" onClick={()=>loadHistorija(detailG.id)} title="Historija premještanja"><Icons.History/></button>
         {!detailG.prodato&&<button className="btn-sm" onClick={()=>openEdit(detailG)}><Icons.Edit/> Uredi</button>}
         {!detailG.prodato&&<button className="btn-save" onClick={()=>setSellModal(true)} style={{background:'var(--green)',color:'#fff'}}>Prodaj</button>}
@@ -274,5 +314,6 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
   <div className="site-footer">© 2026 <span>DelicNode</span></div>
   </div>);
 }
+
 
 export default GumeModul;

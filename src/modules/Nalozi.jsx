@@ -1,0 +1,143 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { api, timeAgo } from '../utils.js';
+import { Icons } from '../components/index.jsx';
+
+function NaloziModul({ user, showToast, onCountChange }) {
+  const isAdmin = user.role === 'admin';
+  const [nalozi, setNalozi] = useState([]);
+  const [tab, setTab] = useState('svi'); // 'svi' | 'moji'
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const d = await api('/nalozi');
+      setNalozi(d);
+      const ceka = d.filter(n => n.status === 'ceka').length;
+      if (onCountChange) onCountChange(ceka);
+    } catch(e) {}
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const doPreuzmi = async (id) => {
+    try {
+      await api(`/nalozi/${id}/preuzmi`, { method: 'POST' });
+      showToast('Nalog preuzet!');
+      load();
+    } catch(e) { showToast('Greška', 'err'); }
+  };
+
+  const doSpremi = async (id) => {
+    if (!confirm('Guma će biti premještena na policu P599. Nastavi?')) return;
+    try {
+      await api(`/nalozi/${id}/spremi`, { method: 'POST' });
+      showToast('Guma premještena na P599, nalog zatvoren!');
+      load();
+    } catch(e) { showToast('Greška', 'err'); }
+  };
+
+  const doZavrsi = async (id) => {
+    if (!confirm('Zatvori nalog bez premještanja gume?')) return;
+    try {
+      await api(`/nalozi/${id}/zavrsi`, { method: 'POST' });
+      showToast('Nalog zatvoren');
+      load();
+    } catch(e) { showToast('Greška', 'err'); }
+  };
+
+  const prikazani = tab === 'moji'
+    ? nalozi.filter(n => n.preuzeo === user.username)
+    : nalozi;
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-title">Nalozi za gume</div>
+      </div>
+
+      <div className="tab-bar" style={{ marginBottom: 14 }}>
+        <button className={'stab' + (tab === 'svi' ? ' as' : '')} onClick={() => setTab('svi')}>
+          Svi nalozi
+          {nalozi.filter(n => n.status === 'ceka').length > 0 &&
+            <span style={{ marginLeft: 5, background: 'var(--red)', color: '#fff', borderRadius: 10, padding: '0 6px', fontSize: 10, fontWeight: 900 }}>
+              {nalozi.filter(n => n.status === 'ceka').length}
+            </span>
+          }
+        </button>
+        <button className={'stab' + (tab === 'moji' ? ' as' : '')} onClick={() => setTab('moji')}>
+          Moji nalozi
+          {nalozi.filter(n => n.preuzeo === user.username).length > 0 &&
+            <span style={{ marginLeft: 5, background: 'var(--accent)', color: '#fff', borderRadius: 10, padding: '0 6px', fontSize: 10, fontWeight: 900 }}>
+              {nalozi.filter(n => n.preuzeo === user.username).length}
+            </span>
+          }
+        </button>
+      </div>
+
+      {prikazani.length === 0
+        ? <div className="empty"><p style={{ color: 'var(--muted)', fontSize: 13 }}>Nema naloga</p></div>
+        : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {prikazani.map(n => {
+            const jePreuzeo = n.preuzeo === user.username;
+            const jePreuzeto = n.status === 'preuzeto';
+            return (
+              <div key={n.id} className="card-panel" style={{
+                borderLeft: `3px solid ${n.hitno ? 'var(--red)' : n.za_slanje ? 'var(--blue)' : 'var(--border)'}`,
+                opacity: jePreuzeto && !jePreuzeo ? 0.7 : 1
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 3 }}>
+                      <span style={{ fontFamily: 'Barlow Condensed,sans-serif', fontWeight: 900, fontSize: 16 }}>
+                        {n.guma_sifra}
+                      </span>
+                      {n.hitno ? <span style={{ background: 'var(--red)', color: '#fff', fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4, letterSpacing: 1 }}>HITNO</span> : null}
+                      {n.za_slanje ? <span style={{ background: 'var(--blue)', color: '#fff', fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4, letterSpacing: 1 }}>ZA SLANJE</span> : null}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text)', marginBottom: 2 }}>{n.guma_opis}</div>
+                    {n.napomena ? <div style={{ fontSize: 11, color: 'var(--muted)', fontStyle: 'italic', marginBottom: 4 }}>"{n.napomena}"</div> : null}
+                    <div style={{ fontSize: 10, color: 'var(--muted)' }}>
+                      Kreirao: <b>{n.kreirao}</b> · {timeAgo(n.created_at)}
+                    </div>
+                    {jePreuzeto && <div style={{ fontSize: 10, color: 'var(--green)', marginTop: 3, fontWeight: 700 }}>
+                      ✓ Preuzeo: {n.preuzeo}
+                    </div>}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                  {n.status === 'ceka' && (
+                    <button className="btn-sm" style={{ color: 'var(--accent)', borderColor: 'rgba(255,165,0,.3)', fontWeight: 700 }}
+                      onClick={() => doPreuzmi(n.id)}>
+                      Preuzmi
+                    </button>
+                  )}
+                  {jePreuzeto && jePreuzeo && (
+                    <>
+                      <button className="btn-sm" style={{ color: 'var(--green)', borderColor: 'rgba(63,185,80,.3)', fontWeight: 700 }}
+                        onClick={() => doSpremi(n.id)}>
+                        ✓ Dio je spremljen
+                      </button>
+                      <button className="btn-sm" style={{ color: 'var(--muted)' }}
+                        onClick={() => doZavrsi(n.id)}>
+                        Završi nalog
+                      </button>
+                    </>
+                  )}
+                  {jePreuzeto && !jePreuzeo && isAdmin && (
+                    <button className="btn-sm" style={{ color: 'var(--muted)' }}
+                      onClick={() => doZavrsi(n.id)}>
+                      Zatvori (admin)
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      }
+    </div>
+  );
+}
+
+export default NaloziModul;
