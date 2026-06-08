@@ -908,9 +908,10 @@ app.get('/api/analitika', requireAdmin, async (req,res) => {
 // ===== DASHBOARD =====
 app.get('/api/dashboard', requireAuth, async (req,res) => {
   try {
+    const prije24h = new Date(Date.now() - 24*60*60*1000);
     const [gumeStanje, gumeProdato, autaStanje, autaProdato,
            zadaciOtvoreni, troskoviAktivno,
-           zadnjeGume, zadnjiZadaci] = await Promise.all([
+           zadnjeGume, zadnjiZadaci, prodaja24h] = await Promise.all([
       dbGet('SELECT COUNT(*) as c FROM gume WHERE prodato=0'),
       dbGet('SELECT COUNT(*) as c FROM gume WHERE prodato=1'),
       dbGet("SELECT COUNT(*) as c FROM auta WHERE status='na_stanju'"),
@@ -919,6 +920,7 @@ app.get('/api/dashboard', requireAuth, async (req,res) => {
       dbGet('SELECT COUNT(*) as c FROM troskovi_auta'),
       dbAll('SELECT id,sifra,sezona,sirina,visina,promjer,polica_kod,created_at FROM gume ORDER BY created_at DESC LIMIT 5'),
       dbAll("SELECT id,naslov,prioritet,status,dodao_korisnik,created_at FROM zadaci WHERE status='otvoreno' ORDER BY CASE prioritet WHEN 'visok' THEN 1 WHEN 'srednji' THEN 2 ELSE 3 END, created_at DESC LIMIT 5"),
+      dbAll(`SELECT sifra,sirina,visina,promjer,sezona,cijena_prodaje,datum_prodaje,prodao_korisnik FROM gume WHERE prodato=1 AND length(datum_prodaje)>=10 AND (substr(datum_prodaje,9,4)||'-'||substr(datum_prodaje,5,2)||'-'||substr(datum_prodaje,1,2)) >= ? ORDER BY datum_prodaje DESC`, [prije24h.toISOString().slice(0,10)]),
     ]);
     res.json({
       gume_stanje: gumeStanje?.c||0,
@@ -929,6 +931,7 @@ app.get('/api/dashboard', requireAuth, async (req,res) => {
       troskovi_aktivno: troskoviAktivno?.c||0,
       zadnje_gume: zadnjeGume,
       zadnji_zadaci: zadnjiZadaci,
+      prodaja_24h: prodaja24h,
     });
   } catch(e) { res.status(500).json({error:e.message}); }
 });
