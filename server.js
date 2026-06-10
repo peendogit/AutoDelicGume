@@ -861,7 +861,7 @@ app.get('/api/analitika', requireAdmin, async (req,res) => {
     // Prognoza za sljedećih 6 mjeseci
     // datum_prodaje je u formatu DD.MM.YYYY - parsiramo ga ispravno
     const prodajaMjesecno = await dbAll(
-      `SELECT substr(datum_prodaje,7,4)||'-'||substr(datum_prodaje,4,2) as mj,
+      `SELECT substr(datum_prodaje,9,4)||'-'||substr(datum_prodaje,5,2) as mj,
         COUNT(*) as prodano
        FROM gume WHERE prodato=1 AND datum_prodaje IS NOT NULL
        AND length(datum_prodaje)>=10
@@ -942,8 +942,8 @@ app.get('/api/dashboard', requireAuth, async (req,res) => {
       dbGet("SELECT COUNT(*) as c FROM auta WHERE status='prodat'"),
       dbGet("SELECT COUNT(*) as c FROM zadaci WHERE status='otvoreno'"),
       dbGet('SELECT COUNT(*) as c FROM troskovi_auta'),
-      dbAll('SELECT id,sifra,sezona,sirina,visina,promjer,polica_kod,created_at FROM gume ORDER BY created_at DESC LIMIT 5'),
-      dbAll("SELECT id,naslov,prioritet,status,dodao_korisnik,created_at FROM zadaci WHERE status='otvoreno' ORDER BY CASE prioritet WHEN 'visok' THEN 1 WHEN 'srednji' THEN 2 ELSE 3 END, created_at DESC LIMIT 5"),
+      dbAll('SELECT id,sifra,sezona,sirina,visina,promjer,polica_kod,created_at FROM gume ORDER BY created_at DESC LIMIT 25'),
+      dbAll("SELECT id,naslov,prioritet,status,dodao_korisnik,created_at FROM zadaci WHERE status='otvoreno' ORDER BY CASE prioritet WHEN 'visok' THEN 1 WHEN 'srednji' THEN 2 ELSE 3 END, created_at DESC LIMIT 25"),
       dbAll(`SELECT sifra,sirina,visina,promjer,sezona,cijena_prodaje,datum_prodaje,prodao_korisnik FROM gume WHERE prodato=1 AND length(datum_prodaje)>=10 AND (substr(datum_prodaje,9,4)||'-'||substr(datum_prodaje,5,2)||'-'||substr(datum_prodaje,1,2)) >= ? ORDER BY datum_prodaje DESC`, [prije24h.toISOString().slice(0,10)]),
     ]);
     res.json({
@@ -1505,7 +1505,7 @@ app.get('/api/finansije', requireAdmin, async (req,res) => {
        FROM gume WHERE prodato=1 AND (
          ? = '2000-01-01' OR
          (length(datum_prodaje)>=10 AND
-          substr(datum_prodaje,7,4)||'-'||substr(datum_prodaje,4,2)||'-'||substr(datum_prodaje,1,2) >= ?)
+          substr(datum_prodaje,9,4)||'-'||substr(datum_prodaje,5,2)||'-'||substr(datum_prodaje,1,2) >= ?)
        ) ORDER BY datum_prodaje DESC`,
       [datumOd, datumOd]);
 
@@ -1634,11 +1634,15 @@ app.post('/api/nalozi/:id/spremi', requireAuth, async (req,res) => {
         polica = await dbGet('SELECT * FROM police WHERE naziv=?',['P599']);
       }
     }
+    const staraGuma = await dbGet('SELECT sifra,polica_kod FROM gume WHERE id=?',[nalog.guma_id]);
     if(polica){
       await dbRun("UPDATE gume SET polica_id=?,polica_kod='P599' WHERE id=?", [polica.id, nalog.guma_id]);
     } else {
       await dbRun("UPDATE gume SET polica_kod='P599' WHERE id=?", [nalog.guma_id]);
     }
+    await dbRun('INSERT INTO historija_premjestanja (guma_id,guma_sifra,polica_sa,polica_na,korisnik) VALUES (?,?,?,?,?)',
+      [nalog.guma_id, staraGuma?.sifra||nalog.guma_sifra, staraGuma?.polica_kod||null, 'P599', req.user.username]);
+    await logActivity(req.user.username, 'PREMJESTENA_GUMA', `${staraGuma?.sifra||nalog.guma_sifra}: ${staraGuma?.polica_kod||'—'} → P599 (nalog #${req.params.id})`);
     await dbRun("UPDATE nalozi SET status='zavrseno',zavrseno_at=datetime('now'),guma_lokacija='P599' WHERE id=?", [req.params.id]);
     res.json({ok:true});
   } catch(e) { res.status(500).json({error:e.message}); }
