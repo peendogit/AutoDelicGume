@@ -173,8 +173,13 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
         <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:17,color:'var(--accent)',letterSpacing:2}}>{detailG.sifra}</span>
         {detailG.tip&&<span className={'tip-badge tip-'+detailG.tip}>{tipLbl(detailG.tip)}</span>}
       </div>
-      {!detailG.prodato&&isAdmin&&<div style={{marginBottom:8}}><button className="btn-sm" style={{color:'var(--accent)',borderColor:'rgba(255,165,0,.3)',fontWeight:700,width:'100%',justifyContent:'center'}} onClick={e=>{e.stopPropagation();setNalogModal(detailG);setNalogForm({napomena:'',hitno:false,za_slanje:false});}}>📋 Pošalji nalog radniku</button></div>}
-      {detailG.slike&&detailG.slike.length>0&&<div className="det-imgs">{detailG.slike.map((s,i)=><img key={i} className="thumb" src={s} onClick={()=>setLightbox({images:detailG.slike,index:i})}/>)}</div>}
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8,marginBottom:8}}>
+        <div>{detailG.slike&&detailG.slike.length>0&&<div className="det-imgs" style={{marginBottom:0}}>{detailG.slike.map((s,i)=><img key={i} className="thumb" src={s} onClick={()=>setLightbox({images:detailG.slike,index:i})}/>)}</div>}</div>
+        {!detailG.prodato&&isAdmin&&(gumeSaNalogom.has(detailG.id)
+          ?<button className="btn-sm" style={{color:'var(--red)',borderColor:'rgba(248,81,73,.3)',fontWeight:700,flexShrink:0}} onClick={async e=>{e.stopPropagation();try{const tok=localStorage.getItem('adg_token');const nalozi=await fetch('/api/nalozi',{headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json());const n=nalozi.find(x=>x.guma_id===detailG.id);if(n){await fetch('/api/nalozi/'+n.id+'/zavrsi',{method:'POST',headers:{'Authorization':'Bearer '+tok}});setGumeSaNalogom(s=>{const ns=new Set(s);ns.delete(detailG.id);return ns;});showToast('Nalog zatvoren');}setDetailG(null);}catch(e){showToast('Greška','err');}}}>✕ Zatvori nalog</button>
+          :<button className="btn-sm" style={{color:'var(--accent)',borderColor:'rgba(255,165,0,.3)',fontWeight:700,flexShrink:0}} onClick={e=>{e.stopPropagation();setNalogModal(detailG);setNalogForm({napomena:'',hitno:false,za_slanje:false});}}>📋 Nalog</button>
+        )}
+      </div>
       {detailG.cijena&&<div style={{background:'rgba(240,180,41,.08)',border:'1px solid rgba(240,180,41,.25)',borderRadius:6,padding:'8px 12px',marginBottom:9,display:'flex',alignItems:'center',justifyContent:'space-between'}}><span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>Cijena</span><span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:20,fontWeight:900,color:'var(--accent)',letterSpacing:'1px'}}>{detailG.cijena} KM</span></div>}
       <div className="specs-grid">
         <div className="spec-box"><div className="spec-lbl">Širina</div><div className="spec-val">{detailG.sirina} mm</div></div>
@@ -196,7 +201,6 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
       <div className="modal-foot">
         {isAdmin&&<div className="foot-left"><button className="btn-sm red" onClick={()=>doDel(detailG.id)}><Icons.Trash/> Obriši</button></div>}
         {!detailG.prodato&&<button className="btn-sm" style={{color:'var(--blue)',borderColor:'rgba(88,166,255,.3)'}} onClick={()=>{setMoveModal(detailG);setMoveKod('');setDetailG(null);}}><Icons.Move/> Premjesti</button>}
-        {gumeSaNalogom.has(detailG.id)&&<button className="btn-sm" style={{color:'var(--red)',borderColor:'rgba(248,81,73,.3)',fontWeight:700}} onClick={async()=>{try{const nalozi=await fetch('/api/nalozi',{headers:{'Authorization':'Bearer '+localStorage.getItem('adg_token')}}).then(r=>r.json());const n=nalozi.find(x=>x.guma_id===detailG.id);if(n){await fetch('/api/nalozi/'+n.id+'/zavrsi',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('adg_token')}});setGumeSaNalogom(s=>{const ns=new Set(s);ns.delete(detailG.id);return ns;});showToast('Nalog zatvoren');}setDetailG(null);}catch(e){showToast('Greška','err');}}}>Zatvori nalog</button>}
         <button className="btn-sm" onClick={()=>loadHistorija(detailG.id)} title="Historija premještanja"><Icons.History/></button>
         {!detailG.prodato&&<button className="btn-sm" onClick={()=>openEdit(detailG)}><Icons.Edit/> Uredi</button>}
         {!detailG.prodato&&<button className="btn-save" onClick={()=>setSellModal(true)} style={{background:'var(--green)',color:'#fff'}}>Prodaj</button>}
