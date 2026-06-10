@@ -440,6 +440,7 @@ async function initDB() {
       guma_id INTEGER NOT NULL,
       guma_sifra TEXT,
       guma_opis TEXT,
+      guma_lokacija TEXT DEFAULT '',
       napomena TEXT DEFAULT '',
       hitno INTEGER DEFAULT 0,
       za_slanje INTEGER DEFAULT 0,
@@ -447,6 +448,7 @@ async function initDB() {
       kreirao TEXT NOT NULL,
       preuzeo TEXT DEFAULT NULL,
       preuzeto_at DATETIME DEFAULT NULL,
+      zavrseno_at DATETIME DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -455,6 +457,10 @@ async function initDB() {
   const alterCols = ['dodao_korisnik TEXT','prodao_korisnik TEXT','dubina TEXT','dot TEXT','cijena TEXT','tip TEXT'];
   for (const col of alterCols) {
     try { await dbExec(`ALTER TABLE gume ADD COLUMN ${col}`); } catch(e) {}
+  }
+  const alterNalozi = ["guma_lokacija TEXT DEFAULT ''","zavrseno_at DATETIME DEFAULT NULL"];
+  for (const col of alterNalozi) {
+    try { await dbExec(`ALTER TABLE nalozi ADD COLUMN ${col}`); } catch(e) {}
   }
 
   // Create default admin
@@ -1532,6 +1538,21 @@ app.get('/api/finansije', requireAdmin, async (req,res) => {
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
+// ===== NALOZI (GET) =====
+app.get('/api/nalozi', requireAuth, async (req,res) => {
+  try {
+    const nalozi = await dbAll("SELECT * FROM nalozi WHERE status!='zavrseno' OR (preuzeo=? AND status='zavrseno') ORDER BY hitno DESC, created_at DESC", [req.user.username]);
+    res.json(nalozi);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.get('/api/nalozi/count', requireAuth, async (req,res) => {
+  try {
+    const r = await dbGet("SELECT COUNT(*) as c FROM nalozi WHERE status='ceka'");
+    res.json({count: r?.c||0});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
 app.get('*', (req,res) => {
   const attempts = [
     path.join(__dirname,'public','index.html'),
@@ -1579,28 +1600,12 @@ app.get('/api/print', requireAuth, async (req,res) => {
 
 app.use((err,req,res,next) => { console.error(err); res.status(500).json({error:err.message}); });
 
-// Start: init DB then listen
-
-// ===== NALOZI =====
-app.get('/api/nalozi', requireAuth, async (req,res) => {
-  try {
-    const nalozi = await dbAll('SELECT * FROM nalozi ORDER BY hitno DESC, created_at DESC');
-    res.json(nalozi);
-  } catch(e) { res.status(500).json({error:e.message}); }
-});
-
-app.get('/api/nalozi/count', requireAuth, async (req,res) => {
-  try {
-    const r = await dbGet("SELECT COUNT(*) as c FROM nalozi WHERE status='ceka'");
-    res.json({count: r?.c||0});
-  } catch(e) { res.status(500).json({error:e.message}); }
-});
-
+// ===== NALOZI (POST) =====
 app.post('/api/nalozi', requireAdmin, async (req,res) => {
   try {
-    const {guma_id,guma_sifra,guma_opis,napomena,hitno,za_slanje} = req.body;
-    const r = await dbRun('INSERT INTO nalozi (guma_id,guma_sifra,guma_opis,napomena,hitno,za_slanje,kreirao) VALUES (?,?,?,?,?,?,?)',
-      [guma_id, guma_sifra, guma_opis||'', napomena||'', hitno?1:0, za_slanje?1:0, req.user.username]);
+    const {guma_id,guma_sifra,guma_opis,guma_lokacija,napomena,hitno,za_slanje} = req.body;
+    const r = await dbRun('INSERT INTO nalozi (guma_id,guma_sifra,guma_opis,guma_lokacija,napomena,hitno,za_slanje,kreirao) VALUES (?,?,?,?,?,?,?,?)',
+      [guma_id, guma_sifra, guma_opis||'', guma_lokacija||'', napomena||'', hitno?1:0, za_slanje?1:0, req.user.username]);
     const nalog = await dbGet('SELECT * FROM nalozi WHERE id=?', [r.lastID]);
     res.json(nalog);
   } catch(e) { res.status(500).json({error:e.message}); }
@@ -1618,19 +1623,22 @@ app.post('/api/nalozi/:id/spremi', requireAuth, async (req,res) => {
   try {
     const nalog = await dbGet('SELECT * FROM nalozi WHERE id=?', [req.params.id]);
     if(!nalog) return res.status(404).json({error:'Nalog ne postoji'});
-    // Premjesti gumu na P599
     await dbRun("UPDATE gume SET polica_kod='P599' WHERE id=?", [nalog.guma_id]);
-    await dbRun("DELETE FROM nalozi WHERE id=?", [req.params.id]);
+    await dbRun("UPDATE nalozi SET status='zavrseno',zavrseno_at=datetime('now'),guma_lokacija='P599' WHERE id=?", [req.params.id]);
     res.json({ok:true});
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
 app.post('/api/nalozi/:id/zavrsi', requireAuth, async (req,res) => {
   try {
-    await dbRun("DELETE FROM nalozi WHERE id=?", [req.params.id]);
+    await dbRun("UPDATE nalozi SET status='zavrseno',zavrseno_at=datetime('now') WHERE id=?", [req.params.id]);
     res.json({ok:true});
   } catch(e) { res.status(500).json({error:e.message}); }
 });
+
+
+// Start: init DB then listen
+
 
 initDB().then(() => {
   app.listen(PORT, () => console.log('Auto Delic Gume na portu', PORT));
