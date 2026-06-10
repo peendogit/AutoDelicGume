@@ -35,7 +35,9 @@ export function promjerDisp(p){if(!p)return '';return /^[0-9]/.test(p)?'R'+p:p;}
 export function tipLbl(t){return {komad:'Komad (1)',par:'Par (2)',set:'Set (4)'}[t]||t||'';}
 export function statusLbl(s){return {na_stanju:'Na stanju',prodat:'Prodat'}[s]||s||'';}
 export function timeAgo(dt){
-  const sec=Math.floor((Date.now()-new Date(dt).getTime())/1000);
+  let d=dt;
+  if(typeof d==='string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(d)) d=d.replace(' ','T')+'Z';
+  const sec=Math.floor((Date.now()-new Date(d).getTime())/1000);
   if(sec<60)return 'upravo';if(sec<3600)return Math.floor(sec/60)+' min';
   if(sec<86400)return Math.floor(sec/3600)+' h';return Math.floor(sec/86400)+' d';
 }

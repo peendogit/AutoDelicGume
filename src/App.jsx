@@ -47,11 +47,20 @@ function App(){
   };
 
   useEffect(()=>{if(user){loadPoliceAndMag();}}, [user]);
+  useEffect(()=>{
+    if(!user)return;
+    const loadCount=()=>api('/nalozi/count').then(d=>setNalogCount(d?.count||0)).catch(e=>{});
+    loadCount();
+    const iv=setInterval(loadCount,30000);
+    window.addEventListener('nalozi-changed',loadCount);
+    return ()=>{clearInterval(iv);window.removeEventListener('nalozi-changed',loadCount);};
+  },[user]);
   useEffect(()=>{if(user&&(page==='gume'||page==='dashboard')&&!gumeLoaded)loadGume();},[user,page]);
 
   const [isOnline,setIsOnline]=useState(navigator.onLine);
   const [nalogCount,setNalogCount]=useState(0);
   const [openGumaId,setOpenGumaId]=useState(null);
+  const [returnPage,setReturnPage]=useState(null);
   const [fabOpen,setFabOpen]=useState(false);
   const overlayCountRef = React.useRef(0);
   const [quickAddModal,setQuickAddModal]=useState(null); // 'guma' | 'auto'
@@ -96,6 +105,7 @@ function App(){
     if(p!==page){
       window.history.pushState({page:p},'','/');
     }
+    if(gumaId){setReturnPage(page);}
     setPage(p);localStorage.setItem('adg_last_page',p);setSidebarOpen(false);if(gumaId)setOpenGumaId(gumaId);
   };
   // Radnici uvijek idu na gume
@@ -165,7 +175,7 @@ function App(){
 
       {/* PAGES */}
       {page==='dashboard'&&<ErrorBoundary><Dashboard user={user} onNav={nav} showToast={showToast}/></ErrorBoundary>}
-      {page==='gume'&&<ErrorBoundary><GumeModul user={user} showToast={showToast} gume={gume} setGume={setGume} police={police} magacini={magacini} loadPolice={loadPoliceAndMag} lightbox={lightbox} setLightbox={setLightbox} quickAdd={quickAddModal==='guma'} onQuickAddDone={()=>setQuickAddModal(null)} openGumaId={openGumaId} onOpenGumaDone={()=>setOpenGumaId(null)}/></ErrorBoundary>}
+      {page==='gume'&&<ErrorBoundary><GumeModul user={user} showToast={showToast} gume={gume} setGume={setGume} police={police} magacini={magacini} loadPolice={loadPoliceAndMag} lightbox={lightbox} setLightbox={setLightbox} quickAdd={quickAddModal==='guma'} onQuickAddDone={()=>setQuickAddModal(null)} openGumaId={openGumaId} onOpenGumaDone={()=>setOpenGumaId(null)} onNav={nav} returnTo={returnPage}/></ErrorBoundary>}
       {page==='auta'&&isAdmin&&<ErrorBoundary><AutaModul user={user} showToast={showToast} quickAdd={quickAddModal==='auto'} onQuickAddDone={()=>setQuickAddModal(null)}/></ErrorBoundary>}
       {page==='zadaci'&&isAdmin&&<ZadaciModul user={user} showToast={showToast}/>}
       {page==='kupci'&&isAdmin&&<ErrorBoundary><KupciModul showToast={showToast}/></ErrorBoundary>}
