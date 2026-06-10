@@ -307,6 +307,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
               guma_id:nalogModal.id,
               guma_sifra:nalogModal.sifra,
               guma_opis:nalogModal.sirina+'/'+nalogModal.visina+' '+nalogModal.promjer+' '+nalogModal.sezona,
+              guma_lokacija:nalogModal.polica_kod||'',
               napomena:nalogForm.napomena,
               hitno:nalogForm.hitno,
               za_slanje:nalogForm.za_slanje

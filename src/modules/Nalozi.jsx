@@ -50,7 +50,7 @@ function NaloziModul({ user, showToast, onCountChange }) {
 
   const prikazani = tab === 'moji'
     ? nalozi.filter(n => n.preuzeo === user.username)
-    : nalozi;
+    : nalozi.filter(n => n.status !== 'zavrseno');
 
   return (
     <div className="page">
@@ -69,9 +69,9 @@ function NaloziModul({ user, showToast, onCountChange }) {
         </button>
         <button className={'stab' + (tab === 'moji' ? ' as' : '')} onClick={() => setTab('moji')}>
           Moji nalozi
-          {nalozi.filter(n => n.preuzeo === user.username).length > 0 &&
+          {nalozi.filter(n => n.preuzeo === user.username && n.status !== 'zavrseno').length > 0 &&
             <span style={{ marginLeft: 5, background: 'var(--accent)', color: '#fff', borderRadius: 10, padding: '0 6px', fontSize: 10, fontWeight: 900 }}>
-              {nalozi.filter(n => n.preuzeo === user.username).length}
+              {nalozi.filter(n => n.preuzeo === user.username && n.status !== 'zavrseno').length}
             </span>
           }
         </button>
@@ -99,12 +99,16 @@ function NaloziModul({ user, showToast, onCountChange }) {
                       {n.za_slanje ? <span style={{ background: 'var(--blue)', color: '#fff', fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4, letterSpacing: 1 }}>ZA SLANJE</span> : null}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text)', marginBottom: 2 }}>{n.guma_opis}</div>
+                    {n.guma_lokacija ? <div style={{ fontSize: 11, color: 'var(--accent)', marginBottom: 2 }}>📍 {n.guma_lokacija}</div> : null}
                     {n.napomena ? <div style={{ fontSize: 11, color: 'var(--muted)', fontStyle: 'italic', marginBottom: 4 }}>"{n.napomena}"</div> : null}
                     <div style={{ fontSize: 10, color: 'var(--muted)' }}>
                       Kreirao: <b>{n.kreirao}</b> · {timeAgo(n.created_at)}
                     </div>
                     {jePreuzeto && <div style={{ fontSize: 10, color: 'var(--green)', marginTop: 3, fontWeight: 700 }}>
                       ✓ Preuzeo: {n.preuzeo}
+                    </div>}
+                    {n.status === 'zavrseno' && <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3, fontWeight: 700 }}>
+                      ⬛ Završeno {n.zavrseno_at ? '· '+timeAgo(n.zavrseno_at) : ''} {n.guma_lokacija==='P599' ? '(spremljeno na P599)' : ''}
                     </div>}
                   </div>
                 </div>
