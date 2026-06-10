@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { api, timeAgo } from '../utils.js';
+import { api, timeAgo, fmtDateTime } from '../utils.js';
 import { Icons } from '../components/index.jsx';
 
 function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }) {
@@ -112,7 +112,7 @@ function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }
                       ✓ Preuzeo: {n.preuzeo}
                     </div>}
                     {n.status === 'zavrseno' && <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3, fontWeight: 700 }}>
-                      ⬛ Završeno {n.zavrseno_at ? '· '+timeAgo(n.zavrseno_at) : ''} {n.guma_lokacija==='P599' ? '(spremljeno na P599)' : ''}
+                      ⬛ Završio: {n.preuzeo||'—'}{n.zavrseno_at ? ' · '+fmtDateTime(n.zavrseno_at) : ''} {n.guma_lokacija==='P599' ? '(spremljeno na P599)' : ''}
                     </div>}
                   </div>
                   <div style={{ position: 'relative', flexShrink: 0, width: 64, height: 64, borderRadius: 6, overflow: 'hidden', background: 'var(--card)', border: '1px solid var(--border)' }}>
