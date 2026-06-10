@@ -441,6 +441,7 @@ async function initDB() {
       guma_sifra TEXT,
       guma_opis TEXT,
       guma_lokacija TEXT DEFAULT '',
+      guma_slika TEXT DEFAULT '',
       napomena TEXT DEFAULT '',
       hitno INTEGER DEFAULT 0,
       za_slanje INTEGER DEFAULT 0,
@@ -458,7 +459,7 @@ async function initDB() {
   for (const col of alterCols) {
     try { await dbExec(`ALTER TABLE gume ADD COLUMN ${col}`); } catch(e) {}
   }
-  const alterNalozi = ["guma_lokacija TEXT DEFAULT ''","zavrseno_at DATETIME DEFAULT NULL"];
+  const alterNalozi = ["guma_lokacija TEXT DEFAULT ''","zavrseno_at DATETIME DEFAULT NULL","guma_slika TEXT DEFAULT ''"];
   for (const col of alterNalozi) {
     try { await dbExec(`ALTER TABLE nalozi ADD COLUMN ${col}`); } catch(e) {}
   }
@@ -1603,9 +1604,9 @@ app.use((err,req,res,next) => { console.error(err); res.status(500).json({error:
 // ===== NALOZI (POST) =====
 app.post('/api/nalozi', requireAdmin, async (req,res) => {
   try {
-    const {guma_id,guma_sifra,guma_opis,guma_lokacija,napomena,hitno,za_slanje} = req.body;
-    const r = await dbRun('INSERT INTO nalozi (guma_id,guma_sifra,guma_opis,guma_lokacija,napomena,hitno,za_slanje,kreirao) VALUES (?,?,?,?,?,?,?,?)',
-      [guma_id, guma_sifra, guma_opis||'', guma_lokacija||'', napomena||'', hitno?1:0, za_slanje?1:0, req.user.username]);
+    const {guma_id,guma_sifra,guma_opis,guma_lokacija,guma_slika,napomena,hitno,za_slanje} = req.body;
+    const r = await dbRun('INSERT INTO nalozi (guma_id,guma_sifra,guma_opis,guma_lokacija,guma_slika,napomena,hitno,za_slanje,kreirao) VALUES (?,?,?,?,?,?,?,?,?)',
+      [guma_id, guma_sifra, guma_opis||'', guma_lokacija||'', guma_slika||'', napomena||'', hitno?1:0, za_slanje?1:0, req.user.username]);
     const nalog = await dbGet('SELECT * FROM nalozi WHERE id=?', [r.lastID]);
     res.json(nalog);
   } catch(e) { res.status(500).json({error:e.message}); }
@@ -1623,7 +1624,20 @@ app.post('/api/nalozi/:id/spremi', requireAuth, async (req,res) => {
   try {
     const nalog = await dbGet('SELECT * FROM nalozi WHERE id=?', [req.params.id]);
     if(!nalog) return res.status(404).json({error:'Nalog ne postoji'});
-    await dbRun("UPDATE gume SET polica_kod='P599' WHERE id=?", [nalog.guma_id]);
+    let polica = await dbGet('SELECT * FROM police WHERE naziv=?',['P599']);
+    if(!polica){
+      const anyRegal = await dbGet('SELECT id FROM regali LIMIT 1');
+      const regalId = anyRegal ? anyRegal.id : null;
+      if(regalId){
+        await dbRun('INSERT INTO police (regal_id,naziv) VALUES (?,?)',[regalId,'P599']);
+        polica = await dbGet('SELECT * FROM police WHERE naziv=?',['P599']);
+      }
+    }
+    if(polica){
+      await dbRun("UPDATE gume SET polica_id=?,polica_kod='P599' WHERE id=?", [polica.id, nalog.guma_id]);
+    } else {
+      await dbRun("UPDATE gume SET polica_kod='P599' WHERE id=?", [nalog.guma_id]);
+    }
     await dbRun("UPDATE nalozi SET status='zavrseno',zavrseno_at=datetime('now'),guma_lokacija='P599' WHERE id=?", [req.params.id]);
     res.json({ok:true});
   } catch(e) { res.status(500).json({error:e.message}); }
