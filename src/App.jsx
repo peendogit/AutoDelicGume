@@ -65,16 +65,26 @@ function App(){
     return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off);};
   },[]);
 
+  const navigatingBack=useRef(false);
+
   useEffect(()=>{
-    window.history.pushState(null,'','/');
-    const onPop=()=>{
-      window.history.pushState(null,'','/');
-      // Click the topmost visible overlay to close it
+    window.history.replaceState({page},'','/');
+    const onPop=(e)=>{
+      // Close overlay first if any are open
       const overlays=document.querySelectorAll('.overlay');
       if(overlays.length>0){
         overlays[overlays.length-1].click();
-      } else {
-        setSidebarOpen(false);
+        window.history.pushState({page},'','/'); // stay on current page, re-add history entry
+        return;
+      }
+      const prevPage=e.state&&e.state.page;
+      if(prevPage&&prevPage!==page){
+        navigatingBack.current=true;
+        setPage(prevPage);
+        localStorage.setItem('adg_last_page',prevPage);
+      } else if(!prevPage){
+        // No more history - prevent app close, stay
+        window.history.pushState({page},'','/');
       }
     };
     window.addEventListener('popstate',onPop);
@@ -82,7 +92,12 @@ function App(){
   },[]);
 
   const doLogout=async()=>{try{await api('/auth/logout',{method:'POST'});}catch(e){}localStorage.removeItem('adg_token');setUser(null);setGume([]);setGumeLoaded(false);};
-  const nav=(p,gumaId)=>{setPage(p);localStorage.setItem('adg_last_page',p);setSidebarOpen(false);if(gumaId)setOpenGumaId(gumaId);};
+  const nav=(p,gumaId)=>{
+    if(p!==page){
+      window.history.pushState({page:p},'','/');
+    }
+    setPage(p);localStorage.setItem('adg_last_page',p);setSidebarOpen(false);if(gumaId)setOpenGumaId(gumaId);
+  };
   // Radnici uvijek idu na gume
   useEffect(()=>{if(user&&user.role!=='admin'&&(page==='dashboard'||page==='auta'))setPage('gume');},[user]);
 
@@ -167,11 +182,11 @@ function App(){
     {user&&<>
       {fabOpen&&<div className="fab-overlay" onClick={()=>setFabOpen(false)}/>}
       {fabOpen&&<div className="fab-menu">
-        <div className="fab-item" onClick={()=>{setFabOpen(false);setQuickAddModal('guma');setPage('gume');}}>
+        <div className="fab-item" onClick={()=>{setFabOpen(false);setQuickAddModal('guma');nav('gume');}}>
           <div className="fab-item-lbl">Dodaj gumu</div>
           <div className="fab-item-btn">🛞</div>
         </div>
-        {isAdmin&&<div className="fab-item" onClick={()=>{setFabOpen(false);setQuickAddModal('auto');setPage('auta');}}>
+        {isAdmin&&<div className="fab-item" onClick={()=>{setFabOpen(false);setQuickAddModal('auto');nav('auta');}}>
           <div className="fab-item-lbl">Dodaj auto</div>
           <div className="fab-item-btn">🚗</div>
         </div>}
