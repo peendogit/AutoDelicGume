@@ -5,7 +5,13 @@ function Dashboard({user,onNav,showToast}){
   const [data,setData]=useState(null);
   useEffect(()=>{const load=()=>api('/dashboard').then(setData).catch(e=>{if(e.message&&e.message.includes('fetch'))setTimeout(load,1500);});load();},[]);
   const [nalozi,setNalozi]=useState([]);
-  useEffect(()=>{if(user.role==='admin'){api('/nalozi').then(d=>{if(Array.isArray(d))setNalozi(d);}).catch(e=>{});}},[user.role]);
+  const loadNalozi=()=>{if(user.role==='admin'){api('/nalozi').then(d=>{if(Array.isArray(d))setNalozi(d);}).catch(e=>{});}};
+  useEffect(()=>{loadNalozi();},[user.role]);
+  useEffect(()=>{
+    const handler=()=>loadNalozi();
+    window.addEventListener('nalozi-changed',handler);
+    return()=>window.removeEventListener('nalozi-changed',handler);
+  },[user.role]);
   if(!data)return <div className="page"><div style={{color:'var(--muted)',padding:40,textAlign:'center',fontFamily:'Barlow Condensed,sans-serif',letterSpacing:2,textTransform:'uppercase',fontSize:13}}>Učitavanje...</div></div>;
   const prod24=data.prodaja_24h||[];
   const prihod24=prod24.reduce((s,g)=>s+(parseFloat(g.cijena_prodaje)||0),0);
@@ -14,13 +20,6 @@ function Dashboard({user,onNav,showToast}){
       <div className="page-title">Dobrodošao, {user.username} 👋</div>
       <div className="page-sub">Pregled stanja — {new Date().toLocaleDateString('sr-Latn-RS',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
     </div>
-    <div className="kpi-grid">
-      <div className="kpi accent" style={{cursor:'pointer'}} onClick={()=>onNav('gume')}><div className="kpi-lbl">Gume na stanju</div><div className="kpi-val" style={{color:'var(--accent)'}}>{data.gume_stanje}</div><div className="kpi-sub">{data.gume_prodato} prodato ukupno</div></div>
-      <div className="kpi green" style={{cursor:'pointer'}} onClick={()=>onNav('auta')}><div className="kpi-lbl">Auta na stanju</div><div className="kpi-val" style={{color:'var(--green)'}}>{data.auta_stanje}</div><div className="kpi-sub">{data.auta_prodato} prodato ukupno</div></div>
-      {user.role==='admin'&&<div className="kpi blue" style={{cursor:'pointer'}} onClick={()=>onNav('zadaci')}><div className="kpi-lbl">Otvoreni zadaci</div><div className="kpi-val" style={{color:'var(--blue)'}}>{data.zadaci_otvoreno}</div><div className="kpi-sub">to-do lista</div></div>}
-      {user.role==='admin'&&<div className="kpi purple" style={{cursor:'pointer'}} onClick={()=>onNav('troskovi')}><div className="kpi-lbl">U popravci</div><div className="kpi-val" style={{color:'var(--purple)'}}>{data.troskovi_aktivno}</div><div className="kpi-sub">auta na popravci</div></div>}
-    </div>
-
     <div className="card-panel" style={{marginBottom:14}}>
       <div className="section-title">Prodaja — zadnja 24h</div>
       {prod24.length===0
@@ -90,6 +89,14 @@ function Dashboard({user,onNav,showToast}){
         {(data.zadnji_zadaci||[]).length>0&&<button className="btn-sm" style={{width:'100%',marginTop:6,justifyContent:'center'}} onClick={()=>onNav('zadaci')}>Svi zadaci →</button>}
       </div>
     </div>
+
+    <div className="kpi-grid">
+      <div className="kpi accent" style={{cursor:'pointer'}} onClick={()=>onNav('gume')}><div className="kpi-lbl">Gume na stanju</div><div className="kpi-val" style={{color:'var(--accent)'}}>{data.gume_stanje}</div><div className="kpi-sub">{data.gume_prodato} prodato ukupno</div></div>
+      <div className="kpi green" style={{cursor:'pointer'}} onClick={()=>onNav('auta')}><div className="kpi-lbl">Auta na stanju</div><div className="kpi-val" style={{color:'var(--green)'}}>{data.auta_stanje}</div><div className="kpi-sub">{data.auta_prodato} prodato ukupno</div></div>
+      {user.role==='admin'&&<div className="kpi blue" style={{cursor:'pointer'}} onClick={()=>onNav('zadaci')}><div className="kpi-lbl">Otvoreni zadaci</div><div className="kpi-val" style={{color:'var(--blue)'}}>{data.zadaci_otvoreno}</div><div className="kpi-sub">to-do lista</div></div>}
+      {user.role==='admin'&&<div className="kpi purple" style={{cursor:'pointer'}} onClick={()=>onNav('troskovi')}><div className="kpi-lbl">U popravci</div><div className="kpi-val" style={{color:'var(--purple)'}}>{data.troskovi_aktivno}</div><div className="kpi-sub">auta na popravci</div></div>}
+    </div>
+
   </div>);
 }
 

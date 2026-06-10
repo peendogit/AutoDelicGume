@@ -3,7 +3,7 @@ import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage, EMPTY_GUMA, 
 import { Icons, ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination } from '../components/index.jsx';
 import PremjestanjeWidget from './Premjestanje.jsx';
 
-function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,lightbox,setLightbox,quickAdd,onQuickAddDone,openGumaId,onOpenGumaDone}){
+function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,lightbox,setLightbox,quickAdd,onQuickAddDone,openGumaId,onOpenGumaDone,onNav,returnTo}){
   const isAdmin=user.role==='admin';
   const [statusTab,setStatusTab]=useState('stanje');
   const [filters,setFilters]=useState({sezona:'',sirina:'',visina:'',promjer:'',sifra:'',tip:''});
@@ -19,6 +19,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
   const [showHistorija,setShowHistorija]=useState(false);const [historijaGuma,setHistorijaGuma]=useState([]);
   const [nalogModal,setNalogModal]=useState(null);const [nalogForm,setNalogForm]=useState({napomena:'',hitno:false,za_slanje:false});const [nalogSaving,setNalogSaving]=useState(false);
   const [gumeSaNalogom,setGumeSaNalogom]=useState(new Map());
+  const [cameFromExternal,setCameFromExternal]=useState(false);
   const loadNalozi=useCallback(async()=>{try{const d=await api('/nalozi');if(Array.isArray(d)){const m=new Map();d.forEach(n=>{m.set(n.guma_id,{status:n.status,nalogId:n.id});});setGumeSaNalogom(m);}}catch(e){}},[]);
   useEffect(()=>{if(isAdmin)loadNalozi();},[isAdmin,loadNalozi]);
   const [customSirina,setCustomSirina]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_sirina')||'[]');}catch{return [];}});
@@ -34,7 +35,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
   useEffect(()=>{
     if(openGumaId){
       const g=gume.find(x=>x.id===openGumaId);
-      if(g){setDetailG(g);onOpenGumaDone&&onOpenGumaDone();}
+      if(g){setDetailG(g);setCameFromExternal(true);onOpenGumaDone&&onOpenGumaDone();}
     }
   },[openGumaId,gume]);
 
@@ -58,6 +59,13 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
   const nextGuNum=useMemo(()=>{const max=gume.reduce((m,x)=>{const n=parseInt(x.sifra.replace('GU',''))||0;return n>m?n:m;},9);return max+1;},[gume]);
 
   const openAdd=()=>{setForm({...EMPTY_GUMA});imgHook.setSlike([]);setEditingId(null);setSubmitAttempted(false);setModal('form');};
+  const closeDetail=()=>{
+    setDetailG(null);
+    if(cameFromExternal&&returnTo&&onNav){
+      setCameFromExternal(false);
+      onNav(returnTo);
+    }
+  };
   const openEdit=(g)=>{setForm({sezona:g.sezona,sirina:g.sirina,visina:g.visina,promjer:g.promjer,napomena:g.napomena||'',policaKod:g.polica_kod||'',dubina:g.dubina||'',dot:g.dot||'',tip:g.tip||'',cijena:g.cijena||''});imgHook.setSlike(g.slike?[...g.slike]:[]);setEditingId(g.id);setDetailG(null);setSubmitAttempted(false);setModal('form');};
 
   const doSellAuto=async()=>{
@@ -81,7 +89,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
   };
 
   const doSell=async()=>{
-    try{const g=await api('/gume/'+detailG.id+'/prodaj',{method:'POST',body:{cijena:sellPrice}});setGume(p=>p.map(x=>x.id===g.id?g:x));setSellModal(false);setDetailG(null);showToast(g.sifra+' prodana'+(g.cijena_prodaje?' za '+g.cijena_prodaje:''));}
+    try{const g=await api('/gume/'+detailG.id+'/prodaj',{method:'POST',body:{cijena:sellPrice}});setGume(p=>p.map(x=>x.id===g.id?g:x));setSellModal(false);setDetailG(null);setGumeSaNalogom(m=>{const nm=new Map(m);nm.delete(g.id);return nm;});window.dispatchEvent(new Event('nalozi-changed'));showToast(g.sifra+' prodana'+(g.cijena_prodaje?' za '+g.cijena_prodaje:''));}
     catch(e){showToast(e.message,'err');}
   };
 
@@ -174,8 +182,8 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
     <Pagination page={gumaPage} total={filtered.length} perPage={GUME_PER_PAGE} onChange={p=>{setGumaPage(p);window.scrollTo(0,0);}}/>
 
     {/* DETAIL */}
-    {detailG&&!sellModal&&!lightbox&&<div className="overlay" onClick={()=>setDetailG(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
-      <div className="modal-title">{detailG.sirina}/{detailG.visina} {promjerDisp(detailG.promjer)} <button className="btn-close" onClick={()=>setDetailG(null)}>×</button></div>
+    {detailG&&!sellModal&&!lightbox&&<div className="overlay" onClick={closeDetail}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">{detailG.sirina}/{detailG.visina} {promjerDisp(detailG.promjer)} <button className="btn-close" onClick={closeDetail}>×</button></div>
       <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:12,flexWrap:'wrap'}}>
         <span className={'bs '+(detailG.sezona==='Zimska'?'z':'l')} style={{position:'static',display:'inline-flex'}}>{detailG.sezona==='Zimska'?'❄':'☀'} {detailG.sezona}</span>
         <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:17,color:'var(--accent)',letterSpacing:2}}>{detailG.sifra}</span>
@@ -189,7 +197,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
             return <button className="btn-sm" style={{color:'var(--accent)',borderColor:'rgba(255,165,0,.3)',fontWeight:700,flexShrink:0,fontSize:'1.3em',padding:'10.4px 15.6px'}} onClick={e=>{e.stopPropagation();setNalogModal(detailG);setNalogForm({napomena:'',hitno:false,za_slanje:false});}}>📋 Nalog</button>;
           }
           if(naloginfo.status==='zavrseno'){
-            return <button className="btn-sm" style={{color:'var(--red)',borderColor:'rgba(248,81,73,.3)',fontWeight:700,flexShrink:0,fontSize:'1.3em',padding:'10.4px 15.6px'}} onClick={async e=>{e.stopPropagation();try{const tok=localStorage.getItem('adg_token');await fetch('/api/nalozi/'+naloginfo.nalogId+'/zavrsi',{method:'POST',headers:{'Authorization':'Bearer '+tok}});setGumeSaNalogom(m=>{const nm=new Map(m);nm.delete(detailG.id);return nm;});showToast('Nalog zatvoren');}catch(err){showToast('Greška','err');}}}>✕ Zatvori nalog</button>;
+            return <button className="btn-sm" style={{color:'var(--red)',borderColor:'rgba(248,81,73,.3)',fontWeight:700,flexShrink:0,fontSize:'1.3em',padding:'10.4px 15.6px'}} onClick={async e=>{e.stopPropagation();try{const tok=localStorage.getItem('adg_token');await fetch('/api/nalozi/'+naloginfo.nalogId+'/zavrsi',{method:'POST',headers:{'Authorization':'Bearer '+tok}});setGumeSaNalogom(m=>{const nm=new Map(m);nm.delete(detailG.id);return nm;});window.dispatchEvent(new Event('nalozi-changed'));showToast('Nalog zatvoren');}catch(err){showToast('Greška','err');}}}>✕ Zatvori nalog</button>;
           }
           return <button className="btn-sm" disabled style={{color:'var(--muted)',borderColor:'var(--border)',fontWeight:700,flexShrink:0,fontSize:'1.3em',padding:'10.4px 15.6px',opacity:0.6,cursor:'not-allowed'}}>📋 Nalog poslan</button>;
         })()}
@@ -222,7 +230,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
         {isAdmin&&<div className="foot-left"><button className="btn-sm red" onClick={()=>doDel(detailG.id)}><Icons.Trash/> Obriši</button></div>}
         {!detailG.prodato&&<button className="btn-sm" onClick={()=>openEdit(detailG)}><Icons.Edit/> Uredi</button>}
         {!detailG.prodato&&<button className="btn-save" onClick={()=>setSellModal(true)} style={{background:'var(--green)',color:'#fff'}}>Prodaj</button>}
-        {detailG.prodato&&<button className="btn-cancel" onClick={()=>setDetailG(null)}>Zatvori</button>}
+        {detailG.prodato&&<button className="btn-cancel" onClick={closeDetail}>Zatvori</button>}
       </div>
     </div></div>}
 

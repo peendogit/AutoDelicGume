@@ -27,6 +27,7 @@ function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }
       await api(`/nalozi/${id}/preuzmi`, { method: 'POST' });
       showToast('Nalog preuzet!');
       load();
+      window.dispatchEvent(new Event('nalozi-changed'));
     } catch(e) { showToast('Greška', 'err'); }
   };
 
@@ -36,6 +37,7 @@ function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }
       await api(`/nalozi/${id}/spremi`, { method: 'POST' });
       showToast('Guma premještena na P599, nalog zatvoren!');
       load();
+      window.dispatchEvent(new Event('nalozi-changed'));
     } catch(e) { showToast('Greška', 'err'); }
   };
 
@@ -45,6 +47,7 @@ function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }
       await api(`/nalozi/${id}/zavrsi`, { method: 'POST' });
       showToast('Nalog zatvoren');
       load();
+      window.dispatchEvent(new Event('nalozi-changed'));
     } catch(e) { showToast('Greška', 'err'); }
   };
 
