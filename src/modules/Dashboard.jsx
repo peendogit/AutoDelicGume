@@ -49,7 +49,7 @@ function Dashboard({user,onNav,showToast}){
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{n.guma_sifra} — {n.guma_opis}</div>
               <div style={{fontSize:10,color:n.status==='zavrseno'?'var(--green)':'var(--muted)'}}>
-                {n.status==='zavrseno' ? '✓ Spremno — treba prodati!' : n.status==='preuzeto' ? 'Preuzeo: '+n.preuzeo : 'Čeka preuzimanje'} · {n.kreirao}
+                {n.status==='zavrseno' ? '✓ Spremno' : n.status==='preuzeto' ? 'Preuzeo: '+n.preuzeo : 'Čeka preuzimanje'} · {n.kreirao}
               </div>
             </div>
             {n.hitno&&n.status!=='zavrseno'?<span style={{background:'var(--red)',color:'#fff',fontSize:9,fontWeight:900,padding:'1px 6px',borderRadius:4}}>HITNO</span>:null}
