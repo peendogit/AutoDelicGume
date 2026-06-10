@@ -2,6 +2,14 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { api, fmtDate, promjerDisp } from '../utils.js';
 import { Icons } from '../components/index.jsx';
 
+function fmtProdajaDatum(dp){
+  if(!dp) return '—';
+  // Format u bazi: "DD. MM. YYYY." -> "DD.MM.YYYY."
+  const m=dp.match(/^(\d{2})\.\s*(\d{2})\.\s*(\d{4})\.?/);
+  if(m) return m[1]+'.'+m[2]+'.'+m[3]+'.';
+  return dp;
+}
+
 function FinansijeModul({showToast}){
   const [mainTab,setMainTab]=useState('pregled');
   const [data,setData]=useState(null);const [period,setPeriod]=useState('mjesec');const [loading,setLoading]=useState(false);
@@ -113,7 +121,7 @@ function FinansijeModul({showToast}){
               <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,width:50,color:'var(--accent)'}}>{g.sifra}</span>
               <span style={{flex:1,color:'var(--muted)'}}>{g.sirina}/{g.visina} {promjerDisp(g.promjer)} {g.sezona}</span>
               <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,color:'var(--green)'}}>{g.cijena_prodaje||'—'}</span>
-              <span style={{fontSize:10,color:'var(--muted)',width:55,textAlign:'right'}}>{fmtDate(g.datum_prodaje)}</span>
+              <span style={{fontSize:10,color:'var(--muted)',width:55,textAlign:'right'}}>{fmtProdajaDatum(g.datum_prodaje)}</span>
             </div>)}
           </div>
         </div>}
@@ -219,7 +227,7 @@ function FinansijeModul({showToast}){
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{g.sirina}/{g.visina} {promjerDisp(g.promjer)} {g.sezona}</div>
                 <div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>
-                  {g.sifra} · {g.prodao_korisnik||'—'} · {g.datum_prodaje||'—'}
+                  {g.sifra} · {g.prodao_korisnik||'—'} · {fmtProdajaDatum(g.datum_prodaje)}
                 </div>
               </div>
               <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,color:'var(--green)',flexShrink:0}}>{g.cijena_prodaje||'—'} KM</div>

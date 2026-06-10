@@ -306,7 +306,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
       </div>
     </div></div>}
 
-    {nalogModal&&<div className="overlay" onClick={()=>setNalogModal(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
+    {nalogModal&&<div className="overlay" onClick={()=>setNalogModal(null)} style={{display:'flex',alignItems:'center'}}><div className="modal" onClick={e=>e.stopPropagation()}>
       <div className="modal-title">Pošalji nalog <button className="btn-close" onClick={()=>setNalogModal(null)}>×</button></div>
       <div style={{padding:'4px 0 8px',fontSize:13,color:'var(--muted)'}}>Guma: <b style={{color:'var(--text)'}}>{nalogModal.sifra}</b> — {nalogModal.sirina}/{nalogModal.visina}</div>
       <div className="fg2">

@@ -109,7 +109,7 @@ function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }
                       Kreirao: <b>{n.kreirao}</b> · {timeAgo(n.created_at)}
                     </div>
                     {jePreuzeto && <div style={{ fontSize: 10, color: 'var(--green)', marginTop: 3, fontWeight: 700 }}>
-                      ✓ Preuzeo: {n.preuzeo}
+                      ✓ Preuzeo: {n.preuzeo}{n.preuzeto_at?' · '+fmtDateTime(n.preuzeto_at):''}
                     </div>}
                     {n.status === 'zavrseno' && <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3, fontWeight: 700 }}>
                       ⬛ Završio: {n.preuzeo||'—'}{n.zavrseno_at ? ' · '+fmtDateTime(n.zavrseno_at) : ''} {n.guma_lokacija==='P599' ? '(spremljeno na P599)' : ''}

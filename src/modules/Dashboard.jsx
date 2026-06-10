@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api, promjerDisp } from '../utils.js';
-import { Pagination } from '../components/index.jsx';
+import { SimplePagination } from '../components/index.jsx';
 
 function Dashboard({user,onNav,showToast}){
   const [data,setData]=useState(null);
@@ -38,11 +38,11 @@ function Dashboard({user,onNav,showToast}){
           {prod24.slice((pageProd-1)*PER_PAGE,pageProd*PER_PAGE).map((g,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid var(--border)'}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{g.sirina}/{g.visina} {promjerDisp(g.promjer)} {g.sezona}</div>
-              <div style={{fontSize:10,color:'var(--muted)'}}>{g.sifra} · {g.prodao_korisnik||'—'}</div>
+              <div style={{fontSize:10,color:'var(--muted)'}}><span style={{color:'var(--accent)',textDecoration:'underline',cursor:'pointer'}} onClick={()=>onNav('gume',g.id)}>{g.sifra}</span> · {g.prodao_korisnik||'—'}</div>
             </div>
             <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,color:'var(--green)',flexShrink:0,fontSize:13}}>{g.cijena_prodaje}</div>
           </div>)}
-          <Pagination page={pageProd} total={prod24.length} perPage={PER_PAGE} onChange={setPageProd}/>
+          <SimplePagination page={pageProd} total={prod24.length} perPage={PER_PAGE} onChange={setPageProd}/>
         </>
       }
     </div>
@@ -63,7 +63,7 @@ function Dashboard({user,onNav,showToast}){
           </div>
         ))}
       </div>
-      <Pagination page={pageNal} total={nalozi.length} perPage={PER_PAGE} onChange={setPageNal}/>
+      <SimplePagination page={pageNal} total={nalozi.length} perPage={PER_PAGE} onChange={setPageNal}/>
       <button className="btn-sm" style={{width:'100%',marginTop:8,justifyContent:'center'}} onClick={()=>onNav('nalozi')}>Svi nalozi →</button>
     </div>}
 
@@ -77,7 +77,7 @@ function Dashboard({user,onNav,showToast}){
               <div><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>{g.sirina}/{g.visina} {promjerDisp(g.promjer)}</div><div style={{fontSize:10,color:'var(--muted)'}}>{g.sifra} · {g.polica_kod}</div></div>
               <button className="btn-sm" onClick={e=>{e.stopPropagation();onNav('gume');}}>Pregledaj</button>
             </div>)}
-            <Pagination page={pageGume} total={(data.zadnje_gume||[]).length} perPage={PER_PAGE} onChange={setPageGume}/>
+            <SimplePagination page={pageGume} total={(data.zadnje_gume||[]).length} perPage={PER_PAGE} onChange={setPageGume}/>
           </>
         }
       </div>
@@ -97,7 +97,7 @@ function Dashboard({user,onNav,showToast}){
                 <div style={{fontSize:10,color:priColor,fontWeight:700,flexShrink:0,textTransform:'uppercase'}}>{z.prioritet}</div>
               </div>);
             })}
-            <Pagination page={pageZad} total={(data.zadnji_zadaci||[]).length} perPage={PER_PAGE} onChange={setPageZad}/>
+            <SimplePagination page={pageZad} total={(data.zadnji_zadaci||[]).length} perPage={PER_PAGE} onChange={setPageZad}/>
           </>
         }
         {(data.zadnji_zadaci||[]).length>0&&<button className="btn-sm" style={{width:'100%',marginTop:6,justifyContent:'center'}} onClick={()=>onNav('zadaci')}>Svi zadaci →</button>}
