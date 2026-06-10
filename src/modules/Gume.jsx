@@ -205,7 +205,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
           <button className="btn-sm" onClick={()=>loadHistorija(detailG.id)} title="Historija premještanja" style={{padding:'4px 8px'}}><Icons.History/></button>
           {!detailG.prodato&&<button className="btn-sm" style={{color:'var(--blue)',borderColor:'rgba(88,166,255,.3)',padding:'4px 8px'}} onClick={()=>{setMoveModal(detailG);setMoveKod('');setDetailG(null);}}><Icons.Move/></button>}
         </div>
-      </div>
+      </div>}
       {detailG.prodato&&<div className="sold-box">Prodato{detailG.datum_prodaje?' · '+detailG.datum_prodaje:''}{detailG.cijena_prodaje&&<span style={{marginLeft:'auto',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:14}}>{detailG.cijena_prodaje}</span>}</div>}
       {detailG.napomena&&<><div className="sec-lbl">Napomena</div><p style={{fontSize:12,color:'var(--muted)',lineHeight:1.6}}>{detailG.napomena}</p></>}
       <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:8,fontSize:10,color:'var(--muted)'}}>
