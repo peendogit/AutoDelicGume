@@ -18,8 +18,8 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
   const [moveModal,setMoveModal]=useState(null);const [moveKod,setMoveKod]=useState('');
   const [showHistorija,setShowHistorija]=useState(false);const [historijaGuma,setHistorijaGuma]=useState([]);
   const [nalogModal,setNalogModal]=useState(null);const [nalogForm,setNalogForm]=useState({napomena:'',hitno:false,za_slanje:false});const [nalogSaving,setNalogSaving]=useState(false);
-  const [gumeSaNalogom,setGumeSaNalogom]=useState(new Set());
-  const loadNalozi=useCallback(async()=>{try{const d=await api('/nalozi');if(Array.isArray(d)){setGumeSaNalogom(new Set(d.filter(n=>n.status!=='zavrseno').map(n=>n.guma_id)));}}catch(e){}},[]);
+  const [gumeSaNalogom,setGumeSaNalogom]=useState(new Map());
+  const loadNalozi=useCallback(async()=>{try{const d=await api('/nalozi');if(Array.isArray(d)){const m=new Map();d.forEach(n=>{m.set(n.guma_id,{status:n.status,nalogId:n.id});});setGumeSaNalogom(m);}}catch(e){}},[]);
   useEffect(()=>{if(isAdmin)loadNalozi();},[isAdmin,loadNalozi]);
   const [customSirina,setCustomSirina]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_sirina')||'[]');}catch{return [];}});
   const [customVisina,setCustomVisina]=useState(()=>{try{return JSON.parse(localStorage.getItem('adg_visina')||'[]');}catch{return [];}});
@@ -183,10 +183,16 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
       </div>
       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'flex-start',gap:8,marginBottom:8,flexWrap:'wrap'}}>
         {detailG.slike&&detailG.slike.length>0&&<div className="det-imgs" style={{marginBottom:0}}>{detailG.slike.map((s,i)=><img key={i} className="thumb" src={s} onClick={()=>setLightbox({images:detailG.slike,index:i})}/>)}</div>}
-        {!detailG.prodato&&isAdmin&&(gumeSaNalogom.has(detailG.id)
-          ?<button className="btn-sm" disabled style={{color:'var(--muted)',borderColor:'var(--border)',fontWeight:700,flexShrink:0,fontSize:'1.3em',padding:'10.4px 15.6px',opacity:0.6,cursor:'not-allowed'}}>📋 Nalog poslan</button>
-          :<button className="btn-sm" style={{color:'var(--accent)',borderColor:'rgba(255,165,0,.3)',fontWeight:700,flexShrink:0,fontSize:'1.3em',padding:'10.4px 15.6px'}} onClick={e=>{e.stopPropagation();setNalogModal(detailG);setNalogForm({napomena:'',hitno:false,za_slanje:false});}}>📋 Nalog</button>
-        )}
+        {!detailG.prodato&&isAdmin&&(()=>{
+          const naloginfo=gumeSaNalogom.get(detailG.id);
+          if(!naloginfo){
+            return <button className="btn-sm" style={{color:'var(--accent)',borderColor:'rgba(255,165,0,.3)',fontWeight:700,flexShrink:0,fontSize:'1.3em',padding:'10.4px 15.6px'}} onClick={e=>{e.stopPropagation();setNalogModal(detailG);setNalogForm({napomena:'',hitno:false,za_slanje:false});}}>📋 Nalog</button>;
+          }
+          if(naloginfo.status==='zavrseno'){
+            return <button className="btn-sm" style={{color:'var(--red)',borderColor:'rgba(248,81,73,.3)',fontWeight:700,flexShrink:0,fontSize:'1.3em',padding:'10.4px 15.6px'}} onClick={async e=>{e.stopPropagation();try{const tok=localStorage.getItem('adg_token');await fetch('/api/nalozi/'+naloginfo.nalogId+'/zavrsi',{method:'POST',headers:{'Authorization':'Bearer '+tok}});setGumeSaNalogom(m=>{const nm=new Map(m);nm.delete(detailG.id);return nm;});showToast('Nalog zatvoren');}catch(err){showToast('Greška','err');}}}>✕ Zatvori nalog</button>;
+          }
+          return <button className="btn-sm" disabled style={{color:'var(--muted)',borderColor:'var(--border)',fontWeight:700,flexShrink:0,fontSize:'1.3em',padding:'10.4px 15.6px',opacity:0.6,cursor:'not-allowed'}}>📋 Nalog poslan</button>;
+        })()}
       </div>
       {detailG.cijena&&<div style={{background:'rgba(240,180,41,.08)',border:'1px solid rgba(240,180,41,.25)',borderRadius:6,padding:'8px 12px',marginBottom:9,display:'flex',alignItems:'center',justifyContent:'space-between'}}><span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>Cijena</span><span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:20,fontWeight:900,color:'var(--accent)',letterSpacing:'1px'}}>{detailG.cijena} KM</span></div>}
       <div className="specs-grid">
@@ -326,7 +332,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
               za_slanje:nalogForm.za_slanje
             })});
             showToast('Nalog poslan!');
-            setGumeSaNalogom(s=>new Set([...s,nalogModal.id]));
+            setGumeSaNalogom(m=>{const nm=new Map(m);nm.set(nalogModal.id,{status:'ceka',nalogId:null});return nm;});loadNalozi();
             setNalogModal(null);
           }catch(e){showToast('Greška: '+e.message,'err');}
           setNalogSaving(false);

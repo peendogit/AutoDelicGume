@@ -5,7 +5,7 @@ function Dashboard({user,onNav,showToast}){
   const [data,setData]=useState(null);
   useEffect(()=>{const load=()=>api('/dashboard').then(setData).catch(e=>{if(e.message&&e.message.includes('fetch'))setTimeout(load,1500);});load();},[]);
   const [nalozi,setNalozi]=useState([]);
-  useEffect(()=>{if(user.role==='admin'){api('/nalozi').then(d=>{if(Array.isArray(d))setNalozi(d.filter(n=>n.status!=='zavrseno'));}).catch(e=>{});}},[user.role]);
+  useEffect(()=>{if(user.role==='admin'){api('/nalozi').then(d=>{if(Array.isArray(d))setNalozi(d);}).catch(e=>{});}},[user.role]);
   if(!data)return <div className="page"><div style={{color:'var(--muted)',padding:40,textAlign:'center',fontFamily:'Barlow Condensed,sans-serif',letterSpacing:2,textTransform:'uppercase',fontSize:13}}>Učitavanje...</div></div>;
   const prod24=data.prodaja_24h||[];
   const prihod24=prod24.reduce((s,g)=>s+(parseFloat(g.cijena_prodaje)||0),0);
@@ -45,13 +45,15 @@ function Dashboard({user,onNav,showToast}){
       <div className="section-title">Aktivni nalozi ({nalozi.length})</div>
       <div style={{display:'flex',flexDirection:'column',gap:6}}>
         {nalozi.map(n=>(
-          <div key={n.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>onNav('gume',n.guma_id)}>
-            <div style={{width:6,height:6,borderRadius:'50%',background:n.hitno?'var(--red)':n.za_slanje?'#e3b341':'var(--accent)',flexShrink:0}}/>
+          <div key={n.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer',opacity:n.status==='zavrseno'?0.75:1}} onClick={()=>onNav('gume',n.guma_id)}>
+            <div style={{width:6,height:6,borderRadius:'50%',background:n.status==='zavrseno'?'var(--green)':n.hitno?'var(--red)':n.za_slanje?'#e3b341':'var(--accent)',flexShrink:0}}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{n.guma_sifra} — {n.guma_opis}</div>
-              <div style={{fontSize:10,color:'var(--muted)'}}>{n.status==='preuzeto'?'Preuzeo: '+n.preuzeo:'Čeka preuzimanje'} · {n.kreirao}</div>
+              <div style={{fontSize:10,color:n.status==='zavrseno'?'var(--green)':'var(--muted)'}}>
+                {n.status==='zavrseno' ? '✓ Spremno — treba prodati!' : n.status==='preuzeto' ? 'Preuzeo: '+n.preuzeo : 'Čeka preuzimanje'} · {n.kreirao}
+              </div>
             </div>
-            {n.hitno?<span style={{background:'var(--red)',color:'#fff',fontSize:9,fontWeight:900,padding:'1px 6px',borderRadius:4}}>HITNO</span>:null}
+            {n.hitno&&n.status!=='zavrseno'?<span style={{background:'var(--red)',color:'#fff',fontSize:9,fontWeight:900,padding:'1px 6px',borderRadius:4}}>HITNO</span>:null}
           </div>
         ))}
       </div>
