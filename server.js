@@ -767,7 +767,7 @@ app.post('/api/gume/:id/premjesti', requireAuth, async (req,res) => {
 app.post('/api/gume/:id/prodaj', requireAuth, async (req,res) => {
   const {cijena} = req.body;
   const datum = new Date().toLocaleDateString('hr-HR');
-  const cijenaTxt = cijena ? parseFloat(cijena).toLocaleString('hr-HR')+' KM' : null;
+  const cijenaTxt = cijena ? parseFloat(cijena)+' KM' : null;
   await dbRun('UPDATE gume SET prodato=1,cijena_prodaje=?,datum_prodaje=?,prodao_korisnik=? WHERE id=?',
     [cijenaTxt,datum,req.user.username,req.params.id]);
   await dbRun('DELETE FROM nalozi WHERE guma_id=?',[req.params.id]);
@@ -1646,7 +1646,14 @@ app.post('/api/nalozi/:id/spremi', requireAuth, async (req,res) => {
 
 app.post('/api/nalozi/:id/zavrsi', requireAuth, async (req,res) => {
   try {
-    await dbRun("UPDATE nalozi SET status='zavrseno',zavrseno_at=datetime('now') WHERE id=?", [req.params.id]);
+    const nalog = await dbGet('SELECT * FROM nalozi WHERE id=?', [req.params.id]);
+    if(!nalog) return res.json({ok:true});
+    if(nalog.status==='zavrseno'){
+      // Already finished by worker - admin is now archiving permanently
+      await dbRun('DELETE FROM nalozi WHERE id=?', [req.params.id]);
+    } else {
+      await dbRun("UPDATE nalozi SET status='zavrseno',zavrseno_at=datetime('now') WHERE id=?", [req.params.id]);
+    }
     res.json({ok:true});
   } catch(e) { res.status(500).json({error:e.message}); }
 });
