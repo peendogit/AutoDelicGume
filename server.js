@@ -475,6 +475,11 @@ async function initDB() {
   console.log('✅ Baza inicijalizirana');
 }
 
+async function logNalogEvent(nalogId, gumaSifra, gumaOpis, akcija, korisnik, detalji) {
+  try { await dbRun('INSERT INTO nalozi_log (nalog_id,guma_sifra,guma_opis,akcija,korisnik,detalji) VALUES (?,?,?,?,?,?)',
+    [nalogId, gumaSifra, gumaOpis, akcija, korisnik, detalji||'']); } catch(e) { console.error('logNalogEvent error', e); }
+}
+
 async function logActivity(korisnik, akcija, detalji) {
   try {
     await dbRun('INSERT INTO aktivnosti (korisnik,akcija,detalji) VALUES (?,?,?)',
@@ -770,6 +775,10 @@ app.post('/api/gume/:id/prodaj', requireAuth, async (req,res) => {
   const cijenaTxt = cijena ? parseFloat(cijena)+' KM' : null;
   await dbRun('UPDATE gume SET prodato=1,cijena_prodaje=?,datum_prodaje=?,prodao_korisnik=? WHERE id=?',
     [cijenaTxt,datum,req.user.username,req.params.id]);
+  const aktivniNalog = await dbGet('SELECT * FROM nalozi WHERE guma_id=?',[req.params.id]);
+  if(aktivniNalog){
+    await logNalogEvent(aktivniNalog.id, aktivniNalog.guma_sifra, aktivniNalog.guma_opis, 'ARHIVIRAN', req.user.username, `Artikal prodat za ${cijenaTxt||'—'}`);
+  }
   await dbRun('DELETE FROM nalozi WHERE guma_id=?',[req.params.id]);
   const g = formatGuma(await dbGet(GUME_SELECT+' WHERE g.id=?',[req.params.id]));
   await logActivity(req.user.username, 'PRODANA_GUMA', `${g.sifra} — ${g.sirina}/${g.visina} ${g.promjer}${cijenaTxt?' za '+cijenaTxt:''}`);
@@ -1540,6 +1549,18 @@ app.get('/api/finansije', requireAdmin, async (req,res) => {
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
+// ===== NALOZI LOG (DNEVNIK) =====
+app.get('/api/nalozi-log', requireAdmin, async (req,res) => {
+  try {
+    const {od, do_} = req.query;
+    let where='1=1'; const params=[];
+    if(od){ where+=" AND date(created_at) >= date(?)"; params.push(od); }
+    if(do_){ where+=" AND date(created_at) <= date(?)"; params.push(do_); }
+    const log = await dbAll(`SELECT * FROM nalozi_log WHERE ${where} ORDER BY created_at DESC LIMIT 500`, params);
+    res.json(log);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
 // ===== NALOZI (GET) =====
 app.get('/api/nalozi', requireAuth, async (req,res) => {
   try {
@@ -1609,14 +1630,18 @@ app.post('/api/nalozi', requireAdmin, async (req,res) => {
     const r = await dbRun('INSERT INTO nalozi (guma_id,guma_sifra,guma_opis,guma_lokacija,guma_slika,napomena,hitno,za_slanje,kreirao) VALUES (?,?,?,?,?,?,?,?,?)',
       [guma_id, guma_sifra, guma_opis||'', guma_lokacija||'', guma_slika||'', napomena||'', hitno?1:0, za_slanje?1:0, req.user.username]);
     const nalog = await dbGet('SELECT * FROM nalozi WHERE id=?', [r.lastID]);
+    let detTags=[]; if(hitno)detTags.push('HITNO'); if(za_slanje)detTags.push('ZA SLANJE');
+    await logNalogEvent(r.lastID, guma_sifra, guma_opis||'', 'KREIRAN', req.user.username, [napomena, ...detTags].filter(Boolean).join(' · '));
     res.json(nalog);
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
 app.post('/api/nalozi/:id/preuzmi', requireAuth, async (req,res) => {
   try {
+    const nalog = await dbGet('SELECT * FROM nalozi WHERE id=?', [req.params.id]);
     await dbRun("UPDATE nalozi SET status='preuzeto',preuzeo=?,preuzeto_at=datetime('now') WHERE id=?",
       [req.user.username, req.params.id]);
+    if(nalog) await logNalogEvent(nalog.id, nalog.guma_sifra, nalog.guma_opis, 'PREUZET', req.user.username, '');
     res.json({ok:true});
   } catch(e) { res.status(500).json({error:e.message}); }
 });
@@ -1644,6 +1669,7 @@ app.post('/api/nalozi/:id/spremi', requireAuth, async (req,res) => {
       [nalog.guma_id, staraGuma?.sifra||nalog.guma_sifra, staraGuma?.polica_kod||null, 'P599', req.user.username]);
     await logActivity(req.user.username, 'PREMJESTENA_GUMA', `${staraGuma?.sifra||nalog.guma_sifra}: ${staraGuma?.polica_kod||'—'} → P599 (nalog #${req.params.id})`);
     await dbRun("UPDATE nalozi SET status='zavrseno',zavrseno_at=datetime('now'),guma_lokacija='P599' WHERE id=?", [req.params.id]);
+    await logNalogEvent(nalog.id, nalog.guma_sifra, nalog.guma_opis, 'SPREMLJENO', req.user.username, `Premješteno na P599 (sa ${staraGuma?.polica_kod||'—'})`);
     res.json({ok:true});
   } catch(e) { res.status(500).json({error:e.message}); }
 });
@@ -1654,9 +1680,11 @@ app.post('/api/nalozi/:id/zavrsi', requireAuth, async (req,res) => {
     if(!nalog) return res.json({ok:true});
     if(nalog.status==='zavrseno'){
       // Already finished by worker - admin is now archiving permanently
+      await logNalogEvent(nalog.id, nalog.guma_sifra, nalog.guma_opis, 'ARHIVIRAN', req.user.username, `Zatvoreno bez prodaje (radnik: ${nalog.preuzeo||'—'})`);
       await dbRun('DELETE FROM nalozi WHERE id=?', [req.params.id]);
     } else {
       await dbRun("UPDATE nalozi SET status='zavrseno',zavrseno_at=datetime('now') WHERE id=?", [req.params.id]);
+      await logNalogEvent(nalog.id, nalog.guma_sifra, nalog.guma_opis, 'ZAVRSENO', req.user.username, 'Zatvoreno bez premještanja');
     }
     res.json({ok:true});
   } catch(e) { res.status(500).json({error:e.message}); }
