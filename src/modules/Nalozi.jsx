@@ -8,13 +8,16 @@ function NaloziModul({ user, showToast, onCountChange }) {
   const [tab, setTab] = useState('svi'); // 'svi' | 'moji'
   const [loading, setLoading] = useState(false);
 
+  const [err, setErr] = useState('');
   const load = useCallback(async () => {
     try {
+      setErr('');
       const d = await api('/nalozi');
+      if(!Array.isArray(d)){ setErr('Server: '+(d?.error||JSON.stringify(d))); return; }
       setNalozi(d);
       const ceka = d.filter(n => n.status === 'ceka').length;
       if (onCountChange) onCountChange(ceka);
-    } catch(e) {}
+    } catch(e) { setErr('Greška: '+e.message); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -74,6 +77,7 @@ function NaloziModul({ user, showToast, onCountChange }) {
         </button>
       </div>
 
+      {err&&<div style={{padding:'12px',color:'var(--red)',fontSize:12,background:'rgba(248,81,73,.1)',borderRadius:6,marginBottom:10}}>{err}</div>}
       {prikazani.length === 0
         ? <div className="empty"><p style={{ color: 'var(--muted)', fontSize: 13 }}>Nema naloga</p></div>
         : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
