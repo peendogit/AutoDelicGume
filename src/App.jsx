@@ -51,6 +51,7 @@ function App(){
 
   const [isOnline,setIsOnline]=useState(navigator.onLine);
   const [nalogCount,setNalogCount]=useState(0);
+  const [openGumaId,setOpenGumaId]=useState(null);
   const [fabOpen,setFabOpen]=useState(false);
   const overlayCountRef = React.useRef(0);
   const [quickAddModal,setQuickAddModal]=useState(null); // 'guma' | 'auto'
@@ -81,7 +82,7 @@ function App(){
   },[]);
 
   const doLogout=async()=>{try{await api('/auth/logout',{method:'POST'});}catch(e){}localStorage.removeItem('adg_token');setUser(null);setGume([]);setGumeLoaded(false);};
-  const nav=(p)=>{setPage(p);localStorage.setItem('adg_last_page',p);setSidebarOpen(false);};
+  const nav=(p,gumaId)=>{setPage(p);localStorage.setItem('adg_last_page',p);setSidebarOpen(false);if(gumaId)setOpenGumaId(gumaId);};
   // Radnici uvijek idu na gume
   useEffect(()=>{if(user&&user.role!=='admin'&&(page==='dashboard'||page==='auta'))setPage('gume');},[user]);
 
@@ -139,9 +140,9 @@ function App(){
         </button>
         <div className="topbar-title">{pageTitles[page]||page}</div>
         <div className="topbar-actions">
-          <button onClick={()=>nav('nalozi')} style={{position:'relative',background:'none',border:'none',color:page==='nalozi'?'var(--accent)':'var(--muted)',cursor:'pointer',padding:'6px 8px',fontSize:13,fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,letterSpacing:1,textTransform:'uppercase',lineHeight:1}}>
+          <button onClick={()=>nav('nalozi')} style={{position:'relative',background:'none',border:'none',color:page==='nalozi'?'var(--accent)':'var(--muted)',cursor:'pointer',padding:'6px 16px 6px 8px',fontSize:13,fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,letterSpacing:1,textTransform:'uppercase',lineHeight:1}}>
             NALOZI
-            {nalogCount>0&&<span style={{position:'absolute',top:2,right:2,background:'var(--red)',color:'#fff',borderRadius:'50%',width:16,height:16,fontSize:9,fontWeight:900,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>{nalogCount}</span>}
+            {nalogCount>0&&<span style={{position:'absolute',top:0,right:0,background:'var(--red)',color:'#fff',borderRadius:'50%',width:16,height:16,fontSize:9,fontWeight:900,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>{nalogCount}</span>}
           </button>
           {isAdmin&&<button title="Podešavanja" onClick={()=>nav('podesavanja')} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',padding:'6px 8px',fontSize:20,lineHeight:1}}>⚙️</button>}
         </div>
@@ -149,12 +150,12 @@ function App(){
 
       {/* PAGES */}
       {page==='dashboard'&&<ErrorBoundary><Dashboard user={user} onNav={nav} showToast={showToast}/></ErrorBoundary>}
-      {page==='gume'&&<ErrorBoundary><GumeModul user={user} showToast={showToast} gume={gume} setGume={setGume} police={police} magacini={magacini} loadPolice={loadPoliceAndMag} lightbox={lightbox} setLightbox={setLightbox} quickAdd={quickAddModal==='guma'} onQuickAddDone={()=>setQuickAddModal(null)}/></ErrorBoundary>}
+      {page==='gume'&&<ErrorBoundary><GumeModul user={user} showToast={showToast} gume={gume} setGume={setGume} police={police} magacini={magacini} loadPolice={loadPoliceAndMag} lightbox={lightbox} setLightbox={setLightbox} quickAdd={quickAddModal==='guma'} onQuickAddDone={()=>setQuickAddModal(null)} openGumaId={openGumaId} onOpenGumaDone={()=>setOpenGumaId(null)}/></ErrorBoundary>}
       {page==='auta'&&isAdmin&&<ErrorBoundary><AutaModul user={user} showToast={showToast} quickAdd={quickAddModal==='auto'} onQuickAddDone={()=>setQuickAddModal(null)}/></ErrorBoundary>}
       {page==='zadaci'&&isAdmin&&<ZadaciModul user={user} showToast={showToast}/>}
       {page==='kupci'&&isAdmin&&<ErrorBoundary><KupciModul showToast={showToast}/></ErrorBoundary>}
       {page==='ponude'&&isAdmin&&<ErrorBoundary><PonudaModul showToast={showToast}/></ErrorBoundary>}
-      {page==='nalozi'&&<NaloziModul user={user} showToast={showToast} onCountChange={setNalogCount}/> }
+      {page==='nalozi'&&<NaloziModul user={user} showToast={showToast} onCountChange={setNalogCount} onOpenGuma={(id)=>nav('gume',id)} setLightbox={setLightbox}/> }
       {page==='podesavanja'&&isAdmin&&<PodesavanjaModul user={user} showToast={showToast} magacini={magacini} setMagacini={setMagacini} police={police} loadPolice={loadPoliceAndMag}/>}
       {page==='finansije'&&isAdmin&&<FinansijeModul showToast={showToast}/>}
       {page==='analitika'&&isAdmin&&<AnalitikaModul showToast={showToast}/>}
