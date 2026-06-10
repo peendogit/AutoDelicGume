@@ -86,7 +86,7 @@ function NaloziModul({ user, showToast, onCountChange }) {
             const jePreuzeto = n.status === 'preuzeto';
             return (
               <div key={n.id} className="card-panel" style={{
-                borderLeft: `3px solid ${n.hitno ? 'var(--red)' : n.za_slanje ? 'var(--blue)' : 'var(--border)'}`,
+                borderLeft: `3px solid ${n.hitno ? 'var(--red)' : n.za_slanje ? '#e3b341' : 'var(--border)'}`,
                 opacity: jePreuzeto && !jePreuzeo ? 0.7 : 1
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
@@ -96,7 +96,7 @@ function NaloziModul({ user, showToast, onCountChange }) {
                         {n.guma_sifra}
                       </span>
                       {n.hitno ? <span style={{ background: 'var(--red)', color: '#fff', fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4, letterSpacing: 1 }}>HITNO</span> : null}
-                      {n.za_slanje ? <span style={{ background: 'var(--blue)', color: '#fff', fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4, letterSpacing: 1 }}>ZA SLANJE</span> : null}
+                      {n.za_slanje ? <span style={{ background: '#e3b341', color: '#1a1a1a', fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4, letterSpacing: 1 }}>ZA SLANJE</span> : null}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text)', marginBottom: 2 }}>{n.guma_opis}</div>
                     {n.guma_lokacija ? <div style={{ fontSize: 11, color: 'var(--accent)', marginBottom: 2 }}>📍 {n.guma_lokacija}</div> : null}
@@ -110,6 +110,13 @@ function NaloziModul({ user, showToast, onCountChange }) {
                     {n.status === 'zavrseno' && <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3, fontWeight: 700 }}>
                       ⬛ Završeno {n.zavrseno_at ? '· '+timeAgo(n.zavrseno_at) : ''} {n.guma_lokacija==='P599' ? '(spremljeno na P599)' : ''}
                     </div>}
+                  </div>
+                  <div style={{ position: 'relative', flexShrink: 0, width: 64, height: 64, borderRadius: 6, overflow: 'hidden', background: 'var(--card)', border: '1px solid var(--border)' }}>
+                    {n.guma_slika
+                      ? <img src={n.guma_slika} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+                      : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 22 }}>🛞</div>
+                    }
+                    <div style={{ position: 'absolute', top: 2, left: 2, background: 'rgba(0,0,0,.7)', color: '#fff', fontSize: 9, fontWeight: 900, padding: '1px 5px', borderRadius: 4, lineHeight: 1.4 }}>#{n.id}</div>
                   </div>
                 </div>
 
