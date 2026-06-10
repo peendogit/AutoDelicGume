@@ -50,12 +50,22 @@ export const EMPTY_GUMA={sezona:'',sirina:'',visina:'',promjer:'',napomena:'',po
 
 export function fmtDate(dt){
   if(!dt) return '—';
-  const d = new Date(dt);
+  let s=dt;
+  if(typeof s==='string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) s=s.replace(' ','T')+'Z';
+  const d = new Date(s);
   if(isNaN(d.getTime())) {
-    // Try parsing YYYY-MM-DD string directly
     const m = String(dt).match(/^(\d{4})-(\d{2})-(\d{2})/);
     if(m) return m[3]+'.'+m[2]+'.'+m[1]+'.';
     return String(dt);
   }
   return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear()+'.';
+}
+
+export function fmtDateTime(dt){
+  if(!dt) return '—';
+  let s=dt;
+  if(typeof s==='string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) s=s.replace(' ','T')+'Z';
+  const d = new Date(s);
+  if(isNaN(d.getTime())) return String(dt);
+  return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear()+'. '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 }
