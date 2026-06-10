@@ -115,7 +115,7 @@ function NaloziModul({ user, showToast, onCountChange }) {
 
                 <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
                   {n.status === 'ceka' && (
-                    <button className="btn-sm" style={{ color: 'var(--accent)', borderColor: 'rgba(255,165,0,.3)', fontWeight: 700 }}
+                    <button className="btn-sm" style={{ color: 'var(--accent)', borderColor: 'rgba(255,165,0,.3)', fontWeight: 700, fontSize: '1.3em', padding: '10.4px 15.6px' }}
                       onClick={() => doPreuzmi(n.id)}>
                       Preuzmi
                     </button>

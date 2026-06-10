@@ -173,11 +173,11 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
         <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:17,color:'var(--accent)',letterSpacing:2}}>{detailG.sifra}</span>
         {detailG.tip&&<span className={'tip-badge tip-'+detailG.tip}>{tipLbl(detailG.tip)}</span>}
       </div>
-      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8,marginBottom:8}}>
-        <div>{detailG.slike&&detailG.slike.length>0&&<div className="det-imgs" style={{marginBottom:0}}>{detailG.slike.map((s,i)=><img key={i} className="thumb" src={s} onClick={()=>setLightbox({images:detailG.slike,index:i})}/>)}</div>}</div>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'flex-start',gap:8,marginBottom:8,flexWrap:'wrap'}}>
+        {detailG.slike&&detailG.slike.length>0&&<div className="det-imgs" style={{marginBottom:0}}>{detailG.slike.map((s,i)=><img key={i} className="thumb" src={s} onClick={()=>setLightbox({images:detailG.slike,index:i})}/>)}</div>}
         {!detailG.prodato&&isAdmin&&(gumeSaNalogom.has(detailG.id)
-          ?<button className="btn-sm" style={{color:'var(--red)',borderColor:'rgba(248,81,73,.3)',fontWeight:700,flexShrink:0}} onClick={async e=>{e.stopPropagation();try{const tok=localStorage.getItem('adg_token');const nalozi=await fetch('/api/nalozi',{headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json());const n=nalozi.find(x=>x.guma_id===detailG.id);if(n){await fetch('/api/nalozi/'+n.id+'/zavrsi',{method:'POST',headers:{'Authorization':'Bearer '+tok}});setGumeSaNalogom(s=>{const ns=new Set(s);ns.delete(detailG.id);return ns;});showToast('Nalog zatvoren');}setDetailG(null);}catch(e){showToast('Greška','err');}}}>✕ Zatvori nalog</button>
-          :<button className="btn-sm" style={{color:'var(--accent)',borderColor:'rgba(255,165,0,.3)',fontWeight:700,flexShrink:0}} onClick={e=>{e.stopPropagation();setNalogModal(detailG);setNalogForm({napomena:'',hitno:false,za_slanje:false});}}>📋 Nalog</button>
+          ?<button className="btn-sm" style={{color:'var(--red)',borderColor:'rgba(248,81,73,.3)',fontWeight:700,flexShrink:0,fontSize:'1.3em',padding:'10.4px 15.6px'}} onClick={async e=>{e.stopPropagation();try{const tok=localStorage.getItem('adg_token');const nalozi=await fetch('/api/nalozi',{headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json());const n=nalozi.find(x=>x.guma_id===detailG.id);if(n){await fetch('/api/nalozi/'+n.id+'/zavrsi',{method:'POST',headers:{'Authorization':'Bearer '+tok}});setGumeSaNalogom(s=>{const ns=new Set(s);ns.delete(detailG.id);return ns;});showToast('Nalog zatvoren');}setDetailG(null);}catch(e){showToast('Greška','err');}}}>✕ Zatvori nalog</button>
+          :<button className="btn-sm" style={{color:'var(--accent)',borderColor:'rgba(255,165,0,.3)',fontWeight:700,flexShrink:0,fontSize:'1.3em',padding:'10.4px 15.6px'}} onClick={e=>{e.stopPropagation();setNalogModal(detailG);setNalogForm({napomena:'',hitno:false,za_slanje:false});}}>📋 Nalog</button>
         )}
       </div>
       {detailG.cijena&&<div style={{background:'rgba(240,180,41,.08)',border:'1px solid rgba(240,180,41,.25)',borderRadius:6,padding:'8px 12px',marginBottom:9,display:'flex',alignItems:'center',justifyContent:'space-between'}}><span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>Cijena</span><span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:20,fontWeight:900,color:'var(--accent)',letterSpacing:'1px'}}>{detailG.cijena} KM</span></div>}
@@ -307,7 +307,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
               guma_id:nalogModal.id,
               guma_sifra:nalogModal.sifra,
               guma_opis:nalogModal.sirina+'/'+nalogModal.visina+' '+nalogModal.promjer+' '+nalogModal.sezona,
-              guma_lokacija:nalogModal.polica_kod||'',
+              guma_lokacija:nalogModal.loc_magacin?(nalogModal.loc_magacin+' › '+nalogModal.loc_prolaz+' › '+nalogModal.loc_regal+' › '+(nalogModal.polica_kod||'')):(nalogModal.polica_kod||''),
               napomena:nalogForm.napomena,
               hitno:nalogForm.hitno,
               za_slanje:nalogForm.za_slanje
