@@ -80,7 +80,7 @@ function App(){
     window.history.replaceState({page},'','/');
     const onPop=(e)=>{
       // Close overlay first if any are open
-      const overlays=document.querySelectorAll('.overlay');
+      const overlays=document.querySelectorAll('.overlay, .lightbox');
       if(overlays.length>0){
         overlays[overlays.length-1].click();
         window.history.pushState({page},'','/'); // stay on current page, re-add history entry
