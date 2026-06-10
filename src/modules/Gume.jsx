@@ -3,7 +3,7 @@ import { api, promjerDisp, tipLbl, statusLbl, timeAgo, resizeImage, EMPTY_GUMA, 
 import { Icons, ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination } from '../components/index.jsx';
 import PremjestanjeWidget from './Premjestanje.jsx';
 
-function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,lightbox,setLightbox,quickAdd,onQuickAddDone}){
+function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,lightbox,setLightbox,quickAdd,onQuickAddDone,openGumaId,onOpenGumaDone}){
   const isAdmin=user.role==='admin';
   const [statusTab,setStatusTab]=useState('stanje');
   const [filters,setFilters]=useState({sezona:'',sirina:'',visina:'',promjer:'',sifra:'',tip:''});
@@ -31,6 +31,12 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
   const imgHook=useImageUpload([]);
 
   useEffect(()=>{if(quickAdd){openAdd();onQuickAddDone&&onQuickAddDone();}},[ quickAdd]);
+  useEffect(()=>{
+    if(openGumaId){
+      const g=gume.find(x=>x.id===openGumaId);
+      if(g){setDetailG(g);onOpenGumaDone&&onOpenGumaDone();}
+    }
+  },[openGumaId,gume]);
 
   const sirina_opts=useMemo(()=>[...SIRINA_OPTIONS,...customSirina].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>parseInt(a)-parseInt(b)),[customSirina]);
   const visina_opts=useMemo(()=>[...VISINA_OPTIONS,...customVisina].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>parseInt(a)-parseInt(b)),[customVisina]);
@@ -193,7 +199,13 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
         {detailG.dubina&&<div className="spec-box" style={{flex:1}}><div className="spec-lbl">Dubina šare</div><div className="spec-val" style={{fontSize:16}}>{detailG.dubina} mm</div></div>}
         {detailG.dot&&<div className="spec-box" style={{flex:1}}><div className="spec-lbl">Godina (DOT)</div><div className="spec-val" style={{fontSize:16}}>{detailG.dot}</div></div>}
       </div>}
-      {detailG.polica_kod&&<div className="loc-box">📍 {detailG.loc_magacin&&`${detailG.loc_magacin} › ${detailG.loc_prolaz} › ${detailG.loc_regal} › `}{detailG.polica_kod}</div>}
+      {detailG.polica_kod&&<div className="loc-box" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+        <span>📍 {detailG.loc_magacin&&`${detailG.loc_magacin} › ${detailG.loc_prolaz} › ${detailG.loc_regal} › `}{detailG.polica_kod}</span>
+        <div style={{display:'flex',gap:6,flexShrink:0}}>
+          <button className="btn-sm" onClick={()=>loadHistorija(detailG.id)} title="Historija premještanja" style={{padding:'4px 8px'}}><Icons.History/></button>
+          {!detailG.prodato&&<button className="btn-sm" style={{color:'var(--blue)',borderColor:'rgba(88,166,255,.3)',padding:'4px 8px'}} onClick={()=>{setMoveModal(detailG);setMoveKod('');setDetailG(null);}}><Icons.Move/></button>}
+        </div>
+      </div>
       {detailG.prodato&&<div className="sold-box">Prodato{detailG.datum_prodaje?' · '+detailG.datum_prodaje:''}{detailG.cijena_prodaje&&<span style={{marginLeft:'auto',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:14}}>{detailG.cijena_prodaje}</span>}</div>}
       {detailG.napomena&&<><div className="sec-lbl">Napomena</div><p style={{fontSize:12,color:'var(--muted)',lineHeight:1.6}}>{detailG.napomena}</p></>}
       <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:8,fontSize:10,color:'var(--muted)'}}>
@@ -202,8 +214,6 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
       </div>
       <div className="modal-foot">
         {isAdmin&&<div className="foot-left"><button className="btn-sm red" onClick={()=>doDel(detailG.id)}><Icons.Trash/> Obriši</button></div>}
-        {!detailG.prodato&&<button className="btn-sm" style={{color:'var(--blue)',borderColor:'rgba(88,166,255,.3)'}} onClick={()=>{setMoveModal(detailG);setMoveKod('');setDetailG(null);}}><Icons.Move/> Premjesti</button>}
-        <button className="btn-sm" onClick={()=>loadHistorija(detailG.id)} title="Historija premještanja"><Icons.History/></button>
         {!detailG.prodato&&<button className="btn-sm" onClick={()=>openEdit(detailG)}><Icons.Edit/> Uredi</button>}
         {!detailG.prodato&&<button className="btn-save" onClick={()=>setSellModal(true)} style={{background:'var(--green)',color:'#fff'}}>Prodaj</button>}
         {detailG.prodato&&<button className="btn-cancel" onClick={()=>setDetailG(null)}>Zatvori</button>}

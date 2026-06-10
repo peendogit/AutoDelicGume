@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { api, timeAgo } from '../utils.js';
 import { Icons } from '../components/index.jsx';
 
-function NaloziModul({ user, showToast, onCountChange }) {
+function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }) {
   const isAdmin = user.role === 'admin';
   const [nalozi, setNalozi] = useState([]);
   const [tab, setTab] = useState('svi'); // 'svi' | 'moji'
@@ -92,7 +92,8 @@ function NaloziModul({ user, showToast, onCountChange }) {
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 3 }}>
-                      <span style={{ fontFamily: 'Barlow Condensed,sans-serif', fontWeight: 900, fontSize: 16 }}>
+                      <span style={{ fontFamily: 'Barlow Condensed,sans-serif', fontWeight: 900, fontSize: 16, color:'var(--accent)', cursor: onOpenGuma?'pointer':'default', textDecoration: onOpenGuma?'underline':'none' }}
+                        onClick={()=>onOpenGuma&&onOpenGuma(n.guma_id)}>
                         {n.guma_sifra}
                       </span>
                       {n.hitno ? <span style={{ background: 'var(--red)', color: '#fff', fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4, letterSpacing: 1 }}>HITNO</span> : null}
@@ -113,7 +114,7 @@ function NaloziModul({ user, showToast, onCountChange }) {
                   </div>
                   <div style={{ position: 'relative', flexShrink: 0, width: 64, height: 64, borderRadius: 6, overflow: 'hidden', background: 'var(--card)', border: '1px solid var(--border)' }}>
                     {n.guma_slika
-                      ? <img src={n.guma_slika} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+                      ? <img src={n.guma_slika} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: setLightbox?'pointer':'default' }} onClick={()=>setLightbox&&setLightbox({images:[n.guma_slika],index:0})}/>
                       : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 22 }}>🛞</div>
                     }
                     <div style={{ position: 'absolute', top: 2, left: 2, background: 'rgba(0,0,0,.7)', color: '#fff', fontSize: 9, fontWeight: 900, padding: '1px 5px', borderRadius: 4, lineHeight: 1.4 }}>#{n.id}</div>
