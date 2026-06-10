@@ -180,6 +180,17 @@ function Pagination({page, total, perPage, onChange}){
   </div>);
 }
 
+
+function SimplePagination({page, total, perPage, onChange}){
+  const totalPages = Math.ceil(total/perPage);
+  if(totalPages<=1) return null;
+  return(<div style={{display:'flex',gap:8,justifyContent:'center',alignItems:'center',padding:'8px 0'}}>
+    <button className="btn-sm" disabled={page===1} onClick={()=>onChange(page-1)} style={{padding:'4px 10px'}}>←</button>
+    <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,color:'var(--muted)'}}>{page}/{totalPages}</span>
+    <button className="btn-sm" disabled={page===totalPages} onClick={()=>onChange(page+1)} style={{padding:'4px 10px'}}>→</button>
+  </div>);
+}
+
 // ===== MAIN APP =====
 
-export { ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination };
+export { ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, Pagination, SimplePagination };
