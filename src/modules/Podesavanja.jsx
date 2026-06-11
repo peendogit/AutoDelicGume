@@ -5,10 +5,6 @@ import { Icons, ErrorBoundary, ComboBox, useImageUpload, Lightbox, ImgUploadUI, 
 function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice}){
   const [setTab,setSetTab]=useState('magacin');
   const [korisnici,setKorisnici]=useState([]);
-  const [cjenovnikLista,setCjenovnikLista]=useState([]);
-  const [editCjenovnik,setEditCjenovnik]=useState(null);
-  const [cjenovnikForm,setCjenovnikForm]=useState({dimenzija:'',sezona:'',cijena_min:'',cijena_max:'',napomena:''});
-  const loadCjenovnik=async()=>{try{const d=await api('/cjenovnik');setCjenovnikLista(d);}catch(e){}};
   const [openMag,setOpenMag]=useState({});const [openProlaz,setOpenProlaz]=useState({});const [openRegal,setOpenRegal]=useState({});
   const [customPolica,setCustomPolica]=useState({});
   const [newMagName,setNewMagName]=useState('');
@@ -22,7 +18,6 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
   const loadKorisnici=async()=>{try{const k=await api('/korisnici');setKorisnici(k);}catch(e){showToast(e.message,'err');}};
   useEffect(()=>{
     if(setTab==='korisnici')loadKorisnici();
-    if(setTab==='cjenovnik')loadCjenovnik();
   },[setTab]);
 
   const doDelMag=async(id)=>{if(!window.confirm('Brisanje magacina će obrisati i sve prolaze, regale i police unutar njega.\nDa li ste sigurni?'))return;await api('/magacini/'+id,{method:'DELETE'});setMagacini(p=>p.filter(m=>m.id!=id));await loadPolice();showToast('Magacin obrisan');};
@@ -47,7 +42,18 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
     const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=fileName;document.body.appendChild(a);a.click();
     setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},3000);
     showToast('Rezervna kopija preuzeta!');}catch(e){showToast('Greška: '+e.message,'err');}};
-  const addCustomDim=(type,val)=>{val=val.trim();if(!val)return;if(type==='sirina'){const n=[...customSirina,val];setCustomSirina(n);localStorage.setItem('adg_sirina',JSON.stringify(n));}if(type==='visina'){const n=[...customVisina,val];setCustomVisina(n);localStorage.setItem('adg_visina',JSON.stringify(n));}if(type==='promjer'){const n=[...customPromjer,val.toUpperCase()];setCustomPromjer(n);localStorage.setItem('adg_promjer',JSON.stringify(n));}setNewDimVal(p=>({...p,[type]:''}));showToast('Dimenzija dodana');};
+  const addCustomDim=(type,val)=>{
+    val=val.trim();if(!val)return;
+    const valNorm = type==='promjer' ? val.toUpperCase() : val;
+    const base = type==='sirina'?SIRINA_OPTIONS:type==='visina'?VISINA_OPTIONS:PROMJER_OPTIONS;
+    const custom = type==='sirina'?customSirina:type==='visina'?customVisina:customPromjer;
+    const exists = base.some(b=>String(b).toUpperCase()===valNorm.toUpperCase()) || custom.some(c=>String(c).toUpperCase()===valNorm.toUpperCase());
+    if(exists){ showToast('Dimenzija \"'+valNorm+'\" već postoji','err'); return; }
+    if(type==='sirina'){const n=[...customSirina,val];setCustomSirina(n);localStorage.setItem('adg_sirina',JSON.stringify(n));}
+    if(type==='visina'){const n=[...customVisina,val];setCustomVisina(n);localStorage.setItem('adg_visina',JSON.stringify(n));}
+    if(type==='promjer'){const n=[...customPromjer,valNorm];setCustomPromjer(n);localStorage.setItem('adg_promjer',JSON.stringify(n));}
+    setNewDimVal(p=>({...p,[type]:''}));showToast('Dimenzija dodana');
+  };
   const removeCustomDim=(type,val)=>{if(type==='sirina'){const n=customSirina.filter(x=>x!==val);setCustomSirina(n);localStorage.setItem('adg_sirina',JSON.stringify(n));}if(type==='visina'){const n=customVisina.filter(x=>x!==val);setCustomVisina(n);localStorage.setItem('adg_visina',JSON.stringify(n));}if(type==='promjer'){const n=customPromjer.filter(x=>x!==val);setCustomPromjer(n);localStorage.setItem('adg_promjer',JSON.stringify(n));}};
 
   return(<div className="page">
@@ -55,7 +61,6 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
       <button className={'set-tab'+(setTab==='magacin'?' on':'')} onClick={()=>setSetTab('magacin')}>🏠 Magacin</button>
       <button className={'set-tab'+(setTab==='korisnici'?' on':'')} onClick={()=>setSetTab('korisnici')}>👥 Korisnici</button>
       <button className={'set-tab'+(setTab==='dimenzije'?' on':'')} onClick={()=>setSetTab('dimenzije')}>📐 Dimenzije</button>
-      <button className={'set-tab'+(setTab==='cjenovnik'?' on':'')} onClick={()=>setSetTab('cjenovnik')}>💰 Cjenovnik</button>
     </div>
 
     {setTab==='magacin'&&<>
@@ -136,23 +141,6 @@ function PodesavanjaModul({user,showToast,magacini,setMagacini,police,loadPolice
       </div>
     ))}</div>}
 
-    {setTab==='cjenovnik'&&<div>
-      <div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
-        <button className="btn-new" onClick={()=>{setCjenovnikForm({dimenzija:'',sezona:'',cijena_min:'',cijena_max:'',napomena:''});setEditCjenovnik(null);setCjenovnikModal(true);}}><Icons.Plus size={10}/> Dodaj cijenu</button>
-      </div>
-      {cjenovnikLista.length===0?<div style={{fontSize:12,color:'var(--muted)',padding:'20px 0',textAlign:'center'}}>Nema unesenih cijena.</div>:
-      <div style={{display:'flex',flexDirection:'column',gap:5}}>
-        {cjenovnikLista.map(c=><div key={c.id} style={{display:'flex',alignItems:'center',gap:10,background:'var(--card)',border:'1px solid var(--border)',borderRadius:7,padding:'8px 12px'}}>
-          <div style={{flex:1}}><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:15,letterSpacing:'1px'}}>{c.dimenzija}</div>
-          <div style={{fontSize:10,color:'var(--muted)'}}>{c.sezona||'Sve sezone'}{c.napomena?' · '+c.napomena:''}</div></div>
-          <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:14,color:'var(--accent)'}}>{c.cijena_min===c.cijena_max?c.cijena_min+' KM':c.cijena_min+'–'+c.cijena_max+' KM'}</div>
-          <button className="del-btn" style={{color:'var(--blue)',opacity:1}} onClick={()=>{setEditCjenovnik(c);setCjenovnikForm({dimenzija:c.dimenzija,sezona:c.sezona||'',cijena_min:String(c.cijena_min),cijena_max:String(c.cijena_max),napomena:c.napomena||''});setCjenovnikModal(true);}}><Icons.Edit/></button>
-          <button className="del-btn" onClick={async()=>{if(!window.confirm('Obrisati?'))return;await api('/cjenovnik/'+c.id,{method:'DELETE'});setCjenovnikLista(p=>p.filter(x=>x.id!=c.id));}}><Icons.Trash/></button>
-        </div>)}
-      </div>}
-    </div>}
-
-  
     {editUser&&<div className="overlay" onClick={()=>setEditUser(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
       <div className="modal-title">Uredi korisnika <button className="btn-close" onClick={()=>setEditUser(null)}>×</button></div>
       <div className="fg2"><label>Korisničko ime</label><input autoFocus value={editUser.username} onChange={e=>setEditUser(u=>({...u,username:e.target.value}))} placeholder="korisničko_ime"/></div>

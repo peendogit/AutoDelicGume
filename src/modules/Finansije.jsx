@@ -4,9 +4,9 @@ import { Icons } from '../components/index.jsx';
 
 function fmtProdajaDatum(dp){
   if(!dp) return '—';
-  // Format u bazi: "DD. MM. YYYY." -> "DD.MM.YYYY."
-  const m=dp.match(/^(\d{2})\.\s*(\d{2})\.\s*(\d{4})\.?/);
-  if(m) return m[1]+'.'+m[2]+'.'+m[3]+'.';
+  // Format u bazi: "D. M. YYYY." ili "DD. MM. YYYY." -> "DD.MM.YYYY."
+  const m=dp.match(/^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})\.?/);
+  if(m) return m[1].padStart(2,'0')+'.'+m[2].padStart(2,'0')+'.'+m[3]+'.';
   return dp;
 }
 

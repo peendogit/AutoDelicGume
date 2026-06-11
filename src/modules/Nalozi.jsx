@@ -2,6 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { api, timeAgo, fmtDateTime } from '../utils.js';
 import { Icons } from '../components/index.jsx';
 
+const NALOG_AKCIJA_TXT = {
+  PREUZET: 'Preuzeo nalog',
+  SPREMLJENO: 'Spremio na P599',
+  ZAVRSENO: 'Završio bez premještanja',
+  ARHIVIRAN: 'Arhivirano',
+};
+
 function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }) {
   const isAdmin = user.role === 'admin';
   const [nalozi, setNalozi] = useState([]);
@@ -9,6 +16,13 @@ function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }
   const [loading, setLoading] = useState(false);
 
   const [err, setErr] = useState('');
+  const [istorija, setIstorija] = useState([]);
+  const loadIstorija = useCallback(async () => {
+    try {
+      const d = await api('/nalozi-moja-istorija');
+      if (Array.isArray(d)) setIstorija(d);
+    } catch(e) {}
+  }, []);
   const load = useCallback(async () => {
     try {
       setErr('');
@@ -21,6 +35,7 @@ function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { if(tab==='moji') loadIstorija(); }, [tab, loadIstorija]);
 
   const doPreuzmi = async (id) => {
     try {
@@ -28,6 +43,7 @@ function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }
       showToast('Nalog preuzet!');
       load();
       window.dispatchEvent(new Event('nalozi-changed'));
+      loadIstorija();
     } catch(e) { showToast('Greška', 'err'); }
   };
 
@@ -38,6 +54,7 @@ function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }
       showToast('Guma premještena na P599, nalog zatvoren!');
       load();
       window.dispatchEvent(new Event('nalozi-changed'));
+      loadIstorija();
     } catch(e) { showToast('Greška', 'err'); }
   };
 
@@ -48,17 +65,18 @@ function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }
       showToast('Nalog zatvoren');
       load();
       window.dispatchEvent(new Event('nalozi-changed'));
+      loadIstorija();
     } catch(e) { showToast('Greška', 'err'); }
   };
 
   const prikazani = tab === 'moji'
-    ? nalozi.filter(n => n.preuzeo === user.username)
+    ? nalozi.filter(n => n.preuzeo === user.username && n.status !== 'zavrseno')
     : nalozi.filter(n => n.status !== 'zavrseno');
 
   return (
     <div className="page">
       <div className="page-header">
-        <div className="page-title">Nalozi za gume</div>
+        <div className="page-title">Nalozi</div>
       </div>
 
       <div className="tab-bar" style={{ marginBottom: 14 }}>
@@ -155,6 +173,25 @@ function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }
           })}
         </div>
       }
+
+      {tab === 'moji' && istorija.length > 0 && <div style={{marginTop:18}}>
+        <div className="section-title" style={{marginBottom:8}}>Istorija mojih naloga</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {istorija.map((h,i) => (
+            <div key={i} className="card-panel" style={{padding:'8px 12px',opacity:0.85}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{h.guma_sifra} — {h.guma_opis}</div>
+                  <div style={{fontSize:10,color:'var(--muted)'}}>
+                    {NALOG_AKCIJA_TXT[h.akcija]||h.akcija}{h.detalji?' · '+h.detalji:''}
+                  </div>
+                </div>
+                <span style={{fontSize:10,color:'var(--muted)',flexShrink:0}}>{fmtDateTime(h.created_at)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>}
     </div>
   );
 }

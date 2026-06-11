@@ -183,6 +183,12 @@ function KupciModul({showToast}){
     {/* DETAIL */}
     {detail&&!modalKup&&placanjModal===null&&mainTab==='kupci'&&<div className="overlay" onClick={()=>setDetail(null)}><div className="modal" style={{maxWidth:500}} onClick={e=>e.stopPropagation()}>
       <div className="modal-title">{detail.ime} <button className="btn-close" onClick={()=>setDetail(null)}>x</button></div>
+      {(detail.adresa||detail.jib||detail.pdv_broj||detail.napomena)&&<div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:7,padding:'10px 12px',marginBottom:12,display:'flex',flexDirection:'column',gap:4,fontSize:12}}>
+        {detail.adresa&&<div><span style={{color:'var(--muted)'}}>Adresa: </span><b>{detail.adresa}</b></div>}
+        {detail.jib&&<div><span style={{color:'var(--muted)'}}>JIB: </span><b>{detail.jib}</b></div>}
+        {detail.pdv_broj&&<div><span style={{color:'var(--muted)'}}>PDV broj: </span><b>{detail.pdv_broj}</b></div>}
+        {detail.napomena&&<div><span style={{color:'var(--muted)'}}>Napomena: </span>{detail.napomena}</div>}
+      </div>}
       {detail.telefon&&<div style={{display:'flex',gap:6,marginBottom:12}}>
         <a href={"tel:"+detail.telefon} style={{flex:1,background:'var(--card)',border:'1px solid var(--border)',borderRadius:6,padding:'7px',textAlign:'center',color:'var(--blue)',fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,fontSize:11,textDecoration:'none'}}>📞 Pozovi</a>
         <a href={"https://wa.me/387"+detail.telefon.replace(/^0/,'').replace(/\D/g,'')} target="_blank" style={{flex:1,background:'#25d366',borderRadius:6,padding:'7px',textAlign:'center',color:'#fff',fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,fontSize:11,textDecoration:'none'}}>💬 WhatsApp</a>

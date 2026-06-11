@@ -4,21 +4,6 @@ import { SimplePagination } from '../components/index.jsx';
 
 const PER_PAGE = 20;
 
-const NALOG_BOJA = {
-  KREIRAN: 'accent',
-  PREUZET: 'blue',
-  SPREMLJENO: 'green',
-  ZAVRSENO: 'green',
-  ARHIVIRAN: 'muted',
-};
-const NALOG_NAZIV = {
-  KREIRAN: 'Nalog kreiran',
-  PREUZET: 'Preuzet',
-  SPREMLJENO: 'Spremljeno (P599)',
-  ZAVRSENO: 'Završeno bez premještanja',
-  ARHIVIRAN: 'Arhiviran',
-};
-
 function LogModul({ showToast }) {
   const [tab, setTab] = useState('aktivnosti'); // 'aktivnosti' | 'nalozi'
 
@@ -106,7 +91,6 @@ function LogModul({ showToast }) {
           {naloziLog.length === 0 && <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--muted)', fontSize: 13 }}>Nema zabilježenih događaja</div>}
           {nalStranica.map((n, i) => (
             <div key={i} className="log-item">
-              <span className={'log-badge ' + (NALOG_BOJA[n.akcija] || '')}>{NALOG_NAZIV[n.akcija] || n.akcija}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="log-user">{n.guma_sifra} — {n.guma_opis}</div>
                 <div className="log-detail">
