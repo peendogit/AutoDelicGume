@@ -771,7 +771,7 @@ app.post('/api/gume/:id/premjesti', requireAuth, async (req,res) => {
 
 app.post('/api/gume/:id/prodaj', requireAuth, async (req,res) => {
   const {cijena} = req.body;
-  const datum = new Date().toLocaleDateString('hr-HR');
+  const _d=new Date();const datum=String(_d.getDate()).padStart(2,'0')+'. '+String(_d.getMonth()+1).padStart(2,'0')+'. '+_d.getFullYear()+'.';
   const cijenaTxt = cijena ? parseFloat(cijena)+' KM' : null;
   await dbRun('UPDATE gume SET prodato=1,cijena_prodaje=?,datum_prodaje=?,prodao_korisnik=? WHERE id=?',
     [cijenaTxt,datum,req.user.username,req.params.id]);
@@ -941,7 +941,7 @@ app.get('/api/analitika', requireAdmin, async (req,res) => {
 // ===== DASHBOARD =====
 app.get('/api/dashboard', requireAuth, async (req,res) => {
   try {
-    const prije24h = new Date(Date.now() - 24*60*60*1000);
+    const danasISO = new Date().toISOString().slice(0,10);
     const [gumeStanje, gumeProdato, autaStanje, autaProdato,
            zadaciOtvoreni, troskoviAktivno,
            zadnjeGume, zadnjiZadaci, prodaja24h] = await Promise.all([
@@ -953,7 +953,7 @@ app.get('/api/dashboard', requireAuth, async (req,res) => {
       dbGet('SELECT COUNT(*) as c FROM troskovi_auta'),
       dbAll('SELECT id,sifra,sezona,sirina,visina,promjer,polica_kod,created_at FROM gume ORDER BY created_at DESC LIMIT 25'),
       dbAll("SELECT id,naslov,prioritet,status,dodao_korisnik,created_at FROM zadaci WHERE status='otvoreno' ORDER BY CASE prioritet WHEN 'visok' THEN 1 WHEN 'srednji' THEN 2 ELSE 3 END, created_at DESC LIMIT 25"),
-      dbAll(`SELECT id,sifra,sirina,visina,promjer,sezona,cijena_prodaje,datum_prodaje,prodao_korisnik FROM gume WHERE prodato=1 AND length(datum_prodaje)>=10 AND (substr(datum_prodaje,9,4)||'-'||substr(datum_prodaje,5,2)||'-'||substr(datum_prodaje,1,2)) >= ? ORDER BY datum_prodaje DESC`, [prije24h.toISOString().slice(0,10)]),
+      dbAll(`SELECT id,sifra,sirina,visina,promjer,sezona,cijena_prodaje,datum_prodaje,prodao_korisnik FROM gume WHERE prodato=1 AND length(datum_prodaje)>=10 AND (substr(datum_prodaje,9,4)||'-'||substr(datum_prodaje,5,2)||'-'||substr(datum_prodaje,1,2)) >= ? ORDER BY datum_prodaje DESC`, [danasISO]),
     ]);
     res.json({
       gume_stanje: gumeStanje?.c||0,
@@ -1344,36 +1344,6 @@ app.delete('/api/kupci/:id/kompenzacije/:kid', requireAdmin, async (req,res) => 
   catch(e) { res.status(500).json({error:e.message}); }
 });
 
-// ===== CJENOVNIK =====
-app.get('/api/cjenovnik', requireAdmin, async (req,res) => {
-  try { res.json(await dbAll('SELECT * FROM cjenovnik ORDER BY dimenzija')); }
-  catch(e) { res.status(500).json({error:e.message}); }
-});
-
-app.post('/api/cjenovnik', requireAdmin, async (req,res) => {
-  try {
-    const {dimenzija,sezona,cijena_min,cijena_max,napomena} = req.body;
-    if(!dimenzija) return res.status(400).json({error:'Dimenzija je obavezna'});
-    const r = await dbRun('INSERT INTO cjenovnik (dimenzija,sezona,cijena_min,cijena_max,napomena) VALUES (?,?,?,?,?)',
-      [dimenzija,sezona||'',parseFloat(cijena_min)||0,parseFloat(cijena_max)||0,napomena||'']);
-    res.json(await dbGet('SELECT * FROM cjenovnik WHERE id=?',[r.lastID]));
-  } catch(e) { res.status(500).json({error:e.message}); }
-});
-
-app.put('/api/cjenovnik/:id', requireAdmin, async (req,res) => {
-  try {
-    const {dimenzija,sezona,cijena_min,cijena_max,napomena} = req.body;
-    await dbRun('UPDATE cjenovnik SET dimenzija=?,sezona=?,cijena_min=?,cijena_max=?,napomena=? WHERE id=?',
-      [dimenzija,sezona||'',parseFloat(cijena_min)||0,parseFloat(cijena_max)||0,napomena||'',req.params.id]);
-    res.json(await dbGet('SELECT * FROM cjenovnik WHERE id=?',[req.params.id]));
-  } catch(e) { res.status(500).json({error:e.message}); }
-});
-
-app.delete('/api/cjenovnik/:id', requireAdmin, async (req,res) => {
-  try { await dbRun('DELETE FROM cjenovnik WHERE id=?',[req.params.id]); res.json({ok:true}); }
-  catch(e) { res.status(500).json({error:e.message}); }
-});
-
 // ===== PONUDE / RAČUNI =====
 app.get('/api/ponude', requireAdmin, async (req,res) => {
   try {
@@ -1557,6 +1527,16 @@ app.get('/api/nalozi-log', requireAdmin, async (req,res) => {
     if(od){ where+=" AND date(created_at) >= date(?)"; params.push(od); }
     if(do_){ where+=" AND date(created_at) <= date(?)"; params.push(do_); }
     const log = await dbAll(`SELECT * FROM nalozi_log WHERE ${where} ORDER BY created_at DESC LIMIT 500`, params);
+    res.json(log);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// Licna istorija naloga - sve sto je korisnik preuzeo i zavrsio/arhivirao
+app.get('/api/nalozi-moja-istorija', requireAuth, async (req,res) => {
+  try {
+    const log = await dbAll(
+      `SELECT * FROM nalozi_log WHERE korisnik=? AND akcija IN ('PREUZET','SPREMLJENO','ZAVRSENO','ARHIVIRAN') ORDER BY created_at DESC LIMIT 200`,
+      [req.user.username]);
     res.json(log);
   } catch(e) { res.status(500).json({error:e.message}); }
 });
