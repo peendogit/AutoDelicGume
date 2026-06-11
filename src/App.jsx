@@ -126,7 +126,7 @@ function App(){
     {id:'log',label:'Dnevnik',icon:<Icons.Log size={18}/>,adminOnly:true},
   ].filter(i=>i.always||(i.adminOnly&&isAdmin));
 
-  const pageTitles={nalozi:'Nalozi za gume',dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansije',kupci:'Kupci',ponude:'Ponude / Računi',podesavanja:'Podešavanja',analitika:'Analitika',log:'Dnevnik'};
+  const pageTitles={nalozi:'Nalozi',dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansije',kupci:'Kupci',ponude:'Ponude / Računi',podesavanja:'Podešavanja',analitika:'Analitika',log:'Dnevnik'};
 
   return(<div className="layout">
     {/* SIDEBAR OVERLAY on mobile */}
