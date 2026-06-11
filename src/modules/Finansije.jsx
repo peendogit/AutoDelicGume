@@ -16,8 +16,8 @@ function FinansijeModul({showToast}){
   const [listaTros,setListaTros]=useState([]);const [modalTros,setModalTros]=useState(false);
   const [formTros,setFormTros]=useState({kategorija:'',opis:'',iznos:'',datum:new Date().toISOString().slice(0,10)});
   const [filterMj,setFilterMj]=useState(new Date().toISOString().slice(0,7));
-  const [istFrom,setIstFrom]=useState(new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10));
-  const [istTo,setIstTo]=useState(new Date().toISOString().slice(0,10));
+  const [istFrom,setIstFrom]=useState(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';});
+  const [istTo,setIstTo]=useState(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');});
   const [istTip,setIstTip]=useState('sve');
   const [redovni,setRedovni]=useState([]);const [modalRedovni,setModalRedovni]=useState(false);
   const [editRedovni,setEditRedovni]=useState(null);
@@ -205,13 +205,23 @@ function FinansijeModul({showToast}){
         <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center',marginBottom:10}}>
           <div style={{display:'flex',flexDirection:'column',gap:2,flex:1,minWidth:120}}>
             <label style={{fontSize:9,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>OD</label>
-            <input type="date" value={istFrom} onChange={e=>setIstFrom(e.target.value)} style={{fontSize:13,padding:'6px 8px',border:'1px solid var(--border)',borderRadius:5,background:'var(--card)',color:'var(--text)'}}/>
-            <span style={{fontSize:10,color:'var(--muted)'}}>{istFrom?istFrom.split('-').reverse().join('.')+'.':''}</span>
+            <div style={{position:'relative'}}>
+              <div style={{fontSize:13,padding:'6px 8px',border:'1px solid var(--border)',borderRadius:5,background:'var(--card)',color:'var(--text)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,pointerEvents:'none'}}>
+                <span>{istFrom?istFrom.split('-').reverse().join('.')+'.':'—'}</span>
+                <span style={{opacity:0.6}}>📅</span>
+              </div>
+              <input type="date" value={istFrom} onChange={e=>setIstFrom(e.target.value)} style={{position:'absolute',inset:0,opacity:0,cursor:'pointer',width:'100%',height:'100%'}}/>
+            </div>
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:2,flex:1,minWidth:120}}>
             <label style={{fontSize:9,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>DO</label>
-            <input type="date" value={istTo} onChange={e=>setIstTo(e.target.value)} style={{fontSize:13,padding:'6px 8px',border:'1px solid var(--border)',borderRadius:5,background:'var(--card)',color:'var(--text)'}}/>
-            <span style={{fontSize:10,color:'var(--muted)'}}>{istTo?istTo.split('-').reverse().join('.')+'.':''}</span>
+            <div style={{position:'relative'}}>
+              <div style={{fontSize:13,padding:'6px 8px',border:'1px solid var(--border)',borderRadius:5,background:'var(--card)',color:'var(--text)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,pointerEvents:'none'}}>
+                <span>{istTo?istTo.split('-').reverse().join('.')+'.':'—'}</span>
+                <span style={{opacity:0.6}}>📅</span>
+              </div>
+              <input type="date" value={istTo} onChange={e=>setIstTo(e.target.value)} style={{position:'absolute',inset:0,opacity:0,cursor:'pointer',width:'100%',height:'100%'}}/>
+            </div>
           </div>
           <div style={{display:'flex',gap:4,alignSelf:'flex-end',paddingBottom:1}}>
             {[['sve','Sve'],['gume','Gume'],['auta','Auta']].map(([v,l])=><button key={v} className={"stab"+(istTip===v?' as':'')} style={{padding:'6px 10px',fontSize:11}} onClick={()=>setIstTip(v)}>{l}</button>)}
