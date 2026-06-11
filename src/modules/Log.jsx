@@ -4,6 +4,35 @@ import { SimplePagination } from '../components/index.jsx';
 
 const PER_PAGE = 20;
 
+const ZAVRSNE_AKCIJE = {
+  PREUZET: 'Preuzeo',
+  SPREMLJENO: 'Spremio (P599)',
+  ZAVRSENO: 'Završio bez premještanja',
+  ARHIVIRAN: 'Arhivirao',
+};
+
+function grupisiNaloge(log){
+  const grupe = new Map();
+  // Process oldest-first so KREIRAN is found first, terminal action overwrites
+  const sorted = [...log].sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+  for(const ev of sorted){
+    const id = ev.nalog_id;
+    if(!grupe.has(id)) grupe.set(id, {nalog_id:id, guma_sifra:ev.guma_sifra, guma_opis:ev.guma_opis, kreiran:null, zadnja:null});
+    const g = grupe.get(id);
+    if(ev.akcija==='KREIRAN'){
+      g.kreiran = ev;
+    } else if(ZAVRSNE_AKCIJE[ev.akcija]){
+      g.zadnja = ev; // last terminal action wins (sorted ascending, so last write = latest)
+    }
+  }
+  // Return newest-first by most recent event (zadnja || kreiran)
+  return [...grupe.values()].sort((a,b)=>{
+    const ta = new Date((a.zadnja||a.kreiran)?.created_at||0);
+    const tb = new Date((b.zadnja||b.kreiran)?.created_at||0);
+    return tb-ta;
+  });
+}
+
 function LogModul({ showToast }) {
   const [tab, setTab] = useState('aktivnosti'); // 'aktivnosti' | 'nalozi'
 
@@ -42,7 +71,8 @@ function LogModul({ showToast }) {
   if (loading) return <div className="page"><div style={{ color: 'var(--muted)', padding: 40, textAlign: 'center' }}>Učitavanje...</div></div>;
 
   const aktStranica = lista.slice((pageAkt - 1) * PER_PAGE, pageAkt * PER_PAGE);
-  const nalStranica = naloziLog.slice((pageNal - 1) * PER_PAGE, pageNal * PER_PAGE);
+  const naloziGrupisani = grupisiNaloge(naloziLog);
+  const nalStranica = naloziGrupisani.slice((pageNal - 1) * PER_PAGE, pageNal * PER_PAGE);
 
   return (<div className="page">
     <div className="page-header"><div className="page-title">Dnevnik</div><div className="page-sub">Aktivnosti i istorija naloga</div></div>
@@ -90,19 +120,29 @@ function LogModul({ showToast }) {
         : <div className="card-panel">
           {naloziLog.length === 0 && <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--muted)', fontSize: 13 }}>Nema zabilježenih događaja</div>}
           {nalStranica.map((n, i) => (
-            <div key={i} className="log-item">
-              <div style={{ flex: 1, minWidth: 0 }}>
+            <div key={i} className="log-item" style={{flexDirection:'column',alignItems:'stretch',gap:4}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
                 <div className="log-user">{n.guma_sifra} — {n.guma_opis}</div>
-                <div className="log-detail">
-                  <b style={{ color: 'var(--text)' }}>{n.korisnik}</b>{n.detalji ? ' · ' + n.detalji : ''} {n.nalog_id ? '· nalog #' + n.nalog_id : ''}
-                </div>
+                <span style={{fontSize:10,color:'var(--muted)'}}>nalog #{n.nalog_id}</span>
               </div>
-              <span className="log-time">{fmtDateTime(n.created_at)}</span>
+              <div className="log-detail" style={{display:'flex',flexDirection:'column',gap:2}}>
+                {n.kreiran && <div>
+                  Poslao <b style={{color:'var(--text)'}}>{n.kreiran.korisnik}</b> · {fmtDateTime(n.kreiran.created_at)}
+                  {n.kreiran.detalji ? ' · '+n.kreiran.detalji : ''}
+                </div>}
+                {n.zadnja
+                  ? <div>
+                      {ZAVRSNE_AKCIJE[n.zadnja.akcija]||n.zadnja.akcija} <b style={{color:'var(--text)'}}>{n.zadnja.korisnik}</b> · {fmtDateTime(n.zadnja.created_at)}
+                      {n.zadnja.detalji ? ' · '+n.zadnja.detalji : ''}
+                    </div>
+                  : <div style={{color:'var(--accent)'}}>⏳ Aktivan / čeka preuzimanje</div>
+                }
+              </div>
             </div>
           ))}
         </div>
       }
-      <SimplePagination page={pageNal} total={naloziLog.length} perPage={PER_PAGE} onChange={setPageNal} />
+      <SimplePagination page={pageNal} total={naloziGrupisani.length} perPage={PER_PAGE} onChange={setPageNal} />
     </>}
 
     <div className="site-footer">© 2026 <span>DelicNode</span></div>

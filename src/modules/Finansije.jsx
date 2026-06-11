@@ -206,10 +206,12 @@ function FinansijeModul({showToast}){
           <div style={{display:'flex',flexDirection:'column',gap:2,flex:1,minWidth:120}}>
             <label style={{fontSize:9,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>OD</label>
             <input type="date" value={istFrom} onChange={e=>setIstFrom(e.target.value)} style={{fontSize:13,padding:'6px 8px',border:'1px solid var(--border)',borderRadius:5,background:'var(--card)',color:'var(--text)'}}/>
+            <span style={{fontSize:10,color:'var(--muted)'}}>{istFrom?istFrom.split('-').reverse().join('.')+'.':''}</span>
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:2,flex:1,minWidth:120}}>
             <label style={{fontSize:9,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>DO</label>
             <input type="date" value={istTo} onChange={e=>setIstTo(e.target.value)} style={{fontSize:13,padding:'6px 8px',border:'1px solid var(--border)',borderRadius:5,background:'var(--card)',color:'var(--text)'}}/>
+            <span style={{fontSize:10,color:'var(--muted)'}}>{istTo?istTo.split('-').reverse().join('.')+'.':''}</span>
           </div>
           <div style={{display:'flex',gap:4,alignSelf:'flex-end',paddingBottom:1}}>
             {[['sve','Sve'],['gume','Gume'],['auta','Auta']].map(([v,l])=><button key={v} className={"stab"+(istTip===v?' as':'')} style={{padding:'6px 10px',fontSize:11}} onClick={()=>setIstTip(v)}>{l}</button>)}
@@ -245,6 +247,23 @@ function FinansijeModul({showToast}){
               </div>
               <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,color:'var(--green)',flexShrink:0}}>{a.prodajna_cijena||'—'} KM</div>
             </div>)}
+          </div>
+        </div>}
+        {(filtGume.length>0||filtAuta.length>0)&&<div className="card-panel" style={{marginTop:10}}>
+          <div className="section-title">Ukupno</div>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {istTip!=='auta'&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span style={{fontSize:13,color:'var(--muted)'}}>Gume ({filtGume.length} kom)</span>
+              <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18,color:'var(--green)'}}>{ukGume.toLocaleString('sr-Latn-RS')} KM</span>
+            </div>}
+            {istTip!=='gume'&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span style={{fontSize:13,color:'var(--muted)'}}>Auta ({filtAuta.length} kom)</span>
+              <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18,color:'var(--blue)'}}>{ukAuta.toLocaleString('sr-Latn-RS')} KM</span>
+            </div>}
+            {istTip==='sve'&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:6,borderTop:'1px solid var(--border)'}}>
+              <span style={{fontSize:13,fontWeight:700,color:'var(--text)'}}>Ukupno</span>
+              <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:22,color:'var(--accent)'}}>{(ukGume+ukAuta).toLocaleString('sr-Latn-RS')} KM</span>
+            </div>}
           </div>
         </div>}
       </>);
