@@ -125,7 +125,7 @@ function PonudaModul({showToast}){
     +'<div class=hdr><img src="'+LOGO+'" alt="Auto Delić"/>'
     +'<div class=firma><b>Auto Delić</b>Tel: 066 027 888<br><span class=web>www.delicauto.com</span><br>Pavlovića put 13, 76300 Bijeljina<br>autootpaddelic@gmail.com</div></div>'
     +'<div class=jib>'
-    +'<span>JIB: 5540010000584312</span>'
+    +'<span>JIB: 4512510240001</span>'
     +'<span>Naša banka &Zcaron;R: 5540010000584312</span>'
     +'</div>'
     +'<div class=tit>'+(tip2==='racun'?'RAČUN':'PREDRAČUN / PONUDA')+' BR. '+p.broj+'</div>'
