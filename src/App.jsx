@@ -108,6 +108,10 @@ function App(){
     if(gumaId){setReturnPage(page);}
     setPage(p);localStorage.setItem('adg_last_page',p);setSidebarOpen(false);if(gumaId)setOpenGumaId(gumaId);
   };
+  // Tiha navigacija - ne gura novi history entry (koristi se kad zatvaranje vec dolazi iz popstate/back gesture)
+  const navSilent=useCallback((p)=>{
+    setPage(p);localStorage.setItem('adg_last_page',p);setSidebarOpen(false);
+  },[]);
   // Radnici uvijek idu na gume
   useEffect(()=>{if(user&&user.role!=='admin'&&(page==='dashboard'||page==='auta'))setPage('gume');},[user]);
 
@@ -175,7 +179,7 @@ function App(){
 
       {/* PAGES */}
       {page==='dashboard'&&<ErrorBoundary><Dashboard user={user} onNav={nav} showToast={showToast}/></ErrorBoundary>}
-      {page==='gume'&&<ErrorBoundary><GumeModul user={user} showToast={showToast} gume={gume} setGume={setGume} police={police} magacini={magacini} loadPolice={loadPoliceAndMag} lightbox={lightbox} setLightbox={setLightbox} quickAdd={quickAddModal==='guma'} onQuickAddDone={()=>setQuickAddModal(null)} openGumaId={openGumaId} onOpenGumaDone={()=>setOpenGumaId(null)} onNav={nav} returnTo={returnPage}/></ErrorBoundary>}
+      {page==='gume'&&<ErrorBoundary><GumeModul user={user} showToast={showToast} gume={gume} setGume={setGume} police={police} magacini={magacini} loadPolice={loadPoliceAndMag} lightbox={lightbox} setLightbox={setLightbox} quickAdd={quickAddModal==='guma'} onQuickAddDone={()=>setQuickAddModal(null)} openGumaId={openGumaId} onOpenGumaDone={()=>setOpenGumaId(null)} onNav={navSilent} returnTo={returnPage}/></ErrorBoundary>}
       {page==='auta'&&isAdmin&&<ErrorBoundary><AutaModul user={user} showToast={showToast} quickAdd={quickAddModal==='auto'} onQuickAddDone={()=>setQuickAddModal(null)}/></ErrorBoundary>}
       {page==='zadaci'&&isAdmin&&<ZadaciModul user={user} showToast={showToast}/>}
       {page==='kupci'&&isAdmin&&<ErrorBoundary><KupciModul showToast={showToast}/></ErrorBoundary>}
