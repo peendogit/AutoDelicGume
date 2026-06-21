@@ -189,7 +189,7 @@ function App(){
       {page==='nalozi'&&<NaloziModul user={user} showToast={showToast} onCountChange={setNalogCount} onOpenGuma={(id)=>nav('gume',id)} setLightbox={setLightbox}/> }
       {page==='podesavanja'&&isAdmin&&<PodesavanjaModul user={user} showToast={showToast} magacini={magacini} setMagacini={setMagacini} police={police} loadPolice={loadPoliceAndMag}/>}
       {page==='finansije'&&isAdmin&&<FinansijeModul showToast={showToast}/>}
-      {page==='analitika'&&isAdmin&&<AnalitikaModul showToast={showToast} onNav={navSilent} tab={analitikaTab} setTab={setAnalitikaTab} otvorenKorisnik={analitikaOtvorenKorisnik} setOtvorenKorisnik={setAnalitikaOtvorenKorisnik}/>}
+      {page==='analitika'&&isAdmin&&<AnalitikaModul showToast={showToast} onNav={nav} tab={analitikaTab} setTab={setAnalitikaTab} otvorenKorisnik={analitikaOtvorenKorisnik} setOtvorenKorisnik={setAnalitikaOtvorenKorisnik}/>}
       {page==='log'&&isAdmin&&<LogModul showToast={showToast}/>}
     </div>
 
