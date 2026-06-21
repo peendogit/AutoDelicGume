@@ -1557,6 +1557,40 @@ app.get('/api/nalozi/count', requireAuth, async (req,res) => {
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
+// ===== ANALITIKA - STATISTIKA UNOSA DIJELOVA =====
+app.get('/api/analitika/unosi', requireAdmin, async (req,res) => {
+  try {
+    const {od, do_} = req.query;
+    let where = "dodao_korisnik IS NOT NULL";
+    const params = [];
+    if(od){ where += " AND date(created_at) >= date(?)"; params.push(od); }
+    if(do_){ where += " AND date(created_at) <= date(?)"; params.push(do_); }
+
+    const poKorisniku = await dbAll(
+      `SELECT dodao_korisnik as korisnik, COUNT(*) as broj
+       FROM gume WHERE ${where}
+       GROUP BY dodao_korisnik ORDER BY broj DESC`, params);
+
+    res.json({ poKorisniku });
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.get('/api/analitika/unosi/:korisnik', requireAdmin, async (req,res) => {
+  try {
+    const {od, do_} = req.query;
+    let where = "dodao_korisnik = ?";
+    const params = [req.params.korisnik];
+    if(od){ where += " AND date(created_at) >= date(?)"; params.push(od); }
+    if(do_){ where += " AND date(created_at) <= date(?)"; params.push(do_); }
+
+    const artikli = await dbAll(
+      `SELECT id, sifra, sirina, visina, promjer, sezona, polica_kod, created_at
+       FROM gume WHERE ${where} ORDER BY created_at DESC`, params);
+
+    res.json(artikli);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
 app.get('*', (req,res) => {
   const attempts = [
     path.join(__dirname,'public','index.html'),
