@@ -2,36 +2,47 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { api, promjerDisp, fmtDateTime } from '../utils.js';
 import { Icons } from '../components/index.jsx';
 
-function AnalitikaModul({showToast,onNav}){
+function AnalitikaModul({showToast,onNav,tab,setTab,otvorenKorisnik,setOtvorenKorisnik}){
   const [data,setData]=useState(null);const [loading,setLoading]=useState(true);
-  const [tab,setTab]=useState('pregled'); // pregled | abc | prognoza | unosi
   const [unosiOd,setUnosiOd]=useState(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';});
   const [unosiDo,setUnosiDo]=useState(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');});
   const [unosiData,setUnosiData]=useState(null);
   const [unosiLoading,setUnosiLoading]=useState(false);
-  const [otvorenKorisnik,setOtvorenKorisnik]=useState(null);
   const [artikliKorisnika,setArtikliKorisnika]=useState([]);
   const [artikliLoading,setArtikliLoading]=useState(false);
 
-  const loadUnosi=useCallback(()=>{
+  const loadUnosi=useCallback((resetExpanded)=>{
     setUnosiLoading(true);
     const params=new URLSearchParams();
     if(unosiOd)params.set('od',unosiOd);
     if(unosiDo)params.set('do_',unosiDo);
-    api('/analitika/unosi?'+params.toString()).then(d=>{setUnosiData(d);setUnosiLoading(false);setOtvorenKorisnik(null);}).catch(e=>{showToast(e.message,'err');setUnosiLoading(false);});
+    api('/analitika/unosi?'+params.toString()).then(d=>{setUnosiData(d);setUnosiLoading(false);if(resetExpanded)setOtvorenKorisnik(null);}).catch(e=>{showToast(e.message,'err');setUnosiLoading(false);});
   },[unosiOd,unosiDo]);
 
-  useEffect(()=>{if(tab==='unosi'&&!unosiData)loadUnosi();},[tab]);
+  useEffect(()=>{if(tab==='unosi'&&!unosiData)loadUnosi(false);},[tab]);
 
-  const toggleKorisnik=(korisnik)=>{
-    if(otvorenKorisnik===korisnik){setOtvorenKorisnik(null);return;}
-    setOtvorenKorisnik(korisnik);
+  const fetchArtikli=useCallback((korisnik)=>{
     setArtikliLoading(true);
     const params=new URLSearchParams();
     if(unosiOd)params.set('od',unosiOd);
     if(unosiDo)params.set('do_',unosiDo);
     api('/analitika/unosi/'+encodeURIComponent(korisnik)+'?'+params.toString()).then(d=>{setArtikliKorisnika(Array.isArray(d)?d:[]);setArtikliLoading(false);}).catch(e=>{showToast(e.message,'err');setArtikliLoading(false);});
+  },[unosiOd,unosiDo]);
+
+  // Ako je korisnik vec otvoren (npr. nakon povratka iz detalja artikla), ponovo dovuci njegove artikle
+  useEffect(()=>{
+    if(tab==='unosi'&&otvorenKorisnik&&artikliKorisnika.length===0&&!artikliLoading){
+      fetchArtikli(otvorenKorisnik);
+    }
+  },[tab,otvorenKorisnik]);
+
+  const toggleKorisnik=(korisnik)=>{
+    if(otvorenKorisnik===korisnik){setOtvorenKorisnik(null);setArtikliKorisnika([]);return;}
+    setOtvorenKorisnik(korisnik);
+    fetchArtikli(korisnik);
   };
+
+  const filterDugme=()=>loadUnosi(true);
 
   useEffect(()=>{
     api('/analitika').then(d=>{setData(d);setLoading(false);}).catch(e=>{showToast(e.message,'err');setLoading(false);});
@@ -213,7 +224,7 @@ function AnalitikaModul({showToast,onNav}){
             <input type="date" value={unosiDo} onChange={e=>setUnosiDo(e.target.value)} style={{position:'absolute',inset:0,opacity:0,cursor:'pointer',width:'100%',height:'100%'}}/>
           </div>
         </div>
-        <button className="btn-sm" onClick={loadUnosi}>Filtriraj</button>
+        <button className="btn-sm" onClick={filterDugme}>Filtriraj</button>
       </div>
 
       {unosiLoading
