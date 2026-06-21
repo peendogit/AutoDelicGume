@@ -1,10 +1,37 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { api } from '../utils.js';
+import { api, promjerDisp, fmtDateTime } from '../utils.js';
 import { Icons } from '../components/index.jsx';
 
-function AnalitikaModul({showToast}){
+function AnalitikaModul({showToast,onNav}){
   const [data,setData]=useState(null);const [loading,setLoading]=useState(true);
-  const [tab,setTab]=useState('pregled'); // pregled | abc | prognoza
+  const [tab,setTab]=useState('pregled'); // pregled | abc | prognoza | unosi
+  const [unosiOd,setUnosiOd]=useState(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';});
+  const [unosiDo,setUnosiDo]=useState(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');});
+  const [unosiData,setUnosiData]=useState(null);
+  const [unosiLoading,setUnosiLoading]=useState(false);
+  const [otvorenKorisnik,setOtvorenKorisnik]=useState(null);
+  const [artikliKorisnika,setArtikliKorisnika]=useState([]);
+  const [artikliLoading,setArtikliLoading]=useState(false);
+
+  const loadUnosi=useCallback(()=>{
+    setUnosiLoading(true);
+    const params=new URLSearchParams();
+    if(unosiOd)params.set('od',unosiOd);
+    if(unosiDo)params.set('do_',unosiDo);
+    api('/analitika/unosi?'+params.toString()).then(d=>{setUnosiData(d);setUnosiLoading(false);setOtvorenKorisnik(null);}).catch(e=>{showToast(e.message,'err');setUnosiLoading(false);});
+  },[unosiOd,unosiDo]);
+
+  useEffect(()=>{if(tab==='unosi'&&!unosiData)loadUnosi();},[tab]);
+
+  const toggleKorisnik=(korisnik)=>{
+    if(otvorenKorisnik===korisnik){setOtvorenKorisnik(null);return;}
+    setOtvorenKorisnik(korisnik);
+    setArtikliLoading(true);
+    const params=new URLSearchParams();
+    if(unosiOd)params.set('od',unosiOd);
+    if(unosiDo)params.set('do_',unosiDo);
+    api('/analitika/unosi/'+encodeURIComponent(korisnik)+'?'+params.toString()).then(d=>{setArtikliKorisnika(Array.isArray(d)?d:[]);setArtikliLoading(false);}).catch(e=>{showToast(e.message,'err');setArtikliLoading(false);});
+  };
 
   useEffect(()=>{
     api('/analitika').then(d=>{setData(d);setLoading(false);}).catch(e=>{showToast(e.message,'err');setLoading(false);});
@@ -30,6 +57,7 @@ function AnalitikaModul({showToast}){
       <button className={'stab'+(tab==='pregled'?' as':'')} onClick={()=>setTab('pregled')}>📊 Pregled</button>
       <button className={'stab'+(tab==='abc'?' as':'')} onClick={()=>setTab('abc')}>🔤 ABC analiza</button>
       <button className={'stab'+(tab==='prognoza'?' as':'')} onClick={()=>setTab('prognoza')}>🔮 Prognoza</button>
+      <button className={'stab'+(tab==='unosi'?' as':'')} onClick={()=>setTab('unosi')}>📥 Unosi</button>
     </div>
 
     {tab==='pregled'&&<>
@@ -160,6 +188,71 @@ function AnalitikaModul({showToast}){
         {abcGrupe.A.filter(r=>r.na_stanju===0||r.na_stanju<2).length===0&&
           <div style={{fontSize:12,color:'var(--green)'}}>✓ Sve A dimenzije su na stanju.</div>}
       </div>}
+    </>}
+
+
+    {tab==='unosi'&&<>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'flex-end',marginBottom:14}}>
+        <div style={{display:'flex',flexDirection:'column',gap:2,flex:1,minWidth:120}}>
+          <label style={{fontSize:9,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>OD</label>
+          <div style={{position:'relative'}}>
+            <div style={{fontSize:13,padding:'6px 8px',border:'1px solid var(--border)',borderRadius:5,background:'var(--card)',color:'var(--text)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,pointerEvents:'none'}}>
+              <span>{unosiOd?unosiOd.split('-').reverse().join('.')+'.':'—'}</span>
+              <span style={{opacity:0.6}}>📅</span>
+            </div>
+            <input type="date" value={unosiOd} onChange={e=>setUnosiOd(e.target.value)} style={{position:'absolute',inset:0,opacity:0,cursor:'pointer',width:'100%',height:'100%'}}/>
+          </div>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:2,flex:1,minWidth:120}}>
+          <label style={{fontSize:9,fontFamily:'Barlow Condensed,sans-serif',fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>DO</label>
+          <div style={{position:'relative'}}>
+            <div style={{fontSize:13,padding:'6px 8px',border:'1px solid var(--border)',borderRadius:5,background:'var(--card)',color:'var(--text)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,pointerEvents:'none'}}>
+              <span>{unosiDo?unosiDo.split('-').reverse().join('.')+'.':'—'}</span>
+              <span style={{opacity:0.6}}>📅</span>
+            </div>
+            <input type="date" value={unosiDo} onChange={e=>setUnosiDo(e.target.value)} style={{position:'absolute',inset:0,opacity:0,cursor:'pointer',width:'100%',height:'100%'}}/>
+          </div>
+        </div>
+        <button className="btn-sm" onClick={loadUnosi}>Filtriraj</button>
+      </div>
+
+      {unosiLoading
+        ?<div style={{color:'var(--muted)',padding:30,textAlign:'center'}}>Učitavanje...</div>
+        :<div className="card-panel">
+          <div className="section-title">Unosi po korisniku</div>
+          {(!unosiData||(unosiData.poKorisniku||[]).length===0)
+            ?<div style={{fontSize:12,color:'var(--muted)',padding:'12px 0',textAlign:'center'}}>Nema unosa u odabranom periodu</div>
+            :<div style={{display:'flex',flexDirection:'column',gap:0}}>
+              {unosiData.poKorisniku.map(r=>(
+                <div key={r.korisnik}>
+                  <div style={{display:'flex',alignItems:'center',gap:10,padding:'9px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>toggleKorisnik(r.korisnik)}>
+                    <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14,flex:1}}>{r.korisnik}</span>
+                    <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18,color:'var(--accent)',textDecoration:'underline'}}>{r.broj}</span>
+                    <span style={{fontSize:11,color:'var(--muted)'}}>artikala</span>
+                    <span style={{color:'var(--muted)',fontSize:12,transform:otvorenKorisnik===r.korisnik?'rotate(90deg)':'none',transition:'transform .15s'}}>▶</span>
+                  </div>
+                  {otvorenKorisnik===r.korisnik&&<div style={{padding:'4px 0 10px 8px',borderBottom:'1px solid var(--border)'}}>
+                    {artikliLoading
+                      ?<div style={{fontSize:12,color:'var(--muted)',padding:'8px 0'}}>Učitavanje...</div>
+                      :artikliKorisnika.length===0
+                        ?<div style={{fontSize:12,color:'var(--muted)',padding:'8px 0'}}>Nema artikala</div>
+                        :artikliKorisnika.map(a=>(
+                          <div key={a.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',cursor:'pointer'}} onClick={()=>onNav&&onNav('gume',a.id)}>
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13,color:'var(--accent)',textDecoration:'underline'}}>{a.sirina}/{a.visina} {promjerDisp(a.promjer)} {a.sezona}</div>
+                              <div style={{fontSize:10,color:'var(--muted)'}}>{a.sifra} · {a.polica_kod||'—'}</div>
+                            </div>
+                            <span style={{fontSize:10,color:'var(--muted)',flexShrink:0}}>{fmtDateTime(a.created_at)}</span>
+                          </div>
+                        ))
+                    }
+                  </div>}
+                </div>
+              ))}
+            </div>
+          }
+        </div>
+      }
     </>}
 
     <div className="site-footer">© 2026 <span>DelicNode</span></div>
