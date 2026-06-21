@@ -941,7 +941,8 @@ app.get('/api/analitika', requireAdmin, async (req,res) => {
 // ===== DASHBOARD =====
 app.get('/api/dashboard', requireAuth, async (req,res) => {
   try {
-    const danasISO = new Date().toISOString().slice(0,10);
+    const _today=new Date();
+    const danasISO = _today.getFullYear()+'-'+String(_today.getMonth()+1).padStart(2,'0')+'-'+String(_today.getDate()).padStart(2,'0');
     const [gumeStanje, gumeProdato, autaStanje, autaProdato,
            zadaciOtvoreni, troskoviAktivno,
            zadnjeGume, zadnjiZadaci, prodaja24h] = await Promise.all([
