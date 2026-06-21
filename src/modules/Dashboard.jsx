@@ -68,7 +68,7 @@ function Dashboard({user,onNav,showToast}){
     </div>}
 
     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-      <div className="card-panel" style={{minHeight:368,display:'flex',flexDirection:'column'}}>
+      <div className="card-panel" style={{minHeight:300,display:'flex',flexDirection:'column'}}>
         <div className="section-title">Posljednje dodano — Gume</div>
         {(data.zadnje_gume||[]).length===0
           ?<div style={{fontSize:12,color:'var(--muted)'}}>Nema guma</div>
@@ -83,24 +83,26 @@ function Dashboard({user,onNav,showToast}){
           </div>
         }
       </div>
-      <div className="card-panel">
+      <div className="card-panel" style={{minHeight:300,display:'flex',flexDirection:'column'}}>
         <div className="section-title">Otvoreni zadaci</div>
         {(data.zadnji_zadaci||[]).length===0
           ?<div style={{fontSize:12,color:'var(--muted)'}}>Nema otvorenih zadataka 🎉</div>
-          :<>
-            {(data.zadnji_zadaci||[]).slice((pageZad-1)*PER_PAGE,pageZad*PER_PAGE).map(z=>{
-              const priColor=z.prioritet==='visok'?'var(--red)':z.prioritet==='srednji'?'var(--accent)':'var(--muted)';
-              return(<div key={z.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>onNav('zadaci')}>
-                <div style={{width:6,height:6,borderRadius:'50%',background:priColor,flexShrink:0}}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{z.naslov}</div>
-                  <div style={{fontSize:10,color:'var(--muted)'}}>{z.dodao_korisnik}</div>
-                </div>
-                <div style={{fontSize:10,color:priColor,fontWeight:700,flexShrink:0,textTransform:'uppercase'}}>{z.prioritet}</div>
-              </div>);
-            })}
+          :<div style={{flex:1,display:'flex',flexDirection:'column'}}>
+            <div style={{flex:1}}>
+              {(data.zadnji_zadaci||[]).slice((pageZad-1)*PER_PAGE,pageZad*PER_PAGE).map(z=>{
+                const priColor=z.prioritet==='visok'?'var(--red)':z.prioritet==='srednji'?'var(--accent)':'var(--muted)';
+                return(<div key={z.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>onNav('zadaci')}>
+                  <div style={{width:6,height:6,borderRadius:'50%',background:priColor,flexShrink:0}}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{z.naslov}</div>
+                    <div style={{fontSize:10,color:'var(--muted)'}}>{z.dodao_korisnik}</div>
+                  </div>
+                  <div style={{fontSize:10,color:priColor,fontWeight:700,flexShrink:0,textTransform:'uppercase'}}>{z.prioritet}</div>
+                </div>);
+              })}
+            </div>
             <SimplePagination page={pageZad} total={(data.zadnji_zadaci||[]).length} perPage={PER_PAGE} onChange={setPageZad}/>
-          </>
+          </div>
         }
         {(data.zadnji_zadaci||[]).length>0&&<button className="btn-sm" style={{width:'100%',marginTop:6,justifyContent:'center'}} onClick={()=>onNav('zadaci')}>Svi zadaci →</button>}
       </div>
