@@ -68,17 +68,19 @@ function Dashboard({user,onNav,showToast}){
     </div>}
 
     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-      <div className="card-panel">
+      <div className="card-panel" style={{minHeight:368,display:'flex',flexDirection:'column'}}>
         <div className="section-title">Posljednje dodano — Gume</div>
         {(data.zadnje_gume||[]).length===0
           ?<div style={{fontSize:12,color:'var(--muted)'}}>Nema guma</div>
-          :<>
-            {(data.zadnje_gume||[]).slice((pageGume-1)*PER_PAGE,pageGume*PER_PAGE).map(g=><div key={g.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>onNav('gume')}>
-              <div><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>{g.sirina}/{g.visina} {promjerDisp(g.promjer)}</div><div style={{fontSize:10,color:'var(--muted)'}}>{g.sifra} · {g.polica_kod}</div></div>
-              <button className="btn-sm" onClick={e=>{e.stopPropagation();onNav('gume');}}>Pregledaj</button>
-            </div>)}
+          :<div style={{flex:1,display:'flex',flexDirection:'column'}}>
+            <div style={{flex:1}}>
+              {(data.zadnje_gume||[]).slice((pageGume-1)*PER_PAGE,pageGume*PER_PAGE).map(g=><div key={g.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>onNav('gume',g.id)}>
+                <div><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>{g.sirina}/{g.visina} {promjerDisp(g.promjer)}</div><div style={{fontSize:10,color:'var(--muted)'}}>{g.sifra} · {g.polica_kod}</div></div>
+                <button className="btn-sm" onClick={e=>{e.stopPropagation();onNav('gume',g.id);}}>Pregledaj</button>
+              </div>)}
+            </div>
             <SimplePagination page={pageGume} total={(data.zadnje_gume||[]).length} perPage={PER_PAGE} onChange={setPageGume}/>
-          </>
+          </div>
         }
       </div>
       <div className="card-panel">
