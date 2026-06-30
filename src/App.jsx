@@ -191,7 +191,7 @@ function App(){
       {page==='nalozi'&&<NaloziModul user={user} showToast={showToast} onCountChange={setNalogCount} onOpenGuma={(id)=>nav('gume',id)} setLightbox={setLightbox}/> }
       {page==='podesavanja'&&isAdmin&&<PodesavanjaModul user={user} showToast={showToast} magacini={magacini} setMagacini={setMagacini} police={police} loadPolice={loadPoliceAndMag}/>}
       {page==='finansije'&&isAdmin&&<FinansijeModul showToast={showToast}/>}
-      {page==='servis'&&<ErrorBoundary><ServisModul user={user} showToast={showToast}/></ErrorBoundary>}
+      {page==='servis'&&<ErrorBoundary><ServisModul user={user} showToast={showToast} quickAdd={quickAddModal==='servis'} onQuickAddDone={()=>setQuickAddModal(null)}/></ErrorBoundary>}
       {page==='analitika'&&isAdmin&&<AnalitikaModul showToast={showToast} onNav={nav} tab={analitikaTab} setTab={setAnalitikaTab} otvorenKorisnik={analitikaOtvorenKorisnik} setOtvorenKorisnik={setAnalitikaOtvorenKorisnik}/>}
       {page==='log'&&isAdmin&&<LogModul showToast={showToast}/>}
     </div>
@@ -209,6 +209,10 @@ function App(){
           <div className="fab-item-lbl">Dodaj auto</div>
           <div className="fab-item-btn">🚗</div>
         </div>}
+        <div className="fab-item" onClick={()=>{setFabOpen(false);setQuickAddModal('servis');nav('servis');}}>
+          <div className="fab-item-lbl">Novi posao (servis)</div>
+          <div className="fab-item-btn">🔧</div>
+        </div>
       </div>}
       <button className="fab" onClick={()=>setFabOpen(o=>!o)}>{fabOpen?'×':'+'}</button>
     </>}
