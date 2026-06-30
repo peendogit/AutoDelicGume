@@ -254,7 +254,6 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
         <input className={moveKod.trim()?(pm?'ok':'err'):''} autoFocus placeholder="npr. P15" value={moveKod} onChange={e=>setMoveKod(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doMove()}/>
         {moveKod.trim()&&pm&&<div className="ph ok"><Icons.Check size={10}/> {pm.magacin_naziv} › {pm.prolaz_naziv} › {pm.regal_naziv} › {pm.naziv}</div>}
         {moveKod.trim()&&!pm&&<div className="ph err">Polica ne postoji</div>}
-        {!moveKod.trim()&&police.length>0&&<div style={{fontSize:10,color:'var(--muted)',marginTop:3}}>Dostupne: {police.map(p=>p.naziv).join(', ')}</div>}
       </div>);})()}
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>setMoveModal(null)}>Odustani</button><button className="btn-save" onClick={doMove}>Premjesti</button></div>
     </div></div>}
@@ -288,7 +287,6 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
         <input className={form.policaKod.trim()?(policaMatch?'ok':'err'):''} placeholder="npr. P10" value={form.policaKod} onChange={e=>setForm(f=>({...f,policaKod:e.target.value}))} autoComplete="off"/>
         {form.policaKod.trim()&&policaMatch&&<div className="ph ok"><Icons.Check size={10}/> {policaMatch.magacin_naziv} › {policaMatch.prolaz_naziv} › {policaMatch.regal_naziv} › {policaMatch.naziv}</div>}
         {form.policaKod.trim()&&!policaMatch&&<div className="ph err">Polica ne postoji</div>}
-        {!form.policaKod.trim()&&police.length>0&&<div style={{fontSize:10,color:'var(--muted)',marginTop:3}}>Dostupne: {police.map(p=>p.naziv).join(', ')}</div>}
         {submitAttempted&&!policaMatch&&<div style={{marginTop:4,padding:'6px 9px',borderRadius:4,fontSize:11,background:'rgba(248,81,73,.1)',border:'1.5px solid rgba(248,81,73,.5)',color:'var(--red)',fontWeight:600}}>Polica je obavezna i mora postojati u sistemu</div>}
       </div>
       <div className="fg2"><label>Napomena</label><textarea placeholder="Stanje, opis..." value={form.napomena} onChange={e=>setForm(f=>({...f,napomena:e.target.value}))}/></div>
