@@ -393,6 +393,31 @@ async function initDB() {
     )
   `);
 
+  // SERVIS — mehaničari
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS mehanicari (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ime TEXT NOT NULL,
+      aktivan INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // SERVIS — poslovi
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS servis_poslovi (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      mehanicar_id INTEGER,
+      mehanicar_ime TEXT NOT NULL,
+      registracija TEXT DEFAULT '',
+      opis_posla TEXT NOT NULL,
+      naplaceno REAL NOT NULL DEFAULT 0,
+      napomena TEXT DEFAULT '',
+      dodao_korisnik TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // ZADACI (to-do)
   await dbExec(`
     CREATE TABLE IF NOT EXISTS zadaci (
@@ -1469,6 +1494,100 @@ app.delete('/api/troskovi-otpada/:id', requireAdmin, async (req,res) => {
 });
 
 // ===== FINANSIJSKI IZVJEŠTAJ =====
+// ===== SERVIS — MEHANIČARI =====
+app.get('/api/mehanicari', requireAuth, async (req,res) => {
+  try { res.json(await dbAll('SELECT * FROM mehanicari ORDER BY aktivan DESC, ime')); }
+  catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/mehanicari', requireAdmin, async (req,res) => {
+  try {
+    const {ime} = req.body;
+    if(!ime||!ime.trim()) return res.status(400).json({error:'Ime je obavezno'});
+    const r = await dbRun('INSERT INTO mehanicari (ime) VALUES (?)', [ime.trim()]);
+    res.json(await dbGet('SELECT * FROM mehanicari WHERE id=?', [r.lastID]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.put('/api/mehanicari/:id', requireAdmin, async (req,res) => {
+  try {
+    const {ime, aktivan} = req.body;
+    await dbRun('UPDATE mehanicari SET ime=?, aktivan=? WHERE id=?', [ime, aktivan?1:0, req.params.id]);
+    res.json(await dbGet('SELECT * FROM mehanicari WHERE id=?', [req.params.id]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/mehanicari/:id', requireAdmin, async (req,res) => {
+  try { await dbRun('DELETE FROM mehanicari WHERE id=?', [req.params.id]); res.json({ok:true}); }
+  catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== SERVIS — POSLOVI =====
+app.get('/api/servis-poslovi', requireAuth, async (req,res) => {
+  try {
+    const {od, do_, mehanicar_id} = req.query;
+    let where = '1=1'; const params=[];
+    if(od){ where+=' AND date(created_at) >= date(?)'; params.push(od); }
+    if(do_){ where+=' AND date(created_at) <= date(?)'; params.push(do_); }
+    if(mehanicar_id){ where+=' AND mehanicar_id=?'; params.push(mehanicar_id); }
+    res.json(await dbAll(`SELECT * FROM servis_poslovi WHERE ${where} ORDER BY created_at DESC`, params));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/servis-poslovi', requireAuth, async (req,res) => {
+  try {
+    const {mehanicar_id, mehanicar_ime, registracija, opis_posla, naplaceno, napomena} = req.body;
+    if(!mehanicar_ime||!opis_posla||!naplaceno) return res.status(400).json({error:'Mehaničar, opis posla i naplaćeno su obavezni'});
+    const r = await dbRun(
+      'INSERT INTO servis_poslovi (mehanicar_id,mehanicar_ime,registracija,opis_posla,naplaceno,napomena,dodao_korisnik) VALUES (?,?,?,?,?,?,?)',
+      [mehanicar_id||null, mehanicar_ime, registracija||'', opis_posla, parseFloat(naplaceno)||0, napomena||'', req.user.username]);
+    res.json(await dbGet('SELECT * FROM servis_poslovi WHERE id=?', [r.lastID]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.put('/api/servis-poslovi/:id', requireAdmin, async (req,res) => {
+  try {
+    const {mehanicar_id, mehanicar_ime, registracija, opis_posla, naplaceno, napomena} = req.body;
+    await dbRun(
+      'UPDATE servis_poslovi SET mehanicar_id=?,mehanicar_ime=?,registracija=?,opis_posla=?,naplaceno=?,napomena=? WHERE id=?',
+      [mehanicar_id||null, mehanicar_ime, registracija||'', opis_posla, parseFloat(naplaceno)||0, napomena||'', req.params.id]);
+    res.json(await dbGet('SELECT * FROM servis_poslovi WHERE id=?', [req.params.id]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/servis-poslovi/:id', requireAdmin, async (req,res) => {
+  try { await dbRun('DELETE FROM servis_poslovi WHERE id=?', [req.params.id]); res.json({ok:true}); }
+  catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// Pregled — zarada po mehaničaru
+app.get('/api/servis-pregled', requireAdmin, async (req,res) => {
+  try {
+    const {period} = req.query;
+    let datumOd = '2000-01-01';
+    const now = new Date();
+    if(period==='danas') datumOd = now.toISOString().slice(0,10);
+    else if(period==='sedmica') { const d=new Date(now); d.setDate(d.getDate()-7); datumOd=d.toISOString().slice(0,10); }
+    else if(period==='mjesec') datumOd = now.toISOString().slice(0,7)+'-01';
+    else if(period==='godina') datumOd = now.getFullYear()+'-01-01';
+
+    const poslovi = await dbAll(
+      `SELECT * FROM servis_poslovi WHERE date(created_at) >= date(?) ORDER BY created_at DESC`, [datumOd]);
+
+    const poMeh = {};
+    for(const p of poslovi){
+      const key = p.mehanicar_ime;
+      if(!poMeh[key]) poMeh[key] = {mehanicar_ime:key, mehanicar_id:p.mehanicar_id, broj_poslova:0, ukupno:0};
+      poMeh[key].broj_poslova++;
+      poMeh[key].ukupno += p.naplaceno;
+    }
+    const poMehArr = Object.values(poMeh).sort((a,b)=>b.ukupno-a.ukupno);
+    const ukupnaZarada = poslovi.reduce((s,p)=>s+p.naplaceno,0);
+
+    res.json({ poslovi, poMehanicaru: poMehArr, ukupnaZarada, brojPoslova: poslovi.length, period: period||'sve' });
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
 app.get('/api/finansije', requireAdmin, async (req,res) => {
   try {
     const {period} = req.query; // 'danas' | 'sedmica' | 'mjesec' | 'godina' | 'sve'
@@ -1494,6 +1613,13 @@ app.get('/api/finansije', requireAdmin, async (req,res) => {
       `SELECT sifra,marka,model,godiste,nabavna_cijena,prodajna_cijena,dodao_korisnik
        FROM auta WHERE status='prodat' ORDER BY id DESC`);
 
+    // Prihodi od servisa
+    const servisPoslovi = await dbAll(
+      `SELECT * FROM servis_poslovi WHERE (
+         ? = '2000-01-01' OR date(created_at) >= date(?)
+       ) ORDER BY created_at DESC`,
+      [datumOd, datumOd]);
+
     // Troškovi otpada
     const troskoviOtpada = await dbAll(
       `SELECT * FROM troskovi_otpada WHERE datum >= ? ORDER BY datum DESC`, [datumOd]);
@@ -1511,6 +1637,7 @@ app.get('/api/finansije', requireAdmin, async (req,res) => {
     res.json({
       gumeProdate,
       autaProdana,
+      servisPoslovi,
       troskoviOtpada,
       troskoviPopravke,
       gumeStanje: { count: gumeStanje?.c||0, vrijednost: gumeStanje?.ukupno||0 },
