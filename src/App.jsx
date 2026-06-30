@@ -12,6 +12,7 @@ import PonudaModul from './modules/Ponude.jsx';
 import PodesavanjaModul from './modules/Podesavanja.jsx';
 import NaloziModul from './modules/Nalozi.jsx';
 import FinansijeModul from './modules/Finansije.jsx';
+import ServisModul from './modules/Servis.jsx';
 import AnalitikaModul from './modules/Analitika.jsx';
 import LogModul from './modules/Log.jsx';
 
@@ -127,12 +128,13 @@ function App(){
     {id:'kupci',label:'Kupci',icon:<Icons.Task size={18}/>,adminOnly:true},
     {id:'ponude',label:'Ponude',icon:<Icons.Money size={18}/>,adminOnly:true},
     {id:'zadaci',label:'Zadaci',icon:<Icons.Task size={18}/>,adminOnly:true},
+    {id:'servis',label:'Servis',icon:<Icons.Task size={18}/>,always:true},
     {id:'finansije',label:'Finansije',icon:<Icons.Money size={18}/>,adminOnly:true},
     {id:'analitika',label:'Analitika',icon:<Icons.Chart size={18}/>,adminOnly:true},
     {id:'log',label:'Dnevnik',icon:<Icons.Log size={18}/>,adminOnly:true},
   ].filter(i=>i.always||(i.adminOnly&&isAdmin));
 
-  const pageTitles={nalozi:'Nalozi',dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansije',kupci:'Kupci',ponude:'Ponude / Računi',podesavanja:'Podešavanja',analitika:'Analitika',log:'Dnevnik'};
+  const pageTitles={nalozi:'Nalozi',dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansije',servis:'Servis',kupci:'Kupci',ponude:'Ponude / Računi',podesavanja:'Podešavanja',analitika:'Analitika',log:'Dnevnik'};
 
   return(<div className="layout">
     {/* SIDEBAR OVERLAY on mobile */}
@@ -189,6 +191,7 @@ function App(){
       {page==='nalozi'&&<NaloziModul user={user} showToast={showToast} onCountChange={setNalogCount} onOpenGuma={(id)=>nav('gume',id)} setLightbox={setLightbox}/> }
       {page==='podesavanja'&&isAdmin&&<PodesavanjaModul user={user} showToast={showToast} magacini={magacini} setMagacini={setMagacini} police={police} loadPolice={loadPoliceAndMag}/>}
       {page==='finansije'&&isAdmin&&<FinansijeModul showToast={showToast}/>}
+      {page==='servis'&&<ErrorBoundary><ServisModul user={user} showToast={showToast}/></ErrorBoundary>}
       {page==='analitika'&&isAdmin&&<AnalitikaModul showToast={showToast} onNav={nav} tab={analitikaTab} setTab={setAnalitikaTab} otvorenKorisnik={analitikaOtvorenKorisnik} setOtvorenKorisnik={setAnalitikaOtvorenKorisnik}/>}
       {page==='log'&&isAdmin&&<LogModul showToast={showToast}/>}
     </div>
