@@ -34,11 +34,12 @@ function FinansijeModul({showToast}){
 
   const prihodGume=useMemo(()=>(!data?0:(data.gumeProdate||[]).reduce((s,g)=>s+(parseFloat(g.cijena_prodaje)||0),0)),[data]);
   const prihodAuta=useMemo(()=>(!data?0:(data.autaProdana||[]).reduce((s,a)=>s+(parseFloat(a.prodajna_cijena)||0),0)),[data]);
+  const prihodServis=useMemo(()=>(!data?0:(data.servisPoslovi||[]).reduce((s,p)=>s+(parseFloat(p.naplaceno)||0),0)),[data]);
   const filteredTros=useMemo(()=>listaTros.filter(t=>!filterMj||t.datum.startsWith(filterMj)),[listaTros,filterMj]);
   const ukupniTros=useMemo(()=>filteredTros.reduce((s,t)=>s+(parseFloat(t.iznos)||0),0),[filteredTros]);
   const ukupnoRedovni=useMemo(()=>redovni.filter(r=>r.aktivan).reduce((s,r)=>s+(parseFloat(r.iznos)||0),0),[redovni]);
   const poKat=useMemo(()=>{const m={};filteredTros.forEach(t=>{m[t.kategorija]=(m[t.kategorija]||0)+(parseFloat(t.iznos)||0);});return Object.entries(m).sort((a,b)=>b[1]-a[1]);},[filteredTros]);
-  const neto=prihodGume+prihodAuta-ukupniTros-ukupnoRedovni;
+  const neto=prihodGume+prihodAuta+prihodServis-ukupniTros-ukupnoRedovni;
   const mjeseci=useMemo(()=>[...new Set(listaTros.map(t=>t.datum.slice(0,7)))].sort().reverse(),[listaTros]);
 
   const doAddTros=async()=>{
@@ -82,6 +83,7 @@ function FinansijeModul({showToast}){
         <div className="kpi-grid" style={{gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))'}}>
           <div className="kpi green"><div className="kpi-lbl">Prihod gume</div><div className="kpi-val" style={{color:'var(--green)',fontSize:20}}>{prihodGume.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{(data.gumeProdate||[]).length} prodanih</div></div>
           <div className="kpi blue"><div className="kpi-lbl">Prihod auta</div><div className="kpi-val" style={{color:'var(--blue)',fontSize:20}}>{prihodAuta.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{(data.autaProdana||[]).length} prodanih</div></div>
+          <div className="kpi purple"><div className="kpi-lbl">Prihod servis</div><div className="kpi-val" style={{color:'var(--purple)',fontSize:20}}>{prihodServis.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{(data.servisPoslovi||[]).length} poslova</div></div>
           <div className="kpi red"><div className="kpi-lbl">Jednokratni troš.</div><div className="kpi-val" style={{color:'var(--red)',fontSize:20}}>{ukupniTros.toLocaleString('sr-Latn-RS')} KM</div></div>
           <div className="kpi red" style={{opacity:.75}}><div className="kpi-lbl">Redovni /mj</div><div className="kpi-val" style={{color:'var(--red)',fontSize:20}}>{ukupnoRedovni.toLocaleString('sr-Latn-RS')} KM</div></div>
           <div style={{gridColumn:'1/-1',background:neto>=0?'rgba(63,185,80,.08)':'rgba(248,81,73,.08)',border:'2px solid '+(neto>=0?'rgba(63,185,80,.3)':'rgba(248,81,73,.3)'),borderRadius:'var(--radius)',padding:'14px 16px'}}>
