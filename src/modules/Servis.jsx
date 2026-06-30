@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../utils.js';
 import { Icons } from '../components/index.jsx';
+import { SimplePagination } from '../components/index.jsx';
 
-function ServisModul({user,showToast}){
+function ServisModul({user,showToast,quickAdd,onQuickAddDone}){
   const isAdmin=user.role==='admin';
   const [mainTab,setMainTab]=useState(isAdmin?'pregled':'poslovi');
   const [period,setPeriod]=useState('mjesec');
   const [pregled,setPregled]=useState(null);const [loadingPregled,setLoadingPregled]=useState(false);
   const [mehanicari,setMehanicari]=useState([]);
   const [poslovi,setPoslovi]=useState([]);
+  const [poslPage,setPoslPage]=useState(1);const POSL_PER_PAGE=15;
   const [modalPosao,setModalPosao]=useState(false);
   const [formPosao,setFormPosao]=useState({mehanicar_id:'',mehanicar_ime:'',registracija:'',opis_posla:'',naplaceno:'',napomena:''});
   const [savingPosao,setSavingPosao]=useState(false);
@@ -29,19 +31,25 @@ function ServisModul({user,showToast}){
 
   useEffect(()=>{loadMehanicari();loadPoslovi();if(isAdmin)loadPregled(period);},[]);
   useEffect(()=>{if(isAdmin)loadPregled(period);},[period]);
+  useEffect(()=>{if(quickAdd){setMainTab('poslovi');openAddPosao();onQuickAddDone&&onQuickAddDone();}},[quickAdd]);
 
+  useEffect(()=>{setPoslPage(1);},[mainTab]);
   const aktivniMeh=useMemo(()=>mehanicari.filter(m=>m.aktivan),[mehanicari]);
 
   const openAddPosao=()=>{setFormPosao({mehanicar_id:'',mehanicar_ime:'',registracija:'',opis_posla:'',naplaceno:'',napomena:''});setEditingPosaoId(null);setModalPosao(true);};
   const openEditPosao=(p)=>{setFormPosao({mehanicar_id:p.mehanicar_id||'',mehanicar_ime:p.mehanicar_ime,registracija:p.registracija||'',opis_posla:p.opis_posla,naplaceno:p.naplaceno,napomena:p.napomena||''});setEditingPosaoId(p.id);setModalPosao(true);};
 
   const doSavePosao=async()=>{
-    if(!formPosao.mehanicar_ime||!formPosao.opis_posla||!formPosao.naplaceno){showToast('Mehaničar, opis posla i naplaćeno su obavezni','err');return;}
+    const naplacenoNum=parseFloat(formPosao.naplaceno);
+    if(!formPosao.mehanicar_ime.trim()||!formPosao.opis_posla.trim()||!formPosao.naplaceno||isNaN(naplacenoNum)||naplacenoNum<=0){
+      showToast('Mehaničar, opis posla i naplaćeno (veće od 0) su obavezni','err');return;
+    }
     setSavingPosao(true);
+    const body={...formPosao,mehanicar_id:formPosao.mehanicar_id||null,naplaceno:naplacenoNum};
     try{
       let p;
-      if(editingPosaoId){p=await api('/servis-poslovi/'+editingPosaoId,{method:'PUT',body:formPosao});setPoslovi(prev=>prev.map(x=>x.id===p.id?p:x));showToast('Posao ažuriran');}
-      else{p=await api('/servis-poslovi',{method:'POST',body:formPosao});setPoslovi(prev=>[p,...prev]);showToast('Posao dodan');}
+      if(editingPosaoId){p=await api('/servis-poslovi/'+editingPosaoId,{method:'PUT',body});setPoslovi(prev=>prev.map(x=>x.id===p.id?p:x));showToast('Posao ažuriran');}
+      else{p=await api('/servis-poslovi',{method:'POST',body});setPoslovi(prev=>[p,...prev]);showToast('Posao dodan');}
       setModalPosao(false);
       if(isAdmin)loadPregled(period);
     }catch(e){showToast(e.message,'err');}
@@ -123,8 +131,9 @@ function ServisModul({user,showToast}){
     {mainTab==='poslovi'&&<div className="card-panel">
       <div className="section-title">Svi poslovi ({poslovi.length})</div>
       {poslovi.length===0?<div className="empty"><Icons.Task size={40}/><p>Nema unesenih poslova. Dodaj prvi!</p></div>:
+      <>
       <div style={{display:'flex',flexDirection:'column',gap:6}}>
-        {poslovi.map(p=>{const dt=new Date(p.created_at);return(
+        {poslovi.slice((poslPage-1)*POSL_PER_PAGE,poslPage*POSL_PER_PAGE).map(p=>{const dt=new Date(p.created_at);return(
           <div key={p.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>{p.opis_posla}</div>
@@ -140,7 +149,9 @@ function ServisModul({user,showToast}){
             </div>}
           </div>
         );})}
-      </div>}
+      </div>
+      <SimplePagination page={poslPage} total={poslovi.length} perPage={POSL_PER_PAGE} onChange={setPoslPage}/>
+      </>}
     </div>}
 
     {/* MEHANIČARI — admin only */}
