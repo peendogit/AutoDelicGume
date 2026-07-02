@@ -34,6 +34,25 @@ function ServisModul({user,showToast,quickAdd,onQuickAddDone}){
   useEffect(()=>{if(quickAdd){setMainTab('poslovi');openAddPosao();onQuickAddDone&&onQuickAddDone();}},[quickAdd]);
 
   useEffect(()=>{setPoslPage(1);},[mainTab]);
+  const [obrMjesec,setObrMjesec]=useState(new Date().toISOString().slice(0,7));
+  const [obrOtvoren,setObrOtvoren]=useState(null);
+  const obrMjeseci=useMemo(()=>{
+    const s=new Set(poslovi.map(p=>String(p.created_at).slice(0,7)));
+    s.add(new Date().toISOString().slice(0,7));
+    return [...s].sort().reverse();
+  },[poslovi]);
+  const obracun=useMemo(()=>{
+    const filt=poslovi.filter(p=>String(p.created_at).startsWith(obrMjesec));
+    const m={};
+    for(const p of filt){
+      if(!m[p.mehanicar_ime]) m[p.mehanicar_ime]={ime:p.mehanicar_ime,broj:0,ukupno:0,poslovi:[]};
+      m[p.mehanicar_ime].broj++;
+      m[p.mehanicar_ime].ukupno+=(parseFloat(p.naplaceno)||0);
+      m[p.mehanicar_ime].poslovi.push(p);
+    }
+    const arr=Object.values(m).sort((a,b)=>b.ukupno-a.ukupno);
+    return {arr, ukupno: arr.reduce((s,x)=>s+x.ukupno,0), broj: filt.length};
+  },[poslovi,obrMjesec]);
   const aktivniMeh=useMemo(()=>mehanicari.filter(m=>m.aktivan),[mehanicari]);
 
   const openAddPosao=()=>{setFormPosao({mehanicar_id:'',mehanicar_ime:'',registracija:'',opis_posla:'',naplaceno:'',napomena:''});setEditingPosaoId(null);setModalPosao(true);};
@@ -90,6 +109,7 @@ function ServisModul({user,showToast,quickAdd,onQuickAddDone}){
       {isAdmin&&<button className={"stab"+(mainTab==='pregled'?' as':'')} onClick={()=>setMainTab('pregled')}>Pregled</button>}
       <button className={"stab"+(mainTab==='poslovi'?' as':'')} onClick={()=>setMainTab('poslovi')}>Poslovi</button>
       {isAdmin&&<button className={"stab"+(mainTab==='mehanicari'?' as':'')} onClick={()=>setMainTab('mehanicari')}>Mehaničari</button>}
+      {isAdmin&&<button className={"stab"+(mainTab==='obracun'?' as':'')} onClick={()=>setMainTab('obracun')}>Obračun</button>}
     </div>
 
     {/* PREGLED — admin only */}
@@ -153,6 +173,46 @@ function ServisModul({user,showToast,quickAdd,onQuickAddDone}){
       <SimplePagination page={poslPage} total={poslovi.length} perPage={POSL_PER_PAGE} onChange={setPoslPage}/>
       </>}
     </div>}
+
+    {/* OBRAČUN — admin only */}
+    {mainTab==='obracun'&&isAdmin&&<>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+        <label style={{fontSize:12,color:'var(--muted)'}}>Mjesec:</label>
+        <select value={obrMjesec} onChange={e=>setObrMjesec(e.target.value)} style={{maxWidth:160}}>
+          {obrMjeseci.map(m=><option key={m} value={m}>{m.slice(5,7)}/{m.slice(0,4)}</option>)}
+        </select>
+      </div>
+      <div className="kpi-grid" style={{gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',marginBottom:14}}>
+        <div className="kpi green"><div className="kpi-lbl">Ukupno mjesec</div><div className="kpi-val" style={{color:'var(--green)',fontSize:20}}>{obracun.ukupno.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{obracun.broj} poslova</div></div>
+        <div className="kpi accent"><div className="kpi-lbl">Mehaničara radilo</div><div className="kpi-val" style={{color:'var(--accent)',fontSize:20}}>{obracun.arr.length}</div></div>
+      </div>
+      <div className="card-panel">
+        <div className="section-title">Obračun po mehaničaru — {obrMjesec.slice(5,7)}/{obrMjesec.slice(0,4)}</div>
+        {obracun.arr.length===0?<div style={{fontSize:12,color:'var(--muted)',padding:'10px 0'}}>Nema poslova u ovom mjesecu</div>:
+        <div style={{display:'flex',flexDirection:'column',gap:4}}>
+          {obracun.arr.map((m,i)=>(
+            <div key={m.ime} style={{borderBottom:'1px solid var(--border)'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 0',cursor:'pointer'}} onClick={()=>setObrOtvoren(obrOtvoren===m.ime?null:m.ime)}>
+                <span style={{fontSize:11,color:'var(--muted)',flexShrink:0,width:18}}>{i+1}.</span>
+                <span style={{flex:1,fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:15}}>{m.ime}</span>
+                <span style={{fontSize:11,color:'var(--muted)',flexShrink:0}}>{m.broj} posl.</span>
+                <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,color:'var(--green)',fontSize:17,flexShrink:0}}>{m.ukupno.toLocaleString('sr-Latn-RS')} KM</span>
+                <span style={{fontSize:10,color:'var(--muted)',flexShrink:0}}>{obrOtvoren===m.ime?'▲':'▼'}</span>
+              </div>
+              {obrOtvoren===m.ime&&<div style={{padding:'0 0 10px 26px',display:'flex',flexDirection:'column',gap:4}}>
+                {m.poslovi.map(p=>{const dt=new Date(p.created_at);return(
+                  <div key={p.id} style={{display:'flex',gap:8,fontSize:11,color:'var(--muted)'}}>
+                    <span style={{flexShrink:0}}>{dt.toLocaleDateString('sr-Latn-RS')}</span>
+                    <span style={{flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.opis_posla}{p.registracija?' ('+p.registracija+')':''}</span>
+                    <span style={{flexShrink:0,color:'var(--green)',fontWeight:700}}>{p.naplaceno} KM</span>
+                  </div>
+                );})}
+              </div>}
+            </div>
+          ))}
+        </div>}
+      </div>
+    </>}
 
     {/* MEHANIČARI — admin only */}
     {mainTab==='mehanicari'&&isAdmin&&<div className="card-panel">
