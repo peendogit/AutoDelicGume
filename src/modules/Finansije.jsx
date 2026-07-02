@@ -20,6 +20,8 @@ function FinansijeModul({showToast}){
   const [istTo,setIstTo]=useState(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');});
   const [istTip,setIstTip]=useState('sve');
   const [redovni,setRedovni]=useState([]);const [modalRedovni,setModalRedovni]=useState(false);
+  const [zeljezo,setZeljezo]=useState([]);const [modalZelj,setModalZelj]=useState(false);
+  const [formZelj,setFormZelj]=useState({datum:new Date().toISOString().slice(0,10),kilaza:'',cijena_kg:'',otkupljivac:'',napomena:''});
   const [editRedovni,setEditRedovni]=useState(null);
   const [formR,setFormR]=useState({naziv:'',kategorija:'',iznos:'',dan_u_mjesecu:'1'});
 
@@ -29,17 +31,19 @@ function FinansijeModul({showToast}){
   const loadFin=async(p)=>{setLoading(true);try{const d=await api('/finansije?period='+p);setData(d);}catch(e){showToast(e.message,'err');}setLoading(false);};
   const loadTros=async()=>{try{const d=await api('/troskovi-otpada');setListaTros(d);}catch(e){}};
   const loadRedovni=async()=>{try{const d=await api('/redovni-troskovi');setRedovni(d);}catch(e){}};
-  useEffect(()=>{loadFin(period);loadTros();loadRedovni();},[]);
+  const loadZeljezo=async()=>{try{const d=await api('/zeljezo');setZeljezo(d);}catch(e){}};
+  useEffect(()=>{loadFin(period);loadTros();loadRedovni();loadZeljezo();},[]);
   useEffect(()=>{loadFin(period);},[period]);
 
   const prihodGume=useMemo(()=>(!data?0:(data.gumeProdate||[]).reduce((s,g)=>s+(parseFloat(g.cijena_prodaje)||0),0)),[data]);
   const prihodAuta=useMemo(()=>(!data?0:(data.autaProdana||[]).reduce((s,a)=>s+(parseFloat(a.prodajna_cijena)||0),0)),[data]);
   const prihodServis=useMemo(()=>(!data?0:(data.servisPoslovi||[]).reduce((s,p)=>s+(parseFloat(p.naplaceno)||0),0)),[data]);
+  const prihodZeljezo=useMemo(()=>(!data?0:(data.zeljezoPredaje||[]).reduce((s,z)=>s+(parseFloat(z.iznos)||0),0)),[data]);
   const filteredTros=useMemo(()=>listaTros.filter(t=>!filterMj||t.datum.startsWith(filterMj)),[listaTros,filterMj]);
   const ukupniTros=useMemo(()=>filteredTros.reduce((s,t)=>s+(parseFloat(t.iznos)||0),0),[filteredTros]);
   const ukupnoRedovni=useMemo(()=>redovni.filter(r=>r.aktivan).reduce((s,r)=>s+(parseFloat(r.iznos)||0),0),[redovni]);
   const poKat=useMemo(()=>{const m={};filteredTros.forEach(t=>{m[t.kategorija]=(m[t.kategorija]||0)+(parseFloat(t.iznos)||0);});return Object.entries(m).sort((a,b)=>b[1]-a[1]);},[filteredTros]);
-  const neto=prihodGume+prihodAuta+prihodServis-ukupniTros-ukupnoRedovni;
+  const neto=prihodGume+prihodAuta+prihodServis+prihodZeljezo-ukupniTros-ukupnoRedovni;
   const mjeseci=useMemo(()=>[...new Set(listaTros.map(t=>t.datum.slice(0,7)))].sort().reverse(),[listaTros]);
 
   const doAddTros=async()=>{
@@ -58,6 +62,20 @@ function FinansijeModul({showToast}){
     }catch(e){showToast(e.message,'err');}
   };
   const doDelRedovni=async(id)=>{if(!window.confirm('Obrisati?'))return;await api('/redovni-troskovi/'+id,{method:'DELETE'});setRedovni(p=>p.filter(r=>r.id!=id));};
+  const doAddZelj=async()=>{
+    const kg=parseFloat(formZelj.kilaza),ckg=parseFloat(formZelj.cijena_kg);
+    if(!formZelj.datum||isNaN(kg)||kg<=0||isNaN(ckg)||ckg<=0){showToast('Datum, kilaža i cijena/kg su obavezni','err');return;}
+    try{const z=await api('/zeljezo',{method:'POST',body:formZelj});setZeljezo(p=>[z,...p]);setModalZelj(false);setFormZelj({datum:new Date().toISOString().slice(0,10),kilaza:'',cijena_kg:'',otkupljivac:'',napomena:''});showToast('Predaja dodana');loadFin(period);}
+    catch(e){showToast(e.message,'err');}
+  };
+  const doDelZelj=async(id)=>{if(!window.confirm('Obrisati predaju?'))return;try{await api('/zeljezo/'+id,{method:'DELETE'});setZeljezo(p=>p.filter(z=>z.id!==id));loadFin(period);}catch(e){showToast(e.message,'err');}};
+  const zeljGodina=useMemo(()=>{
+    const g=new Date().getFullYear().toString();
+    const filt=zeljezo.filter(z=>z.datum.startsWith(g));
+    const kg=filt.reduce((s,z)=>s+(parseFloat(z.kilaza)||0),0);
+    const km=filt.reduce((s,z)=>s+(parseFloat(z.iznos)||0),0);
+    return {kg,km,prosjek:kg>0?km/kg:0,broj:filt.length};
+  },[zeljezo]);
   const toggleRedovni=async(r)=>{const u=await api('/redovni-troskovi/'+r.id,{method:'PUT',body:{...r,aktivan:r.aktivan?0:1}});setRedovni(p=>p.map(x=>x.id===u.id?u:x));};
 
   return(<div className="page">
@@ -65,6 +83,7 @@ function FinansijeModul({showToast}){
       <div><div className="page-title">Finansije</div><div className="page-sub">Prihodi, troškovi i neto bilans</div></div>
       {mainTab==='troskovi'&&<button className="btn-add-main" onClick={()=>setModalTros(true)}><Icons.Plus size={13}/> Dodaj trošak</button>}
       {mainTab==='redovni'&&<button className="btn-add-main" onClick={()=>setModalRedovni(true)}><Icons.Plus size={13}/> Novi redovni</button>}
+      {mainTab==='zeljezo'&&<button className="btn-add-main" onClick={()=>setModalZelj(true)}><Icons.Plus size={13}/> Nova predaja</button>}
     </div>
 
     <div className="status-tabs" style={{marginBottom:14}}>
@@ -72,6 +91,7 @@ function FinansijeModul({showToast}){
       <button className={"stab"+(mainTab==='prihodi'?' as':'')} onClick={()=>setMainTab('prihodi')}>Prihodi</button>
       <button className={"stab"+(mainTab==='troskovi'?' as':'')} onClick={()=>setMainTab('troskovi')}>Troškovi</button>
       <button className={"stab"+(mainTab==='redovni'?' as':'')} onClick={()=>setMainTab('redovni')}>Redovni</button>
+      <button className={"stab"+(mainTab==='zeljezo'?' as':'')} onClick={()=>setMainTab('zeljezo')}>Željezo</button>
       <button className={"stab"+(mainTab==='istorija'?' as':'')} onClick={()=>setMainTab('istorija')}>Istorija</button>
     </div>
 
@@ -83,7 +103,8 @@ function FinansijeModul({showToast}){
         <div className="kpi-grid" style={{gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))'}}>
           <div className="kpi green"><div className="kpi-lbl">Prihod gume</div><div className="kpi-val" style={{color:'var(--green)',fontSize:20}}>{prihodGume.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{(data.gumeProdate||[]).length} prodanih</div></div>
           <div className="kpi blue"><div className="kpi-lbl">Prihod auta</div><div className="kpi-val" style={{color:'var(--blue)',fontSize:20}}>{prihodAuta.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{(data.autaProdana||[]).length} prodanih</div></div>
-          <div className="kpi purple"><div className="kpi-lbl">Prihod servis</div><div className="kpi-val" style={{color:'var(--purple)',fontSize:20}}>{prihodServis.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{(data.servisPoslovi||[]).length} poslova</div></div>
+          <div className="kpi purple"><div className="kpi-lbl">Prihod servis</div><div className="kpi-val" style={{color:'var(--purple, #a371f7)',fontSize:20}}>{prihodServis.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{(data.servisPoslovi||[]).length} poslova</div></div>
+          <div className="kpi orange"><div className="kpi-lbl">Prihod željezo</div><div className="kpi-val" style={{color:'var(--orange, #f0883e)',fontSize:20}}>{prihodZeljezo.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{(data.zeljezoPredaje||[]).length} predaja</div></div>
           <div className="kpi red"><div className="kpi-lbl">Jednokratni troš.</div><div className="kpi-val" style={{color:'var(--red)',fontSize:20}}>{ukupniTros.toLocaleString('sr-Latn-RS')} KM</div></div>
           <div className="kpi red" style={{opacity:.75}}><div className="kpi-lbl">Redovni /mj</div><div className="kpi-val" style={{color:'var(--red)',fontSize:20}}>{ukupnoRedovni.toLocaleString('sr-Latn-RS')} KM</div></div>
           <div style={{gridColumn:'1/-1',background:neto>=0?'rgba(63,185,80,.08)':'rgba(248,81,73,.08)',border:'2px solid '+(neto>=0?'rgba(63,185,80,.3)':'rgba(248,81,73,.3)'),borderRadius:'var(--radius)',padding:'14px 16px'}}>
@@ -281,6 +302,47 @@ function FinansijeModul({showToast}){
       </>);
     })()}
 
+
+    {mainTab==='zeljezo'&&<>
+      <div className="kpi-grid" style={{gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',marginBottom:14}}>
+        <div className="kpi orange"><div className="kpi-lbl">Ova godina</div><div className="kpi-val" style={{color:'var(--orange, #f0883e)',fontSize:19}}>{zeljGodina.km.toLocaleString('sr-Latn-RS')} KM</div><div className="kpi-sub">{zeljGodina.broj} predaja</div></div>
+        <div className="kpi"><div className="kpi-lbl">Kilaža ove god.</div><div className="kpi-val" style={{fontSize:19}}>{Math.round(zeljGodina.kg).toLocaleString('sr-Latn-RS')} kg</div></div>
+        <div className="kpi"><div className="kpi-lbl">Prosjek KM/kg</div><div className="kpi-val" style={{fontSize:19}}>{zeljGodina.prosjek.toFixed(2)}</div></div>
+      </div>
+      <div className="card-panel">
+        <div className="section-title">Predaje željeza ({zeljezo.length})</div>
+        {zeljezo.length===0?<div className="empty"><p style={{fontSize:13,color:'var(--muted)'}}>Nema evidentiranih predaja. Dodaj prvu!</p></div>:
+        <div style={{display:'flex',flexDirection:'column',gap:4}}>
+          {zeljezo.map(z=>(
+            <div key={z.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0',borderBottom:'1px solid var(--border)',fontSize:12}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>{Math.round(z.kilaza).toLocaleString('sr-Latn-RS')} kg × {z.cijena_kg} KM/kg</div>
+                <div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>
+                  {fmtDate?fmtDate(z.datum):z.datum}{z.otkupljivac&&' · '+z.otkupljivac}{z.napomena&&' · '+z.napomena}
+                </div>
+              </div>
+              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,color:'var(--orange, #f0883e)',flexShrink:0,fontSize:15}}>{(parseFloat(z.iznos)||0).toLocaleString('sr-Latn-RS')} KM</div>
+              <button className="btn-sm red" style={{padding:'4px 8px',flexShrink:0}} onClick={()=>doDelZelj(z.id)}><Icons.Trash/></button>
+            </div>
+          ))}
+        </div>}
+      </div>
+    </>}
+
+    {modalZelj&&<div className="overlay" onClick={()=>setModalZelj(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">Nova predaja željeza <button className="btn-close" onClick={()=>setModalZelj(false)}>×</button></div>
+      <div className="two-col">
+        <div className="fg2"><label>Datum *</label><input type="date" value={formZelj.datum} onChange={e=>setFormZelj(f=>({...f,datum:e.target.value}))}/></div>
+        <div className="fg2"><label>Kilaža (kg) *</label><input type="number" min="0" placeholder="0" value={formZelj.kilaza} onChange={e=>setFormZelj(f=>({...f,kilaza:e.target.value}))}/></div>
+      </div>
+      <div className="two-col">
+        <div className="fg2"><label>Cijena po kg (KM) *</label><input type="number" min="0" step="0.01" placeholder="0.00" value={formZelj.cijena_kg} onChange={e=>setFormZelj(f=>({...f,cijena_kg:e.target.value}))}/></div>
+        <div className="fg2"><label>Iznos</label><div style={{padding:'8px 10px',fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:18,color:'var(--orange, #f0883e)'}}>{((parseFloat(formZelj.kilaza)||0)*(parseFloat(formZelj.cijena_kg)||0)).toFixed(2)} KM</div></div>
+      </div>
+      <div className="fg2"><label>Otkupljivač</label><input placeholder="npr. Sekundarne sirovine d.o.o." value={formZelj.otkupljivac} onChange={e=>setFormZelj(f=>({...f,otkupljivac:e.target.value}))}/></div>
+      <div className="fg2"><label>Napomena</label><input placeholder="opciono..." value={formZelj.napomena} onChange={e=>setFormZelj(f=>({...f,napomena:e.target.value}))}/></div>
+      <div className="modal-foot"><button className="btn-cancel" onClick={()=>setModalZelj(false)}>Odustani</button><button className="btn-save" onClick={doAddZelj}>Dodaj</button></div>
+    </div></div>}
 
     {modalTros&&<div className="overlay" onClick={()=>setModalTros(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
       <div className="modal-title">Novi trošak <button className="btn-close" onClick={()=>setModalTros(false)}>x</button></div>
