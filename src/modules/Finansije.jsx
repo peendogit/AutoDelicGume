@@ -86,13 +86,13 @@ function FinansijeModul({showToast}){
       {mainTab==='zeljezo'&&<button className="btn-add-main" onClick={()=>setModalZelj(true)}><Icons.Plus size={13}/> Nova predaja</button>}
     </div>
 
-    <div className="status-tabs" style={{marginBottom:14}}>
-      <button className={"stab"+(mainTab==='pregled'?' as':'')} onClick={()=>setMainTab('pregled')}>Pregled</button>
-      <button className={"stab"+(mainTab==='prihodi'?' as':'')} onClick={()=>setMainTab('prihodi')}>Prihodi</button>
-      <button className={"stab"+(mainTab==='troskovi'?' as':'')} onClick={()=>setMainTab('troskovi')}>Troškovi</button>
-      <button className={"stab"+(mainTab==='redovni'?' as':'')} onClick={()=>setMainTab('redovni')}>Redovni</button>
-      <button className={"stab"+(mainTab==='zeljezo'?' as':'')} onClick={()=>setMainTab('zeljezo')}>Željezo</button>
-      <button className={"stab"+(mainTab==='istorija'?' as':'')} onClick={()=>setMainTab('istorija')}>Istorija</button>
+    <div className="status-tabs" style={{marginBottom:14,flexWrap:'wrap',overflowX:'visible'}}>
+      <button className={"stab"+(mainTab==='pregled'?' as':'')} style={{flex:'none',padding:'6px 12px'}} onClick={()=>setMainTab('pregled')}>Pregled</button>
+      <button className={"stab"+(mainTab==='prihodi'?' as':'')} style={{flex:'none',padding:'6px 12px'}} onClick={()=>setMainTab('prihodi')}>Prihodi</button>
+      <button className={"stab"+(mainTab==='troskovi'?' as':'')} style={{flex:'none',padding:'6px 12px'}} onClick={()=>setMainTab('troskovi')}>Troškovi</button>
+      <button className={"stab"+(mainTab==='redovni'?' as':'')} style={{flex:'none',padding:'6px 12px'}} onClick={()=>setMainTab('redovni')}>Redovni</button>
+      <button className={"stab"+(mainTab==='zeljezo'?' as':'')} style={{flex:'none',padding:'6px 12px'}} onClick={()=>setMainTab('zeljezo')}>Željezo</button>
+      <button className={"stab"+(mainTab==='istorija'?' as':'')} style={{flex:'none',padding:'6px 12px'}} onClick={()=>setMainTab('istorija')}>Istorija</button>
     </div>
 
     {mainTab==='pregled'&&<>
