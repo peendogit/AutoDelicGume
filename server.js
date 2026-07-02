@@ -393,6 +393,21 @@ async function initDB() {
     )
   `);
 
+  // ŽELJEZO — predaje starog željeza
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS zeljezo_predaje (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      datum TEXT NOT NULL,
+      kilaza REAL NOT NULL DEFAULT 0,
+      cijena_kg REAL NOT NULL DEFAULT 0,
+      iznos REAL NOT NULL DEFAULT 0,
+      otkupljivac TEXT DEFAULT '',
+      napomena TEXT DEFAULT '',
+      dodao_korisnik TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // SERVIS — mehaničari
   await dbExec(`
     CREATE TABLE IF NOT EXISTS mehanicari (
@@ -1494,6 +1509,30 @@ app.delete('/api/troskovi-otpada/:id', requireAdmin, async (req,res) => {
 });
 
 // ===== FINANSIJSKI IZVJEŠTAJ =====
+// ===== ŽELJEZO =====
+app.get('/api/zeljezo', requireAdmin, async (req,res) => {
+  try { res.json(await dbAll('SELECT * FROM zeljezo_predaje ORDER BY datum DESC, id DESC')); }
+  catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/zeljezo', requireAdmin, async (req,res) => {
+  try {
+    const {datum, kilaza, cijena_kg, otkupljivac, napomena} = req.body;
+    const kg = parseFloat(kilaza)||0;
+    const ckg = parseFloat(cijena_kg)||0;
+    if(!datum||kg<=0||ckg<=0) return res.status(400).json({error:'Datum, kilaža i cijena/kg su obavezni'});
+    const iznos = Math.round(kg*ckg*100)/100;
+    const r = await dbRun('INSERT INTO zeljezo_predaje (datum,kilaza,cijena_kg,iznos,otkupljivac,napomena,dodao_korisnik) VALUES (?,?,?,?,?,?,?)',
+      [datum, kg, ckg, iznos, otkupljivac||'', napomena||'', req.user.username]);
+    res.json(await dbGet('SELECT * FROM zeljezo_predaje WHERE id=?', [r.lastID]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/zeljezo/:id', requireAdmin, async (req,res) => {
+  try { await dbRun('DELETE FROM zeljezo_predaje WHERE id=?', [req.params.id]); res.json({ok:true}); }
+  catch(e) { res.status(500).json({error:e.message}); }
+});
+
 // ===== SERVIS — MEHANIČARI =====
 app.get('/api/mehanicari', requireAuth, async (req,res) => {
   try { res.json(await dbAll('SELECT * FROM mehanicari ORDER BY aktivan DESC, ime')); }
@@ -1620,6 +1659,10 @@ app.get('/api/finansije', requireAdmin, async (req,res) => {
        ) ORDER BY created_at DESC`,
       [datumOd, datumOd]);
 
+    // Prihodi od željeza
+    const zeljezoPredaje = await dbAll(
+      `SELECT * FROM zeljezo_predaje WHERE datum >= ? ORDER BY datum DESC`, [datumOd]);
+
     // Troškovi otpada
     const troskoviOtpada = await dbAll(
       `SELECT * FROM troskovi_otpada WHERE datum >= ? ORDER BY datum DESC`, [datumOd]);
@@ -1638,6 +1681,7 @@ app.get('/api/finansije', requireAdmin, async (req,res) => {
       gumeProdate,
       autaProdana,
       servisPoslovi,
+      zeljezoPredaje,
       troskoviOtpada,
       troskoviPopravke,
       gumeStanje: { count: gumeStanje?.c||0, vrijednost: gumeStanje?.ukupno||0 },
