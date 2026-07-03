@@ -113,8 +113,8 @@ function NaloziModul({ user, showToast, onCountChange, onOpenGuma, setLightbox }
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 3 }}>
-                      <span style={{ fontFamily: 'Barlow Condensed,sans-serif', fontWeight: 900, fontSize: 16, color:'var(--accent)', cursor: onOpenGuma?'pointer':'default', textDecoration: onOpenGuma?'underline':'none' }}
-                        onClick={()=>onOpenGuma&&onOpenGuma(n.guma_id)}>
+                      <span style={{ fontFamily: 'Barlow Condensed,sans-serif', fontWeight: 900, fontSize: 16, color:'var(--accent)', cursor: (onOpenGuma&&n.guma_id>0)?'pointer':'default', textDecoration: (onOpenGuma&&n.guma_id>0)?'underline':'none' }}
+                        onClick={()=>onOpenGuma&&n.guma_id>0&&onOpenGuma(n.guma_id)}>
                         {n.guma_sifra}
                       </span>
                       {n.hitno ? <span style={{ background: 'var(--red)', color: '#fff', fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4, letterSpacing: 1 }}>HITNO</span> : null}

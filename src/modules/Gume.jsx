@@ -145,14 +145,11 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
         <div className="fg"><label>Širina (mm)</label><select value={filters.sirina} onChange={e=>setFilters(f=>({...f,sirina:e.target.value}))}><option value="">Sve</option>{sirina_opts.map(o=><option key={o}>{o}</option>)}</select></div>
         <div className="fg"><label>Profil (%)</label><select value={filters.visina} onChange={e=>setFilters(f=>({...f,visina:e.target.value}))}><option value="">Sve</option>{visina_opts.map(o=><option key={o}>{o}</option>)}</select></div>
         <div className="fg"><label>Prečnik</label><select value={filters.promjer} onChange={e=>setFilters(f=>({...f,promjer:e.target.value}))}><option value="">Sve</option>{promjer_opts.map(o=><option key={o}>{o}</option>)}</select></div>
-        <div className="fg"><button style={{width:'100%',background:'var(--border)',border:'none',color:'var(--muted)',borderRadius:5,fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',padding:'8px',cursor:'pointer'}} onClick={()=>setFilters({sezona:'',sirina:'',visina:'',promjer:'',sifra:'',tip:''})}>↺ Poništi</button></div>
+        <div className="fg"><label>Stanje</label><select value={statusTab} onChange={e=>setStatusTab(e.target.value)}><option value="stanje">Na stanju ({stanjeCount})</option><option value="prodato">Prodato ({prodatoCount})</option><option value="">Sve ({stanjeCount+prodatoCount})</option></select></div>
+        <div className="fg"><button style={{width:'100%',background:'var(--border)',border:'none',color:'var(--muted)',borderRadius:5,fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',padding:'8px',cursor:'pointer'}} onClick={()=>{setFilters({sezona:'',sirina:'',visina:'',promjer:'',sifra:'',tip:''});setStatusTab('stanje');}}>↺ Poništi</button></div>
       </div>
     </div>
 
-    <div className="status-tabs">
-      <button className={'stab'+(statusTab==='stanje'?' as':'')} onClick={()=>setStatusTab('stanje')}>Na stanju ({stanjeCount})</button>
-      <button className={'stab'+(statusTab==='prodato'?' ap':'')} onClick={()=>setStatusTab('prodato')}>Prodato ({prodatoCount})</button>
-    </div>
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:8}}>
       <div className="res-count" style={{marginBottom:0}}>Prikazano: <b>{filtered.length}</b> guma</div>
       <button style={{background:'none',border:'1px solid var(--border)',color:'var(--muted)',borderRadius:5,fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',padding:'4px 10px',cursor:'pointer'}} onClick={()=>setPremjestanjeOpen(p=>!p)}>

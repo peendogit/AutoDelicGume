@@ -21,6 +21,11 @@ function FelneModul({user,showToast,quickAdd,onQuickAddDone,setLightbox}){
   const [saving,setSaving]=useState(false);
   const [prodajaModal,setProdajaModal]=useState(null);
   const [prodajnaCijena,setProdajnaCijena]=useState('');
+  const [nalogModal,setNalogModal]=useState(null);
+  const [nalogForm,setNalogForm]=useState({napomena:'',hitno:false,za_slanje:false});
+  const [nalogSaving,setNalogSaving]=useState(false);
+  const [felneSaNalogom,setFelneSaNalogom]=useState(new Map());
+  const loadNalozi=async()=>{try{const d=await api('/nalozi');if(Array.isArray(d)){const m=new Map();d.forEach(n=>{if(n.guma_id<0)m.set(-n.guma_id,{status:n.status,nalogId:n.id});});setFelneSaNalogom(m);}}catch(e){}};
 
   const load=async()=>{
     setLoading(true);
@@ -33,6 +38,7 @@ function FelneModul({user,showToast,quickAdd,onQuickAddDone,setLightbox}){
     setLoading(false);
   };
   useEffect(()=>{load();},[filter]);
+  useEffect(()=>{loadNalozi();},[]);
   useEffect(()=>{setPage(1);},[filter]);
   useEffect(()=>{if(quickAdd){openAdd();onQuickAddDone&&onQuickAddDone();}},[quickAdd]);
 
@@ -152,6 +158,7 @@ function FelneModul({user,showToast,quickAdd,onQuickAddDone,setLightbox}){
               </div>
               <div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>
                 {f.sifra} · {f.marka}{f.model?' '+f.model:''} · {f.sirina}J{f.et?' ET'+f.et:''}{f.centralna_rupa?' · CB '+f.centralna_rupa+'mm':''} · {f.kolicina} kom
+                {felneSaNalogom.has(f.id)&&<span style={{marginLeft:6,fontSize:9,background:'rgba(88,166,255,.15)',color:'var(--blue)',padding:'2px 6px',borderRadius:4,fontWeight:700}}>NA NALOGU</span>}
               </div>
               {f.prodato===1&&<div style={{fontSize:10,color:'var(--green)',marginTop:1}}>Prodato {f.datum_prodaje} · {f.prodao_korisnik}</div>}
             </div>
@@ -262,6 +269,18 @@ function FelneModul({user,showToast,quickAdd,onQuickAddDone,setLightbox}){
       <div style={{marginTop:8,fontSize:10,color:'var(--muted)'}}>Dodao {detail.dodao_korisnik} · {new Date(detail.created_at).toLocaleDateString('sr-Latn-RS')}</div>
       <div className="modal-foot">
         <button className="btn-cancel" onClick={()=>setDetail(null)}>Zatvori</button>
+        {isAdmin&&detail.prodato===0&&!felneSaNalogom.has(detail.id)&&<button className="btn-save" style={{background:'var(--blue)'}} onClick={()=>{setNalogForm({napomena:'',hitno:false,za_slanje:false});setNalogModal(detail);setDetail(null);}}>📋 Pošalji nalog</button>}
+        {isAdmin&&felneSaNalogom.has(detail.id)&&<button className="btn-sm" style={{color:'var(--red)',borderColor:'rgba(248,81,73,.3)',fontWeight:700}} onClick={async()=>{
+          if(!window.confirm('Zatvoriti nalog za ove felne?'))return;
+          try{
+            const info=felneSaNalogom.get(detail.id);
+            const tok=localStorage.getItem('adg_token');
+            await fetch('/api/nalozi/'+info.nalogId+'/zavrsi',{method:'POST',headers:{'Authorization':'Bearer '+tok}});
+            setFelneSaNalogom(m=>{const nm=new Map(m);nm.delete(detail.id);return nm;});
+            window.dispatchEvent(new Event('nalozi-changed'));
+            showToast('Nalog zatvoren');setDetail(null);
+          }catch(err){showToast('Greška','err');}
+        }}>✕ Zatvori nalog</button>}
         <button className="btn-save" onClick={()=>{setDetail(null);openEdit(detail);}}>Uredi</button>
       </div>
     </div></div>}
@@ -274,6 +293,47 @@ function FelneModul({user,showToast,quickAdd,onQuickAddDone,setLightbox}){
         <div className="price-row"><input autoFocus className="price-inp" type="number" min="0" placeholder="0" value={prodajnaCijena} onChange={e=>setProdajnaCijena(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doProdaj()}/><span className="price-curr">KM</span></div>
       </div>
       <div className="modal-foot"><button className="btn-cancel" onClick={()=>setProdajaModal(null)}>Odustani</button><button className="btn-save" onClick={doProdaj}>Prodaj</button></div>
+    </div></div>}
+
+    {/* MODAL — nalog */}
+    {nalogModal&&<div className="overlay" onClick={()=>setNalogModal(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">Nalog za {nalogModal.sifra} <button className="btn-close" onClick={()=>setNalogModal(null)}>×</button></div>
+      <div style={{fontSize:12,color:'var(--muted)',marginBottom:10}}>{nalogModal.vrsta} {nalogModal.precnik}" {nalogModal.rupe} — {nalogModal.marka} {nalogModal.model||''} · {nalogModal.kolicina} kom</div>
+      <div className="fg2"><label>Napomena</label><input placeholder="opciono..." value={nalogForm.napomena} onChange={e=>setNalogForm(f=>({...f,napomena:e.target.value}))}/></div>
+      <div style={{display:'flex',gap:16,marginBottom:4}}>
+        <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
+          <input type="checkbox" checked={nalogForm.hitno} onChange={e=>setNalogForm(f=>({...f,hitno:e.target.checked}))}/>
+          <span style={{color:'var(--red)',fontWeight:700}}>🔴 Hitno</span>
+        </label>
+        <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
+          <input type="checkbox" checked={nalogForm.za_slanje} onChange={e=>setNalogForm(f=>({...f,za_slanje:e.target.checked}))}/>
+          <span style={{color:'var(--blue)',fontWeight:700}}>📦 Za slanje</span>
+        </label>
+      </div>
+      <div className="modal-foot">
+        <button className="btn-cancel" onClick={()=>setNalogModal(null)}>Odustani</button>
+        <button className="btn-save" disabled={nalogSaving} onClick={async()=>{
+          setNalogSaving(true);
+          try{
+            const tok=localStorage.getItem('adg_token');
+            await fetch('/api/nalozi',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({
+              guma_id:-nalogModal.id,
+              guma_sifra:nalogModal.sifra,
+              guma_opis:'FELNE — '+nalogModal.vrsta+' '+nalogModal.precnik+'" '+nalogModal.rupe+' · '+nalogModal.marka+(nalogModal.model?' '+nalogModal.model:'')+' · '+nalogModal.kolicina+' kom',
+              guma_lokacija:'Felne',
+              guma_slika:(nalogModal.slike&&nalogModal.slike[0])||'',
+              napomena:nalogForm.napomena,
+              hitno:nalogForm.hitno,
+              za_slanje:nalogForm.za_slanje
+            })});
+            showToast('Nalog poslan!');
+            loadNalozi();
+            window.dispatchEvent(new Event('nalozi-changed'));
+            setNalogModal(null);
+          }catch(e){showToast('Greška: '+e.message,'err');}
+          setNalogSaving(false);
+        }}>Pošalji nalog</button>
+      </div>
     </div></div>}
 
     <div className="site-footer">© 2026 DelicNode</div>
