@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../utils.js';
 import { Icons, SimplePagination } from '../components/index.jsx';
 
-const VRSTE=['Aluminijumske','Čelične'];
+const VRSTE=['Aluminijumske','Čelične','Rezervni točak'];
 const RUPE=['3x98','3x112','4x98','4x100','4x108','4x114.3','5x100','5x105','5x108','5x110','5x112','5x114.3','5x115','5x118','5x120','5x127','5x130','6x114.3','6x130','6x139.7'];
 const PRECNICI=['13','14','15','16','17','18','19','20','21','22'];
 const SIRINE=['4.5','5','5.5','6','6.5','7','7.5','8','8.5','9','9.5','10','10.5','11','12'];
@@ -11,7 +11,8 @@ function FelneModul({user,showToast,quickAdd,onQuickAddDone,setLightbox}){
   const isAdmin=user.role==='admin';
   const [felne,setFelne]=useState([]);
   const [loading,setLoading]=useState(false);
-  const [filter,setFilter]=useState({vrsta:'',rupe:'',precnik:'',sirina:'',sifra:'',stanje:'na_stanju'});
+  const [filter,setFilter]=useState({vrsta:'',rupe:'',precnik:'',sirina:'',sifra:'',stanje:'na_stanju',centralna_rupa:'',marka:''});
+  const [detail,setDetail]=useState(null);
   const [page,setPage]=useState(1);const PER_PAGE=15;
   const [modal,setModal]=useState(false);
   const [editId,setEditId]=useState(null);
@@ -118,7 +119,11 @@ function FelneModul({user,showToast,quickAdd,onQuickAddDone,setLightbox}){
             <option value="">Sve</option>{SIRINE.map(s=><option key={s} value={s}>{s} J</option>)}
           </select></div>
         <div className="fg2" style={{margin:0}}><label>Interna šifra</label>
-          <input placeholder="FE..." value={filter.sifra} onChange={e=>setFilter(f=>({...f,sifra:e.target.value}))}/></div>
+          <input placeholder="F10..." value={filter.sifra} onChange={e=>setFilter(f=>({...f,sifra:e.target.value}))}/></div>
+        <div className="fg2" style={{margin:0}}><label>Centralna rupa (mm)</label>
+          <input type="number" step="0.01" placeholder="npr. 65.1" value={filter.centralna_rupa} onChange={e=>setFilter(f=>({...f,centralna_rupa:e.target.value}))}/></div>
+        <div className="fg2" style={{margin:0}}><label>Proizvođač</label>
+          <input placeholder="npr. Peugeot, Audi..." value={filter.marka} onChange={e=>setFilter(f=>({...f,marka:e.target.value}))}/></div>
         <div className="fg2" style={{margin:0}}><label>Stanje</label>
           <select value={filter.stanje} onChange={e=>setFilter(f=>({...f,stanje:e.target.value}))}>
             <option value="na_stanju">Na stanju</option>
@@ -140,9 +145,9 @@ function FelneModul({user,showToast,quickAdd,onQuickAddDone,setLightbox}){
             {f.slike&&f.slike.length>0?
               <img src={f.slike[0]} alt="" style={{width:52,height:52,objectFit:'cover',borderRadius:6,flexShrink:0,cursor:'pointer'}} onClick={()=>setLightbox&&setLightbox({images:f.slike,index:0})}/>:
               <div style={{width:52,height:52,borderRadius:6,background:'var(--border)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:20}}>🛞</div>}
-            <div style={{flex:1,minWidth:0}}>
+            <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setDetail(f)}>
               <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:14}}>
-                {f.vrsta==='Aluminijumske'?'Alu':'Čelične'} {f.precnik}" {f.rupe}
+                {f.vrsta==='Aluminijumske'?'Alu':f.vrsta==='Čelične'?'Čelične':'Rez. točak'} {f.precnik}" {f.rupe}
                 {!!f.ostecenje&&<span style={{marginLeft:6,fontSize:9,background:'rgba(248,81,73,.15)',color:'var(--red)',padding:'2px 6px',borderRadius:4,fontWeight:700,verticalAlign:'middle'}}>OŠTEĆENO</span>}
               </div>
               <div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>
@@ -219,7 +224,10 @@ function FelneModul({user,showToast,quickAdd,onQuickAddDone,setLightbox}){
               <button onClick={()=>setForm(f=>({...f,slike:f.slike.filter((_,j)=>j!==i)}))} style={{position:'absolute',top:-6,right:-6,width:18,height:18,borderRadius:'50%',background:'var(--red)',color:'#fff',border:'none',fontSize:10,cursor:'pointer',lineHeight:1}}>×</button>
             </div>
           ))}
-          <label style={{width:56,height:56,borderRadius:6,border:'2px dashed var(--border)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:20,color:'var(--muted)'}}>
+          <label style={{width:56,height:56,borderRadius:6,border:'2px dashed var(--border)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:20,color:'var(--muted)'}} title="Slikaj kamerom">
+            📷<input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={addSlika}/>
+          </label>
+          <label style={{width:56,height:56,borderRadius:6,border:'2px dashed var(--border)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:20,color:'var(--muted)'}} title="Iz galerije">
             +<input type="file" accept="image/*" style={{display:'none'}} onChange={addSlika}/>
           </label>
         </div>
@@ -227,6 +235,34 @@ function FelneModul({user,showToast,quickAdd,onQuickAddDone,setLightbox}){
       <div className="modal-foot">
         <button className="btn-cancel" onClick={()=>setModal(false)}>Odustani</button>
         <button className="btn-save" disabled={saving} onClick={doSave}>{editId?'Sačuvaj':'Dodaj set'}</button>
+      </div>
+    </div></div>}
+
+    {/* MODAL — detalji */}
+    {detail&&<div className="overlay" onClick={()=>setDetail(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">{detail.sifra} — {detail.vrsta} {detail.precnik}" <button className="btn-close" onClick={()=>setDetail(null)}>×</button></div>
+      {detail.slike&&detail.slike.length>0&&<div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:12}}>
+        {detail.slike.map((s,i)=><img key={i} src={s} alt="" style={{width:72,height:72,objectFit:'cover',borderRadius:6,cursor:'pointer'}} onClick={()=>setLightbox&&setLightbox({images:detail.slike,index:i})}/>)}
+      </div>}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 14px',fontSize:13}}>
+        <div><span style={{color:'var(--muted)',fontSize:10,display:'block'}}>VRSTA</span>{detail.vrsta}</div>
+        <div><span style={{color:'var(--muted)',fontSize:10,display:'block'}}>BROJ I RASPON RUPA</span>{detail.rupe}</div>
+        <div><span style={{color:'var(--muted)',fontSize:10,display:'block'}}>PREČNIK</span>{detail.precnik}"</div>
+        <div><span style={{color:'var(--muted)',fontSize:10,display:'block'}}>ŠIRINA</span>{detail.sirina} J</div>
+        <div><span style={{color:'var(--muted)',fontSize:10,display:'block'}}>ET</span>{detail.et||'—'}</div>
+        <div><span style={{color:'var(--muted)',fontSize:10,display:'block'}}>CENTRALNA RUPA</span>{detail.centralna_rupa?detail.centralna_rupa+' mm':'—'}</div>
+        <div><span style={{color:'var(--muted)',fontSize:10,display:'block'}}>MARKA</span>{detail.marka}</div>
+        <div><span style={{color:'var(--muted)',fontSize:10,display:'block'}}>MODEL</span>{detail.model||'—'}</div>
+        <div><span style={{color:'var(--muted)',fontSize:10,display:'block'}}>KOLIČINA</span>{detail.kolicina} kom</div>
+        <div><span style={{color:'var(--muted)',fontSize:10,display:'block'}}>STANJE</span>{detail.ostecenje?<span style={{color:'var(--red)'}}>Oštećeno</span>:'Ispravno'}</div>
+        {isAdmin&&detail.cijena!=null&&detail.prodato===0&&<div><span style={{color:'var(--muted)',fontSize:10,display:'block'}}>CIJENA</span>{detail.cijena} KM</div>}
+        {detail.prodato===1&&<div><span style={{color:'var(--muted)',fontSize:10,display:'block'}}>PRODATO</span><span style={{color:'var(--green)'}}>{detail.cijena_prodaje} KM · {detail.datum_prodaje}</span></div>}
+      </div>
+      {detail.napomena&&<div style={{marginTop:10,fontSize:12,color:'var(--muted)',fontStyle:'italic'}}>{detail.napomena}</div>}
+      <div style={{marginTop:8,fontSize:10,color:'var(--muted)'}}>Dodao {detail.dodao_korisnik} · {new Date(detail.created_at).toLocaleDateString('sr-Latn-RS')}</div>
+      <div className="modal-foot">
+        <button className="btn-cancel" onClick={()=>setDetail(null)}>Zatvori</button>
+        <button className="btn-save" onClick={()=>{setDetail(null);openEdit(detail);}}>Uredi</button>
       </div>
     </div></div>}
 
