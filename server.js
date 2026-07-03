@@ -1963,17 +1963,23 @@ app.post('/api/nalozi/:id/spremi', requireAuth, async (req,res) => {
         polica = await dbGet('SELECT * FROM police WHERE naziv=?',['P599']);
       }
     }
-    const staraGuma = await dbGet('SELECT sifra,polica_kod FROM gume WHERE id=?',[nalog.guma_id]);
-    if(polica){
-      await dbRun("UPDATE gume SET polica_id=?,polica_kod='P599' WHERE id=?", [polica.id, nalog.guma_id]);
+    const jeFelna = nalog.guma_id<0;
+    const staraGuma = jeFelna ? null : await dbGet('SELECT sifra,polica_kod FROM gume WHERE id=?',[nalog.guma_id]);
+    if(!jeFelna){
+      if(polica){
+        await dbRun("UPDATE gume SET polica_id=?,polica_kod='P599' WHERE id=?", [polica.id, nalog.guma_id]);
+      } else {
+        await dbRun("UPDATE gume SET polica_kod='P599' WHERE id=?", [nalog.guma_id]);
+      }
+      await dbRun('INSERT INTO historija_premjestanja (guma_id,guma_sifra,polica_sa,polica_na,korisnik) VALUES (?,?,?,?,?)',
+        [nalog.guma_id, staraGuma?.sifra||nalog.guma_sifra, staraGuma?.polica_kod||null, 'P599', req.user.username]);
+      await logActivity(req.user.username, 'PREMJESTENA_GUMA', `${staraGuma?.sifra||nalog.guma_sifra}: ${staraGuma?.polica_kod||'—'} → P599 (nalog #${req.params.id})`);
+      await dbRun("UPDATE nalozi SET status='zavrseno',zavrseno_at=datetime('now'),guma_lokacija='P599' WHERE id=?", [req.params.id]);
+      await logNalogEvent(nalog.id, nalog.guma_sifra, nalog.guma_opis, 'SPREMLJENO', req.user.username, `Premješteno na P599 (sa ${staraGuma?.polica_kod||'—'})`);
     } else {
-      await dbRun("UPDATE gume SET polica_kod='P599' WHERE id=?", [nalog.guma_id]);
+      await dbRun("UPDATE nalozi SET status='zavrseno',zavrseno_at=datetime('now') WHERE id=?", [req.params.id]);
+      await logNalogEvent(nalog.id, nalog.guma_sifra, nalog.guma_opis, 'SPREMLJENO', req.user.username, 'Felne spremljene');
     }
-    await dbRun('INSERT INTO historija_premjestanja (guma_id,guma_sifra,polica_sa,polica_na,korisnik) VALUES (?,?,?,?,?)',
-      [nalog.guma_id, staraGuma?.sifra||nalog.guma_sifra, staraGuma?.polica_kod||null, 'P599', req.user.username]);
-    await logActivity(req.user.username, 'PREMJESTENA_GUMA', `${staraGuma?.sifra||nalog.guma_sifra}: ${staraGuma?.polica_kod||'—'} → P599 (nalog #${req.params.id})`);
-    await dbRun("UPDATE nalozi SET status='zavrseno',zavrseno_at=datetime('now'),guma_lokacija='P599' WHERE id=?", [req.params.id]);
-    await logNalogEvent(nalog.id, nalog.guma_sifra, nalog.guma_opis, 'SPREMLJENO', req.user.username, `Premješteno na P599 (sa ${staraGuma?.polica_kod||'—'})`);
     res.json({ok:true});
   } catch(e) { res.status(500).json({error:e.message}); }
 });
