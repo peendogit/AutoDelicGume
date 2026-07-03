@@ -408,6 +408,33 @@ async function initDB() {
     )
   `);
 
+  // FELNE — setovi felni
+  await dbExec(`
+    CREATE TABLE IF NOT EXISTS felne (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sifra TEXT UNIQUE,
+      vrsta TEXT NOT NULL,
+      rupe TEXT NOT NULL,
+      precnik TEXT NOT NULL,
+      sirina TEXT NOT NULL,
+      et TEXT DEFAULT '',
+      centralna_rupa TEXT DEFAULT '',
+      marka TEXT NOT NULL,
+      model TEXT DEFAULT '',
+      kolicina INTEGER DEFAULT 4,
+      ostecenje INTEGER DEFAULT 0,
+      napomena TEXT DEFAULT '',
+      cijena REAL,
+      slike TEXT DEFAULT '[]',
+      prodato INTEGER DEFAULT 0,
+      cijena_prodaje REAL,
+      datum_prodaje TEXT,
+      prodao_korisnik TEXT,
+      dodao_korisnik TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // SERVIS — mehaničari
   await dbExec(`
     CREATE TABLE IF NOT EXISTS mehanicari (
@@ -1533,6 +1560,84 @@ app.delete('/api/zeljezo/:id', requireAdmin, async (req,res) => {
   catch(e) { res.status(500).json({error:e.message}); }
 });
 
+// ===== FELNE =====
+app.get('/api/felne', requireAuth, async (req,res) => {
+  try {
+    const {vrsta, rupe, precnik, sirina, sifra, stanje} = req.query;
+    let sql = 'SELECT * FROM felne WHERE 1=1'; const p = [];
+    if (vrsta) { sql+=' AND vrsta=?'; p.push(vrsta); }
+    if (rupe) { sql+=' AND rupe=?'; p.push(rupe); }
+    if (precnik) { sql+=' AND precnik=?'; p.push(precnik); }
+    if (sirina) { sql+=' AND sirina=?'; p.push(sirina); }
+    if (sifra) { sql+=' AND sifra LIKE ?'; p.push('%'+sifra+'%'); }
+    if (stanje==='na_stanju') sql+=' AND prodato=0';
+    else if (stanje==='prodato') sql+=' AND prodato=1';
+    sql += ' ORDER BY created_at DESC';
+    const rows = await dbAll(sql, p);
+    res.json(rows.map(f=>({...f, slike: JSON.parse(f.slike||'[]')})));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/felne', requireAuth, async (req,res) => {
+  try {
+    const {vrsta,rupe,precnik,sirina,et,centralna_rupa,marka,model,kolicina,ostecenje,napomena,slike} = req.body;
+    const cijena = req.user.role==='admin' ? (req.body.cijena||null) : null;
+    if (!vrsta||!rupe||!precnik||!sirina||!marka) return res.status(400).json({error:'Vrsta, rupe, prečnik, širina i marka su obavezni'});
+    const num = await nextCounter('fe');
+    const sifra = 'FE'+num;
+    await dbRun(`INSERT INTO felne (sifra,vrsta,rupe,precnik,sirina,et,centralna_rupa,marka,model,kolicina,ostecenje,napomena,cijena,slike,dodao_korisnik)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [sifra,vrsta,rupe,precnik,sirina,et||'',centralna_rupa||'',marka,model||'',parseInt(kolicina)||4,ostecenje?1:0,napomena||'',cijena,JSON.stringify(slike||[]),req.user.username]);
+    const f = await dbGet('SELECT * FROM felne WHERE sifra=?',[sifra]);
+    await logActivity(req.user.username, 'DODANE_FELNE', `${sifra} — ${vrsta} ${precnik}" ${rupe} ${marka} ${model||''}`);
+    res.json({...f, slike: JSON.parse(f.slike||'[]')});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.put('/api/felne/:id', requireAuth, async (req,res) => {
+  try {
+    const {vrsta,rupe,precnik,sirina,et,centralna_rupa,marka,model,kolicina,ostecenje,napomena,slike} = req.body;
+    const stara = await dbGet('SELECT * FROM felne WHERE id=?',[req.params.id]);
+    if(!stara) return res.status(404).json({error:'Ne postoji'});
+    const cijena = req.user.role==='admin' ? (req.body.cijena??stara.cijena) : stara.cijena;
+    await dbRun(`UPDATE felne SET vrsta=?,rupe=?,precnik=?,sirina=?,et=?,centralna_rupa=?,marka=?,model=?,kolicina=?,ostecenje=?,napomena=?,cijena=?,slike=? WHERE id=?`,
+      [vrsta,rupe,precnik,sirina,et||'',centralna_rupa||'',marka,model||'',parseInt(kolicina)||4,ostecenje?1:0,napomena||'',cijena,JSON.stringify(slike||[]),req.params.id]);
+    const f = await dbGet('SELECT * FROM felne WHERE id=?',[req.params.id]);
+    res.json({...f, slike: JSON.parse(f.slike||'[]')});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/felne/:id/prodaj', requireAuth, async (req,res) => {
+  try {
+    const cijena_prodaje = parseFloat(req.body.cijena_prodaje);
+    if(isNaN(cijena_prodaje)||cijena_prodaje<0) return res.status(400).json({error:'Neispravna cijena'});
+    const f = await dbGet('SELECT * FROM felne WHERE id=?',[req.params.id]);
+    if(!f) return res.status(404).json({error:'Ne postoji'});
+    const d = new Date();
+    const datum = `${String(d.getDate()).padStart(2,'0')}. ${String(d.getMonth()+1).padStart(2,'0')}. ${d.getFullYear()}.`;
+    await dbRun("UPDATE felne SET prodato=1, cijena_prodaje=?, datum_prodaje=?, prodao_korisnik=? WHERE id=?",
+      [cijena_prodaje, datum, req.user.username, req.params.id]);
+    await logActivity(req.user.username, 'PRODANE_FELNE', `${f.sifra} — ${f.marka} ${f.precnik}" za ${cijena_prodaje} KM`);
+    res.json(await dbGet('SELECT * FROM felne WHERE id=?',[req.params.id]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/felne/:id/vrati', requireAdmin, async (req,res) => {
+  try {
+    await dbRun("UPDATE felne SET prodato=0, cijena_prodaje=NULL, datum_prodaje=NULL, prodao_korisnik=NULL WHERE id=?",[req.params.id]);
+    res.json(await dbGet('SELECT * FROM felne WHERE id=?',[req.params.id]));
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/felne/:id', requireAdmin, async (req,res) => {
+  try {
+    const f = await dbGet('SELECT * FROM felne WHERE id=?',[req.params.id]);
+    await dbRun('DELETE FROM felne WHERE id=?',[req.params.id]);
+    if(f) await logActivity(req.user.username, 'OBRISANE_FELNE', `${f.sifra} — ${f.marka} ${f.precnik}"`);
+    res.json({ok:true});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
 // ===== SERVIS — MEHANIČARI =====
 app.get('/api/mehanicari', requireAuth, async (req,res) => {
   try { res.json(await dbAll('SELECT * FROM mehanicari ORDER BY aktivan DESC, ime')); }
@@ -1652,6 +1757,16 @@ app.get('/api/finansije', requireAdmin, async (req,res) => {
       `SELECT sifra,marka,model,godiste,nabavna_cijena,prodajna_cijena,dodao_korisnik
        FROM auta WHERE status='prodat' ORDER BY id DESC`);
 
+    // Prihodi od felni
+    const felneProdate = await dbAll(
+      `SELECT sifra,vrsta,precnik,rupe,marka,model,cijena_prodaje,datum_prodaje,prodao_korisnik
+       FROM felne WHERE prodato=1 AND (
+         ? = '2000-01-01' OR
+         (length(datum_prodaje)>=10 AND
+          substr(datum_prodaje,9,4)||'-'||substr(datum_prodaje,5,2)||'-'||substr(datum_prodaje,1,2) >= ?)
+       ) ORDER BY datum_prodaje DESC`,
+      [datumOd, datumOd]);
+
     // Prihodi od servisa
     const servisPoslovi = await dbAll(
       `SELECT * FROM servis_poslovi WHERE (
@@ -1681,6 +1796,7 @@ app.get('/api/finansije', requireAdmin, async (req,res) => {
       gumeProdate,
       autaProdana,
       servisPoslovi,
+      felneProdate,
       zeljezoPredaje,
       troskoviOtpada,
       troskoviPopravke,
