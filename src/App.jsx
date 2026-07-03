@@ -13,6 +13,7 @@ import PodesavanjaModul from './modules/Podesavanja.jsx';
 import NaloziModul from './modules/Nalozi.jsx';
 import FinansijeModul from './modules/Finansije.jsx';
 import ServisModul from './modules/Servis.jsx';
+import FelneModul from './modules/Felne.jsx';
 import AnalitikaModul from './modules/Analitika.jsx';
 import LogModul from './modules/Log.jsx';
 
@@ -124,6 +125,7 @@ function App(){
   const navItems=[
     {id:'dashboard',label:'Pregled',icon:<Icons.Home size={18}/>,always:true},
     {id:'gume',label:'Gume',icon:<Icons.Tire size={18}/>,always:true},
+    {id:'felne',label:'Felne',icon:<Icons.Tire size={18}/>,always:true},
     {id:'auta',label:'Auta',icon:<Icons.Car size={18}/>,adminOnly:true},
     {id:'kupci',label:'Kupci',icon:<Icons.Task size={18}/>,adminOnly:true},
     {id:'ponude',label:'Ponude',icon:<Icons.Money size={18}/>,adminOnly:true},
@@ -134,7 +136,7 @@ function App(){
     {id:'log',label:'Dnevnik',icon:<Icons.Log size={18}/>,adminOnly:true},
   ].filter(i=>i.always||(i.adminOnly&&isAdmin));
 
-  const pageTitles={nalozi:'Nalozi',dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansije',servis:'Servis',kupci:'Kupci',ponude:'Ponude / Računi',podesavanja:'Podešavanja',analitika:'Analitika',log:'Dnevnik'};
+  const pageTitles={nalozi:'Nalozi',dashboard:'Pregled',gume:'Gume',auta:'Auta',zadaci:'Zadaci',finansije:'Finansije',servis:'Servis',felne:'Felne',kupci:'Kupci',ponude:'Ponude / Računi',podesavanja:'Podešavanja',analitika:'Analitika',log:'Dnevnik'};
 
   return(<div className="layout">
     {/* SIDEBAR OVERLAY on mobile */}
@@ -191,6 +193,7 @@ function App(){
       {page==='nalozi'&&<NaloziModul user={user} showToast={showToast} onCountChange={setNalogCount} onOpenGuma={(id)=>nav('gume',id)} setLightbox={setLightbox}/> }
       {page==='podesavanja'&&isAdmin&&<PodesavanjaModul user={user} showToast={showToast} magacini={magacini} setMagacini={setMagacini} police={police} loadPolice={loadPoliceAndMag}/>}
       {page==='finansije'&&isAdmin&&<FinansijeModul showToast={showToast}/>}
+      {page==='felne'&&<ErrorBoundary><FelneModul user={user} showToast={showToast} setLightbox={setLightbox}/></ErrorBoundary>}
       {page==='servis'&&<ErrorBoundary><ServisModul user={user} showToast={showToast} quickAdd={quickAddModal==='servis'} onQuickAddDone={()=>setQuickAddModal(null)}/></ErrorBoundary>}
       {page==='analitika'&&isAdmin&&<AnalitikaModul showToast={showToast} onNav={nav} tab={analitikaTab} setTab={setAnalitikaTab} otvorenKorisnik={analitikaOtvorenKorisnik} setOtvorenKorisnik={setAnalitikaOtvorenKorisnik}/>}
       {page==='log'&&isAdmin&&<LogModul showToast={showToast}/>}
