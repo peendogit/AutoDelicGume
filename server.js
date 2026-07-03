@@ -1563,13 +1563,15 @@ app.delete('/api/zeljezo/:id', requireAdmin, async (req,res) => {
 // ===== FELNE =====
 app.get('/api/felne', requireAuth, async (req,res) => {
   try {
-    const {vrsta, rupe, precnik, sirina, sifra, stanje} = req.query;
+    const {vrsta, rupe, precnik, sirina, sifra, stanje, centralna_rupa, marka} = req.query;
     let sql = 'SELECT * FROM felne WHERE 1=1'; const p = [];
     if (vrsta) { sql+=' AND vrsta=?'; p.push(vrsta); }
     if (rupe) { sql+=' AND rupe=?'; p.push(rupe); }
     if (precnik) { sql+=' AND precnik=?'; p.push(precnik); }
     if (sirina) { sql+=' AND sirina=?'; p.push(sirina); }
     if (sifra) { sql+=' AND sifra LIKE ?'; p.push('%'+sifra+'%'); }
+    if (centralna_rupa) { sql+=' AND centralna_rupa LIKE ?'; p.push('%'+centralna_rupa+'%'); }
+    if (marka) { sql+=' AND (marka LIKE ? OR model LIKE ?)'; p.push('%'+marka+'%','%'+marka+'%'); }
     if (stanje==='na_stanju') sql+=' AND prodato=0';
     else if (stanje==='prodato') sql+=' AND prodato=1';
     sql += ' ORDER BY created_at DESC';
@@ -1584,7 +1586,7 @@ app.post('/api/felne', requireAuth, async (req,res) => {
     const cijena = req.user.role==='admin' ? (req.body.cijena||null) : null;
     if (!vrsta||!rupe||!precnik||!sirina||!marka) return res.status(400).json({error:'Vrsta, rupe, prečnik, širina i marka su obavezni'});
     const num = await nextCounter('fe');
-    const sifra = 'FE'+num;
+    const sifra = 'F'+(9+num);
     await dbRun(`INSERT INTO felne (sifra,vrsta,rupe,precnik,sirina,et,centralna_rupa,marka,model,kolicina,ostecenje,napomena,cijena,slike,dodao_korisnik)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [sifra,vrsta,rupe,precnik,sirina,et||'',centralna_rupa||'',marka,model||'',parseInt(kolicina)||4,ostecenje?1:0,napomena||'',cijena,JSON.stringify(slike||[]),req.user.username]);
