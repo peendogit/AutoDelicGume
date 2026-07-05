@@ -62,6 +62,19 @@ function App(){
   const [isOnline,setIsOnline]=useState(navigator.onLine);
   const [nalogCount,setNalogCount]=useState(0);
   const [openGumaId,setOpenGumaId]=useState(null);
+  const [searchOpen,setSearchOpen]=useState(false);
+  const [searchQ,setSearchQ]=useState('');
+  const [searchRes,setSearchRes]=useState(null);
+  const [searchLoading,setSearchLoading]=useState(false);
+  useEffect(()=>{
+    if(!searchOpen||searchQ.trim().length<2){setSearchRes(null);return;}
+    const t=setTimeout(async()=>{
+      setSearchLoading(true);
+      try{const d=await api('/pretraga?q='+encodeURIComponent(searchQ.trim()));setSearchRes(d);}catch(e){}
+      setSearchLoading(false);
+    },300);
+    return()=>clearTimeout(t);
+  },[searchQ,searchOpen]);
   const [returnPage,setReturnPage]=useState(null);
   const [analitikaTab,setAnalitikaTab]=useState('pregled');
   const [analitikaOtvorenKorisnik,setAnalitikaOtvorenKorisnik]=useState(null);
@@ -175,6 +188,7 @@ function App(){
         </button>
         <div className="topbar-title">{pageTitles[page]||page}</div>
         <div className="topbar-actions">
+          <button title="Pretraga" onClick={()=>{setSearchOpen(true);setSearchQ('');setSearchRes(null);}} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',padding:'6px 8px',fontSize:17,lineHeight:1}}>🔍</button>
           <button onClick={()=>nav('nalozi')} style={{position:'relative',background:'none',border:'none',color:page==='nalozi'?'var(--accent)':'var(--muted)',cursor:'pointer',padding:'6px 16px 6px 8px',fontSize:13,fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,letterSpacing:1,textTransform:'uppercase',lineHeight:1}}>
             NALOZI
             {nalogCount>0&&<span style={{position:'absolute',top:0,right:0,background:'var(--red)',color:'#fff',borderRadius:'50%',width:16,height:16,fontSize:9,fontWeight:900,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>{nalogCount}</span>}
@@ -199,6 +213,39 @@ function App(){
       {page==='log'&&isAdmin&&<LogModul showToast={showToast}/>}
     </div>
 
+    {searchOpen&&<div className="overlay" style={{alignItems:'flex-start',paddingTop:60}} onClick={()=>setSearchOpen(false)}><div className="modal" style={{maxHeight:'75vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+      <div className="fg2" style={{marginBottom:10}}>
+        <input autoFocus placeholder="Pretraži sve — šifra, dimenzija, marka, kupac..." value={searchQ} onChange={e=>setSearchQ(e.target.value)} style={{fontSize:15}}/>
+      </div>
+      {searchLoading&&<div style={{fontSize:12,color:'var(--muted)',padding:'8px 0'}}>Tražim...</div>}
+      {searchRes&&(()=>{
+        const total=(searchRes.gume||[]).length+(searchRes.felne||[]).length+(searchRes.auta||[]).length+(searchRes.kupci||[]).length+(searchRes.nalozi||[]).length;
+        if(total===0)return <div style={{fontSize:12,color:'var(--muted)',padding:'8px 0'}}>Nema rezultata za "{searchQ}"</div>;
+        const Sec=({title,children})=><div style={{marginBottom:10}}><div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)',marginBottom:4}}>{title}</div>{children}</div>;
+        const Row=({onClick,main,sub,badge})=><div onClick={onClick} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}}>
+          <div style={{flex:1,minWidth:0}}><div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{main}</div>{sub&&<div style={{fontSize:10,color:'var(--muted)'}}>{sub}</div>}</div>
+          {badge&&<span style={{fontSize:9,background:'var(--border)',color:'var(--muted)',padding:'2px 6px',borderRadius:4,fontWeight:700,flexShrink:0}}>{badge}</span>}
+        </div>;
+        return(<>
+          {searchRes.gume.length>0&&<Sec title={"Gume ("+searchRes.gume.length+")"}>
+            {searchRes.gume.map(g=><Row key={'g'+g.id} onClick={()=>{setSearchOpen(false);nav('gume',g.id);}} main={g.sifra+' — '+g.sirina+'/'+g.visina+' '+promjerDisp(g.promjer)} sub={g.sezona+(g.polica_kod?' · '+g.polica_kod:'')} badge={g.prodato?'PRODATO':null}/>)}
+          </Sec>}
+          {searchRes.felne.length>0&&<Sec title={"Felne ("+searchRes.felne.length+")"}>
+            {searchRes.felne.map(f=><Row key={'f'+f.id} onClick={()=>{setSearchOpen(false);nav('felne');}} main={f.sifra+' — '+f.vrsta+' '+f.precnik+'" '+f.rupe} sub={f.marka+(f.model?' '+f.model:'')} badge={f.prodato?'PRODATO':null}/>)}
+          </Sec>}
+          {searchRes.auta.length>0&&<Sec title={"Auta ("+searchRes.auta.length+")"}>
+            {searchRes.auta.map(a=><Row key={'a'+a.id} onClick={()=>{setSearchOpen(false);nav('auta');}} main={a.sifra+' — '+a.marka+' '+a.model} sub={a.godiste||''} badge={a.prodato?'PRODATO':null}/>)}
+          </Sec>}
+          {searchRes.kupci.length>0&&<Sec title={"Kupci ("+searchRes.kupci.length+")"}>
+            {searchRes.kupci.map(k=><Row key={'k'+k.id} onClick={()=>{setSearchOpen(false);nav('kupci');}} main={k.ime} sub={k.telefon||''}/>)}
+          </Sec>}
+          {searchRes.nalozi.length>0&&<Sec title={"Nalozi ("+searchRes.nalozi.length+")"}>
+            {searchRes.nalozi.map(n=><Row key={'n'+n.id} onClick={()=>{setSearchOpen(false);nav('nalozi');}} main={n.guma_sifra+' — '+(n.guma_opis||'')} badge={n.status==='zavrseno'?'ZAVRŠENO':n.status==='preuzeto'?'PREUZETO':'ČEKA'}/>)}
+          </Sec>}
+        </>);
+      })()}
+      {!searchRes&&!searchLoading&&<div style={{fontSize:11,color:'var(--muted)',padding:'4px 0'}}>Ukucaj bar 2 znaka — traži kroz gume, felne, auta, kupce i naloge</div>}
+    </div></div>}
     {lightbox&&<Lightbox images={lightbox.images} startIndex={lightbox.index} onClose={()=>setLightbox(null)}/>}
     {/* FAB — brzo dodavanje */}
     {user&&<>
