@@ -51,7 +51,7 @@ function Dashboard({user,onNav,showToast}){
       <div className="section-title">Aktivni nalozi ({nalozi.length})</div>
       <div style={{display:'flex',flexDirection:'column',gap:6}}>
         {nalozi.slice((pageNal-1)*PER_PAGE,pageNal*PER_PAGE).map(n=>(
-          <div key={n.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer',opacity:n.status==='zavrseno'?0.75:1}} onClick={()=>onNav('gume',n.guma_id)}>
+          <div key={n.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer',opacity:n.status==='zavrseno'?0.75:1}} onClick={()=>n.guma_id>0?onNav('gume',n.guma_id):onNav('felne')}>
             <div style={{width:6,height:6,borderRadius:'50%',background:n.status==='zavrseno'?'var(--green)':n.hitno?'var(--red)':n.za_slanje?'#e3b341':'var(--accent)',flexShrink:0}}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{n.guma_sifra} — {n.guma_opis}</div>

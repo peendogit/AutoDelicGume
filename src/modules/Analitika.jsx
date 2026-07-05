@@ -10,6 +10,14 @@ function AnalitikaModul({showToast,onNav,tab,setTab,otvorenKorisnik,setOtvorenKo
   const [unosiLoading,setUnosiLoading]=useState(false);
   const [artikliKorisnika,setArtikliKorisnika]=useState([]);
   const [artikliLoading,setArtikliLoading]=useState(false);
+  const [felneData,setFelneData]=useState(null);
+  const [felneLoading,setFelneLoading]=useState(false);
+  useEffect(()=>{
+    if(tab==='felne'&&!felneData){
+      setFelneLoading(true);
+      api('/analitika/felne').then(d=>{setFelneData(d);setFelneLoading(false);}).catch(e=>{showToast(e.message,'err');setFelneLoading(false);});
+    }
+  },[tab]);
 
   const loadUnosi=useCallback((resetExpanded)=>{
     setUnosiLoading(true);
@@ -69,6 +77,7 @@ function AnalitikaModul({showToast,onNav,tab,setTab,otvorenKorisnik,setOtvorenKo
       <button className={'stab'+(tab==='abc'?' as':'')} onClick={()=>setTab('abc')}>🔤 ABC analiza</button>
       <button className={'stab'+(tab==='prognoza'?' as':'')} onClick={()=>setTab('prognoza')}>🔮 Prognoza</button>
       <button className={'stab'+(tab==='unosi'?' as':'')} onClick={()=>setTab('unosi')}>📥 Unosi</button>
+      <button className={'stab'+(tab==='felne'?' as':'')} onClick={()=>setTab('felne')}>🛞 Felne</button>
     </div>
 
     {tab==='pregled'&&<>
@@ -264,6 +273,47 @@ function AnalitikaModul({showToast,onNav,tab,setTab,otvorenKorisnik,setOtvorenKo
           }
         </div>
       }
+    </>}
+
+    {tab==='felne'&&<>
+      {felneLoading?<div style={{color:'var(--muted)',padding:30,textAlign:'center'}}>Učitavanje...</div>:felneData&&<>
+        <div className="kpi-grid">
+          <div className="kpi accent"><div className="kpi-lbl">Ukupno setova</div><div className="kpi-val" style={{color:'var(--accent)'}}>{felneData.ukupno}</div></div>
+          <div className="kpi green"><div className="kpi-lbl">Na stanju</div><div className="kpi-val" style={{color:'var(--green)'}}>{felneData.naStanju}</div></div>
+          <div className="kpi purple"><div className="kpi-lbl">Prodato</div><div className="kpi-val" style={{color:'var(--purple, #a371f7)'}}>{felneData.prodato}</div></div>
+          <div className="kpi"><div className="kpi-lbl">Prihod ukupno</div><div className="kpi-val" style={{fontSize:20}}>{(felneData.prihod||0).toLocaleString('sr-Latn-RS')} KM</div></div>
+        </div>
+        {felneData.poPrecniku.length>0&&<div className="card-panel">
+          <div className="section-title">Po prečniku</div>
+          {felneData.poPrecniku.map((d,i)=><div key={d.precnik} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:'1px solid var(--border)'}}>
+            <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,color:'var(--muted)',width:18}}>{i+1}.</span>
+            <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:16,flex:1}}>{d.precnik}"</span>
+            <span style={{fontSize:11,color:'var(--muted)'}}>Ukupno: <b style={{color:'var(--text)'}}>{d.ukupno}</b></span>
+            <span style={{fontSize:11,color:'var(--muted)'}}>Stanje: <b style={{color:'var(--green)'}}>{d.na_stanju}</b></span>
+            <span style={{fontSize:11,color:'var(--muted)'}}>Prod.: <b style={{color:'var(--purple, #a371f7)'}}>{d.prodato}</b></span>
+          </div>)}
+        </div>}
+        {felneData.poRupama.length>0&&<div className="card-panel">
+          <div className="section-title">Po broju i rasponu rupa</div>
+          {felneData.poRupama.map((d,i)=><div key={d.rupe} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:'1px solid var(--border)'}}>
+            <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:11,color:'var(--muted)',width:18}}>{i+1}.</span>
+            <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:15,flex:1}}>{d.rupe}</span>
+            <span style={{fontSize:11,color:'var(--muted)'}}>Ukupno: <b style={{color:'var(--text)'}}>{d.ukupno}</b></span>
+            <span style={{fontSize:11,color:'var(--muted)'}}>Stanje: <b style={{color:'var(--green)'}}>{d.na_stanju}</b></span>
+            <span style={{fontSize:11,color:'var(--muted)'}}>Prod.: <b style={{color:'var(--purple, #a371f7)'}}>{d.prodato}</b></span>
+          </div>)}
+        </div>}
+        {felneData.najstarije.length>0&&<div className="card-panel">
+          <div className="section-title">⏳ Najduže na stanju</div>
+          {felneData.najstarije.map(f=><div key={f.id} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>onNav&&onNav('felne')}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:800,fontSize:13}}>{f.sifra} — {f.vrsta} {f.precnik}" {f.rupe}</div>
+              <div style={{fontSize:10,color:'var(--muted)'}}>{f.marka}{f.model?' '+f.model:''}</div>
+            </div>
+            <span style={{fontFamily:'Barlow Condensed,sans-serif',fontWeight:900,fontSize:14,color:f.dana>180?'var(--red)':f.dana>90?'var(--accent)':'var(--muted)',flexShrink:0}}>{f.dana} dana</span>
+          </div>)}
+        </div>}
+      </>}
     </>}
 
     <div className="site-footer">© 2026 <span>DelicNode</span></div>
