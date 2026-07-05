@@ -1560,6 +1560,51 @@ app.delete('/api/zeljezo/:id', requireAdmin, async (req,res) => {
   catch(e) { res.status(500).json({error:e.message}); }
 });
 
+// Analitika — felne
+app.get('/api/analitika/felne', requireAdmin, async (req,res) => {
+  try {
+    const [ukupno, naStanju, prodato, prihod, poPrecniku, poRupama, najstarije] = await Promise.all([
+      dbGet('SELECT COUNT(*) c FROM felne'),
+      dbGet('SELECT COUNT(*) c FROM felne WHERE prodato=0'),
+      dbGet('SELECT COUNT(*) c FROM felne WHERE prodato=1'),
+      dbGet('SELECT COALESCE(SUM(cijena_prodaje),0) s FROM felne WHERE prodato=1'),
+      dbAll(`SELECT precnik, COUNT(*) ukupno, SUM(CASE WHEN prodato=0 THEN 1 ELSE 0 END) na_stanju,
+             SUM(CASE WHEN prodato=1 THEN 1 ELSE 0 END) prodato FROM felne GROUP BY precnik ORDER BY prodato DESC, ukupno DESC`),
+      dbAll(`SELECT rupe, COUNT(*) ukupno, SUM(CASE WHEN prodato=0 THEN 1 ELSE 0 END) na_stanju,
+             SUM(CASE WHEN prodato=1 THEN 1 ELSE 0 END) prodato FROM felne GROUP BY rupe ORDER BY prodato DESC, ukupno DESC LIMIT 10`),
+      dbAll(`SELECT id,sifra,vrsta,precnik,rupe,marka,model,created_at,
+             CAST(julianday('now')-julianday(created_at) AS INTEGER) dana
+             FROM felne WHERE prodato=0 ORDER BY created_at ASC LIMIT 10`),
+    ]);
+    res.json({
+      ukupno: ukupno.c, naStanju: naStanju.c, prodato: prodato.c, prihod: prihod.s,
+      poPrecniku, poRupama, najstarije
+    });
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ===== BRZA PRETRAGA =====
+app.get('/api/pretraga', requireAuth, async (req,res) => {
+  try {
+    const q = (req.query.q||'').trim();
+    if(q.length<2) return res.json({gume:[],felne:[],auta:[],kupci:[],nalozi:[]});
+    const like = '%'+q+'%';
+    const isAdmin = req.user.role==='admin';
+    const [gume, felne, auta, kupci, nalozi] = await Promise.all([
+      dbAll(`SELECT id,sifra,sirina,visina,promjer,sezona,polica_kod,prodato FROM gume
+             WHERE sifra LIKE ? OR (sirina||'/'||visina) LIKE ? OR napomena LIKE ? LIMIT 8`, [like,like,like]),
+      dbAll(`SELECT id,sifra,vrsta,precnik,rupe,marka,model,prodato FROM felne
+             WHERE sifra LIKE ? OR marka LIKE ? OR model LIKE ? OR rupe LIKE ? LIMIT 8`, [like,like,like,like]),
+      dbAll(`SELECT id,sifra,marka,model,godiste,prodato FROM auta
+             WHERE sifra LIKE ? OR marka LIKE ? OR model LIKE ? OR vin LIKE ? LIMIT 8`, [like,like,like,like]),
+      isAdmin ? dbAll(`SELECT id,ime,telefon FROM kupci WHERE ime LIKE ? OR telefon LIKE ? LIMIT 8`, [like,like]) : Promise.resolve([]),
+      dbAll(`SELECT id,guma_id,guma_sifra,guma_opis,status FROM nalozi
+             WHERE guma_sifra LIKE ? OR guma_opis LIKE ? ORDER BY created_at DESC LIMIT 8`, [like,like]),
+    ]);
+    res.json({gume, felne, auta, kupci, nalozi});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
 // ===== FELNE =====
 app.get('/api/felne', requireAuth, async (req,res) => {
   try {
