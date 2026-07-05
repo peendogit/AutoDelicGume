@@ -171,7 +171,7 @@ function FelneModul({user,showToast,quickAdd,onQuickAddDone,setLightbox}){
               {f.prodato===0&&<button className="btn-sm" style={{padding:'4px 8px',color:'var(--green)'}} onClick={()=>{setProdajaModal(f);setProdajnaCijena(f.cijena!=null?String(f.cijena):'');}}>Prodaj</button>}
               {f.prodato===1&&isAdmin&&<button className="btn-sm" style={{padding:'4px 8px'}} onClick={()=>doVrati(f)}>Vrati</button>}
               <button className="btn-sm" style={{padding:'4px 8px'}} onClick={()=>openEdit(f)}><Icons.Edit/></button>
-              {isAdmin&&<button className="btn-sm red" style={{padding:'4px 8px'}} onClick={()=>doDelete(f)}><Icons.Trash/></button>}
+              {isAdmin&&f.prodato===1&&<button className="btn-sm red" style={{padding:'4px 8px'}} onClick={()=>doDelete(f)}><Icons.Trash/></button>}
             </div>
           </div>
         ))}

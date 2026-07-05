@@ -224,7 +224,7 @@ function GumeModul({user,showToast,gume,setGume,police,magacini,loadPolice,light
         {detailG.prodao_korisnik&&<span>· Prodao: <b style={{color:'var(--text)'}}>{detailG.prodao_korisnik}</b></span>}
       </div>
       <div className="modal-foot">
-        {isAdmin&&<div className="foot-left"><button className="btn-sm red" onClick={()=>doDel(detailG.id)}><Icons.Trash/> Obriši</button></div>}
+        {isAdmin&&detailG.prodato&&<div className="foot-left"><button className="btn-sm red" onClick={()=>doDel(detailG.id)}><Icons.Trash/> Obriši</button></div>}
         {!detailG.prodato&&<button className="btn-sm" onClick={()=>openEdit(detailG)}><Icons.Edit/> Uredi</button>}
         {!detailG.prodato&&<button className="btn-save" onClick={()=>setSellModal(true)} style={{background:'var(--green)',color:'#fff'}}>Prodaj</button>}
         {detailG.prodato&&<button className="btn-cancel" onClick={closeDetail}>Zatvori</button>}
