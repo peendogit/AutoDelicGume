@@ -11,6 +11,7 @@ const crypto = require('crypto');
 try { require('dotenv').config(); } catch(e) {}
 
 const app = express();
+app.set('trust proxy', 1); // Nginx reverse proxy
 const PORT = process.env.PORT || 3000;
 
 // ===== SECURITY =====
